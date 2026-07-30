@@ -22,7 +22,7 @@ UniMarket is a full-stack campus student marketplace built with **Laravel 13**, 
 - Email verification accepting student emails and general providers.
 - Assigns **"Official Student"** verified badge displayed across listings and profile components.
 
-### 🔍 2. Search, Discovery & Marketplace Grid
+### 2. Search, Discovery & Marketplace Grid
 - Livewire instant search filter with `300ms` debounce.
 - Horizontal category chip selector pills with real-time active listing counts.
 - Condition filter pills (`New`, `Like New`, `Good`, `Fair`) and price/date sorting.
