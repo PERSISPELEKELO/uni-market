@@ -44,17 +44,16 @@ class Register extends Component
         ]);
 
         // Audit log
-        AuditLog::create([
-            'user_id' => $user->id,
-            'action' => 'USER_REGISTERED',
-            'entity_type' => User::class,
-            'entity_id' => $user->id,
-            'payload' => [
+        app(\App\Services\AuditLoggerService::class)->log(
+            'USER_REGISTERED',
+            'User',
+            $user->id,
+            [
                 'email' => $user->email,
                 'is_verified' => $user->is_verified,
             ],
-            'ip_address' => request()->ip(),
-        ]);
+            $user
+        );
 
         Auth::login($user);
 

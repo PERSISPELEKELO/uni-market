@@ -64,18 +64,17 @@ class CreateListing extends Component
         ]);
 
         // Log Audit Trail
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'action' => 'LISTING_CREATED',
-            'entity_type' => Listing::class,
-            'entity_id' => $listing->id,
-            'payload' => [
+        app(\App\Services\AuditLoggerService::class)->log(
+            'LISTING_CREATED',
+            'Listing',
+            $listing->id,
+            [
                 'title' => $listing->title,
                 'price' => $listing->price,
                 'category_id' => $listing->category_id,
             ],
-            'ip_address' => request()->ip(),
-        ]);
+            Auth::user()
+        );
 
         return redirect()->route('listings.show', $listing->id)
             ->with('success', 'Your listing has been published to the campus marketplace!');

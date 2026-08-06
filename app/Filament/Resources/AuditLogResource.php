@@ -27,15 +27,18 @@ class AuditLogResource extends Resource
     {
         return $form
             ->schema([
+                Forms\Components\TextInput::make('uuid')->disabled(),
                 Forms\Components\TextInput::make('action')->disabled(),
-                Forms\Components\Select::make('user_id')
-                    ->relationship('user', 'name')
+                Forms\Components\Select::make('actor_id')
+                    ->relationship('actor', 'name')
                     ->disabled(),
-                Forms\Components\TextInput::make('entity_type')->disabled(),
-                Forms\Components\TextInput::make('entity_id')->disabled(),
-                Forms\Components\TextInput::make('ip_address')->disabled(),
+                Forms\Components\TextInput::make('actor_role')->disabled(),
+                Forms\Components\TextInput::make('target_type')->disabled(),
+                Forms\Components\TextInput::make('target_id')->disabled(),
+                Forms\Components\TextInput::make('previous_hash')->disabled(),
+                Forms\Components\TextInput::make('current_hash')->disabled(),
                 Forms\Components\KeyValue::make('payload')->disabled()->columnSpanFull(),
-                Forms\Components\DateTimePicker::make('created_at')->disabled(),
+                Forms\Components\DateTimePicker::make('timestamp')->disabled(),
             ]);
     }
 
@@ -44,45 +47,37 @@ class AuditLogResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id')->sortable(),
+                Tables\Columns\TextColumn::make('uuid')->limit(8)->searchable(),
                 Tables\Columns\TextColumn::make('action')
                     ->badge()
-                    ->colors([
-                        'primary' => fn ($state) => str_contains($state, 'INITIATED'),
-                        'success' => fn ($state) => str_contains($state, 'COMPLETED') || str_contains($state, 'REGISTERED'),
-                        'warning' => fn ($state) => str_contains($state, 'DISPUTE'),
-                    ])
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('User')
+                Tables\Columns\TextColumn::make('actor.name')
+                    ->label('Actor')
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('entity_type')
-                    ->formatStateUsing(fn ($state) => class_basename($state))
+                Tables\Columns\TextColumn::make('actor_role')
+                    ->label('Role')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('entity_id')
-                    ->label('Entity #'),
+                Tables\Columns\TextColumn::make('target_type')
+                    ->sortable(),
 
-                Tables\Columns\TextColumn::make('ip_address')
-                    ->label('IP Address'),
+                Tables\Columns\TextColumn::make('target_id')
+                    ->label('Target ID'),
 
-                Tables\Columns\TextColumn::make('created_at')
+                Tables\Columns\TextColumn::make('current_hash')
+                    ->label('Hash (SHA256)')
+                    ->limit(10),
+
+                Tables\Columns\TextColumn::make('timestamp')
                     ->dateTime()
                     ->sortable(),
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('timestamp', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('action')
-                    ->options([
-                        'TRANSACTION_INITIATED' => 'Transaction Initiated',
-                        'TRANSACTION_COMPLETED' => 'Transaction Completed',
-                        'DISPUTE_RAISED' => 'Dispute Raised',
-                        'LISTING_CREATED' => 'Listing Created',
-                        'USER_REGISTERED' => 'User Registered',
-                        'USER_LOGIN' => 'User Login',
-                    ]),
+                Tables\Filters\SelectFilter::make('action'),
             ]);
     }
 

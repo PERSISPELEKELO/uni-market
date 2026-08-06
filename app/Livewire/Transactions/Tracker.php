@@ -50,17 +50,16 @@ class Tracker extends Component
         }
 
         // Record Audit Log
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'action' => 'TRANSACTION_COMPLETED',
-            'entity_type' => Transaction::class,
-            'entity_id' => $tx->id,
-            'payload' => [
+        app(\App\Services\AuditLoggerService::class)->log(
+            'TRANSACTION_COMPLETED',
+            'Transaction',
+            $tx->id,
+            [
                 'status' => 'completed',
                 'amount' => $tx->amount,
             ],
-            'ip_address' => request()->ip(),
-        ]);
+            Auth::user()
+        );
 
         session()->flash('success', 'Transaction marked as COMPLETED! Escrow funds released.');
     }
@@ -128,17 +127,16 @@ class Tracker extends Component
         ], $aiAnalysis));
 
         // Audit Log Entry
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'action' => 'DISPUTE_RAISED',
-            'entity_type' => Dispute::class,
-            'entity_id' => $dispute->id,
-            'payload' => [
+        app(\App\Services\AuditLoggerService::class)->log(
+            'DISPUTE_RAISED',
+            'Dispute',
+            $dispute->id,
+            [
                 'reason' => $this->disputeReason,
                 'ai_analysis' => $aiAnalysis,
             ],
-            'ip_address' => request()->ip(),
-        ]);
+            Auth::user()
+        );
 
         $this->showDisputeModal = false;
         $this->disputeReason = '';

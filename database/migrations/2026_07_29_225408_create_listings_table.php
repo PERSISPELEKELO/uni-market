@@ -18,7 +18,7 @@ return new class extends Migration {
             $table->text('description');
             $table->decimal('price', 10, 2);
             $table->enum('condition', ['new', 'like_new', 'good', 'fair'])->default('good');
-            $table->enum('status', ['active', 'pending', 'sold', 'expired'])->default('active');
+            $table->string('status', 30)->default('active'); // active, pending, sold, expired, suspended
             $table->json('images')->nullable(); // Stores array of uploaded image paths
             $table->timestamps();
             $table->softDeletes(); // For 30-day auto-expiration handling

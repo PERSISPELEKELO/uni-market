@@ -180,31 +180,30 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 7. Seed Security Audit Logs
-        AuditLog::create([
-            'user_id' => $chileshe->id,
-            'action' => 'USER_REGISTERED',
-            'entity_type' => User::class,
-            'entity_id' => $chileshe->id,
-            'payload' => ['email' => $chileshe->email, 'is_verified' => true],
-            'ip_address' => '127.0.0.1',
-        ]);
+        $auditLogger = app(\App\Services\AuditLoggerService::class);
 
-        AuditLog::create([
-            'user_id' => $chileshe->id,
-            'action' => 'TRANSACTION_INITIATED',
-            'entity_type' => Transaction::class,
-            'entity_id' => $tx1->id,
-            'payload' => ['amount' => 1200.00, 'seller_id' => $kabwe->id],
-            'ip_address' => '127.0.0.1',
-        ]);
+        $auditLogger->recordAction(
+            $chileshe,
+            'USER_REGISTERED',
+            'User',
+            (string) $chileshe->id,
+            ['email' => $chileshe->email, 'is_verified' => true]
+        );
 
-        AuditLog::create([
-            'user_id' => $chileshe->id,
-            'action' => 'DISPUTE_RAISED',
-            'entity_type' => Dispute::class,
-            'entity_id' => $dispute->id,
-            'payload' => ['reason' => $dispute->reason, 'ai_sentiment_score' => -0.72],
-            'ip_address' => '127.0.0.1',
-        ]);
+        $auditLogger->recordAction(
+            $chileshe,
+            'TRANSACTION_INITIATED',
+            'Transaction',
+            (string) $tx1->id,
+            ['amount' => 1200.00, 'seller_id' => $kabwe->id]
+        );
+
+        $auditLogger->recordAction(
+            $chileshe,
+            'DISPUTE_RAISED',
+            'Dispute',
+            (string) $dispute->id,
+            ['reason' => $dispute->reason, 'ai_sentiment_score' => -0.72]
+        );
     }
 }

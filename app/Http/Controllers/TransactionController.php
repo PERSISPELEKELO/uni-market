@@ -30,14 +30,13 @@ class TransactionController extends Controller
         $listing->update(['status' => 'pending']);
 
         // Record Audit Log
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'action' => 'TRANSACTION_INITIATED',
-            'entity_type' => Transaction::class,
-            'entity_id' => $transaction->id,
-            'payload' => $transaction->toArray(),
-            'ip_address' => $request->ip(),
-        ]);
+        app(\App\Services\AuditLoggerService::class)->log(
+            'TRANSACTION_INITIATED',
+            'Transaction',
+            $transaction->id,
+            $transaction->toArray(),
+            Auth::user()
+        );
 
         return redirect()->route('transactions.show', $transaction->id)
             ->with('success', 'Transaction initiated!');
@@ -55,14 +54,13 @@ class TransactionController extends Controller
         $transaction->listing->update(['status' => 'sold']);
 
         // Record Audit Log
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'action' => 'TRANSACTION_COMPLETED',
-            'entity_type' => Transaction::class,
-            'entity_id' => $transaction->id,
-            'payload' => ['status' => 'completed'],
-            'ip_address' => $request->ip(),
-        ]);
+        app(\App\Services\AuditLoggerService::class)->log(
+            'TRANSACTION_COMPLETED',
+            'Transaction',
+            $transaction->id,
+            ['status' => 'completed'],
+            Auth::user()
+        );
 
         return back()->with('success', 'Transaction completed!');
     }

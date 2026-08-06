@@ -63,6 +63,32 @@ class User extends Authenticatable
         return $this->hasMany(Message::class, 'receiver_id');
     }
 
+    public function appeals(): HasMany
+    {
+        return $this->hasMany(Appeal::class);
+    }
+
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(AuditLog::class, 'actor_id');
+    }
+
+    public function isStudent(): bool
+    {
+        return $this->role === 'student' || empty($this->role);
+    }
+
+    public function isGovernanceCommittee(): bool
+    {
+        return $this->role === 'governance_committee';
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+
     /**
      * Get the attributes that should be cast.
      *

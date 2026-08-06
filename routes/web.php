@@ -11,6 +11,8 @@ use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\DisputeController;
+use App\Http\Controllers\AppealController;
+use App\Http\Controllers\DataPortabilityController;
 
 // Public Marketplace Discovery
 Route::get('/', ListingIndex::class)->name('listings.index');
@@ -38,6 +40,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/listings/{listing}/buy', [TransactionController::class, 'initiate'])->name('transactions.initiate');
     Route::post('/transactions/{transaction}/complete', [TransactionController::class, 'complete'])->name('transactions.complete');
     Route::post('/transactions/{transaction}/dispute', [DisputeController::class, 'store'])->name('disputes.store');
+
+    // User Appeals Routes
+    Route::get('/appeals', [AppealController::class, 'index'])->name('appeals.index');
+    Route::post('/appeals', [AppealController::class, 'store'])->name('appeals.store');
+    Route::get('/appeals/{appeal}', [AppealController::class, 'show'])->name('appeals.show');
+    Route::post('/appeals/{appeal}/review', [AppealController::class, 'startReview'])->name('appeals.review');
+    Route::post('/appeals/{appeal}/decide', [AppealController::class, 'decide'])->name('appeals.decide');
+
+    // Data Portability Exporter
+    Route::get('/reputation/export', [DataPortabilityController::class, 'export'])->name('reputation.export');
+    Route::post('/reputation/verify', [DataPortabilityController::class, 'verify'])->name('reputation.verify');
 
     // Logout
     Route::post('/logout', function () {

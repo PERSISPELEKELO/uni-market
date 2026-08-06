@@ -24,14 +24,13 @@ class Login extends Component
         if (Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
             session()->regenerate();
 
-            AuditLog::create([
-                'user_id' => Auth::id(),
-                'action' => 'USER_LOGIN',
-                'entity_type' => 'App\Models\User',
-                'entity_id' => Auth::id(),
-                'payload' => ['email' => $this->email],
-                'ip_address' => request()->ip(),
-            ]);
+            app(\App\Services\AuditLoggerService::class)->log(
+                'USER_LOGIN',
+                'User',
+                Auth::id(),
+                ['email' => $this->email],
+                Auth::user()
+            );
 
             return redirect()->intended(route('listings.index'));
         }

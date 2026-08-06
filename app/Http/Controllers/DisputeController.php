@@ -57,14 +57,13 @@ class DisputeController extends Controller
         ], $aiAnalysis));
 
         // 3. Record Audit Log
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'action' => 'DISPUTE_RAISED',
-            'entity_type' => Dispute::class,
-            'entity_id' => $dispute->id,
-            'payload' => $dispute->toArray(),
-            'ip_address' => $request->ip(),
-        ]);
+        app(\App\Services\AuditLoggerService::class)->log(
+            'DISPUTE_RAISED',
+            'Dispute',
+            $dispute->id,
+            $dispute->toArray(),
+            Auth::user()
+        );
 
         return back()->with('success', 'Dispute raised. AI moderation has processed the initial claims.');
     }
