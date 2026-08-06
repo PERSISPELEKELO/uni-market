@@ -132,14 +132,13 @@ class DisputeResource extends Resource
                         $record->update(['status' => 'resolved_buyer']);
                         $record->transaction->update(['status' => 'refunded']);
 
-                        AuditLog::create([
-                            'user_id' => Auth::id() ?? $record->raised_by,
-                            'action' => 'DISPUTE_RESOLVED_BUYER',
-                            'entity_type' => Dispute::class,
-                            'entity_id' => $record->id,
-                            'payload' => ['resolution' => 'refunded_buyer'],
-                            'ip_address' => request()->ip(),
-                        ]);
+                        app(\App\Services\AuditLoggerService::class)->recordAction(
+                            Auth::user(),
+                            'DISPUTE_RESOLVED_BUYER',
+                            'Dispute',
+                            (string) $record->id,
+                            ['resolution' => 'refunded_buyer']
+                        );
                     }),
                 Tables\Actions\Action::make('resolve_seller')
                     ->label('Release to Seller')
@@ -150,14 +149,13 @@ class DisputeResource extends Resource
                         $record->transaction->update(['status' => 'completed']);
                         $record->transaction->listing->update(['status' => 'sold']);
 
-                        AuditLog::create([
-                            'user_id' => Auth::id() ?? $record->raised_by,
-                            'action' => 'DISPUTE_RESOLVED_SELLER',
-                            'entity_type' => Dispute::class,
-                            'entity_id' => $record->id,
-                            'payload' => ['resolution' => 'released_to_seller'],
-                            'ip_address' => request()->ip(),
-                        ]);
+                        app(\App\Services\AuditLoggerService::class)->recordAction(
+                            Auth::user(),
+                            'DISPUTE_RESOLVED_SELLER',
+                            'Dispute',
+                            (string) $record->id,
+                            ['resolution' => 'released_to_seller']
+                        );
                     }),
             ]);
     }

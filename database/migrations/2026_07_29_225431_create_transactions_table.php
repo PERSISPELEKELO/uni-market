@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->foreignId('buyer_id')->constrained('users');
             $table->foreignId('seller_id')->constrained('users');
             $table->decimal('amount', 10, 2);
-            $table->enum('status', ['initiated', 'completed', 'disputed', 'cancelled', 'refunded'])->default('initiated');
+            $table->string('status', 30)->default('RESERVED'); // RESERVED, HANDED_OVER, COMPLETED, DISPUTED, CANCELLED, initiated
             $table->timestamps();
         });
     }

@@ -1,19 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Transactions;
 
-use Livewire\Component;
-use App\Models\Transaction;
+use App\Exceptions\DisputeWindowExpiredException;
 use App\Models\Dispute;
-use App\Models\AuditLog;
+use App\Models\Transaction;
+use App\Services\AuditLoggerService;
+use App\Services\HandoverVerificationService;
+use App\Services\InspectionService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Livewire\Component;
 
 class Tracker extends Component
 {
     public ?int $selectedTransactionId = null;
     public bool $showDisputeModal = false;
     public string $disputeReason = '';
+    public string $handoverOtp = '';
 
     public function mount(?Transaction $transaction = null): void
     {
@@ -33,39 +39,83 @@ class Tracker extends Component
         $this->selectedTransactionId = $transactionId;
         $this->showDisputeModal = false;
         $this->disputeReason = '';
+        $this->handoverOtp = '';
+    }
+
+    public function verifyHandoverOtp(int $transactionId): void
+    {
+        $tx = Transaction::findOrFail($transactionId);
+
+        if (Auth::id() !== $tx->seller_id) {
+            session()->flash('error', 'Only the seller can verify the handover code.');
+            return;
+        }
+
+        $this->validate([
+            'handoverOtp' => 'required|string|size:6',
+        ]);
+
+        try {
+            app(HandoverVerificationService::class)->verifyHandoverCode($tx, $this->handoverOtp, Auth::user());
+            $this->handoverOtp = '';
+            session()->flash('success', 'Handover verified successfully! 48-hour post-purchase inspection period started.');
+        } catch (\Exception $e) {
+            session()->flash('error', $e->getMessage());
+        }
     }
 
     public function markCompleted(int $transactionId): void
     {
         $tx = Transaction::with(['buyer', 'seller', 'listing'])->findOrFail($transactionId);
 
-        if (!in_array(Auth::id(), [$tx->buyer_id, $tx->seller_id])) {
+        if (Auth::id() !== $tx->buyer_id && Auth::id() !== $tx->seller_id) {
             session()->flash('error', 'Unauthorized action.');
             return;
         }
 
-        $tx->update(['status' => 'completed']);
-        if ($tx->listing) {
-            $tx->listing->update(['status' => 'sold']);
+        try {
+            if (Auth::id() === $tx->buyer_id && in_array(strtoupper($tx->status), ['ITEM_INSPECTION', 'HANDED_OVER'], true)) {
+                app(InspectionService::class)->confirmItemAcceptance($tx, Auth::user());
+            } else {
+                $completedAt = now();
+                $tx->update([
+                    'status' => 'COMPLETED',
+                    'completed_at' => $completedAt,
+                ]);
+                if ($tx->listing) {
+                    $tx->listing->update(['status' => 'sold']);
+                }
+
+                app(AuditLoggerService::class)->recordAction(
+                    Auth::user(),
+                    'TRANSACTION_COMPLETED',
+                    'Transaction',
+                    (string) $tx->id,
+                    ['status' => 'COMPLETED', 'completed_at' => $completedAt->toIso8601String()]
+                );
+            }
+
+            session()->flash('success', 'Transaction marked as COMPLETED! Escrow funds released.');
+        } catch (\Exception $e) {
+            session()->flash('error', $e->getMessage());
         }
-
-        // Record Audit Log
-        app(\App\Services\AuditLoggerService::class)->log(
-            'TRANSACTION_COMPLETED',
-            'Transaction',
-            $tx->id,
-            [
-                'status' => 'completed',
-                'amount' => $tx->amount,
-            ],
-            Auth::user()
-        );
-
-        session()->flash('success', 'Transaction marked as COMPLETED! Escrow funds released.');
     }
 
     public function openDisputeModal(): void
     {
+        $tx = Transaction::find($this->selectedTransactionId);
+        if (!$tx) {
+            return;
+        }
+
+        $status = strtoupper($tx->status);
+        $inspectionEnd = $tx->inspection_expires_at ?? $tx->inspection_ends_at;
+
+        if (!in_array($status, ['ITEM_INSPECTION', 'HANDED_OVER'], true) || !$inspectionEnd || now()->greaterThan($inspectionEnd)) {
+            session()->flash('error', 'Dispute window not active or expired. Disputes can only be raised during active item inspection.');
+            return;
+        }
+
         $this->showDisputeModal = true;
     }
 
@@ -83,72 +133,31 @@ class Tracker extends Component
 
         $tx = Transaction::findOrFail($this->selectedTransactionId);
 
-        if (!in_array(Auth::id(), [$tx->buyer_id, $tx->seller_id])) {
-            session()->flash('error', 'Unauthorized action.');
+        if (Auth::id() !== $tx->buyer_id) {
+            session()->flash('error', 'Only the buyer can raise a post-purchase dispute.');
             return;
         }
 
-        $tx->update(['status' => 'disputed']);
-
-        // AI Sentiment & Confidence default fallbacks
-        $aiAnalysis = [
-            'ai_sentiment_score' => -0.65,
-            'ai_confidence_score' => 0.88,
-            'ai_suggested_resolution' => 'REFUND_BUYER',
-            'ai_analysis_summary' => 'AI Service detected frustration regarding condition mismatch. Suggested action: Review item images against description.',
-        ];
-
-        // Call Python AI microservice if online
         try {
-            $response = Http::timeout(2)->post('http://127.0.0.1:8000/api/analyze-dispute', [
-                'transaction_id' => $tx->id,
-                'dispute_reason' => $this->disputeReason,
+            app(InspectionService::class)->raisePostPurchaseDispute($tx, Auth::user(), [
+                'reason' => $this->disputeReason,
             ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-                $aiAnalysis = [
-                    'ai_sentiment_score' => $data['sentiment_score'] ?? $aiAnalysis['ai_sentiment_score'],
-                    'ai_confidence_score' => $data['confidence_score'] ?? $aiAnalysis['ai_confidence_score'],
-                    'ai_suggested_resolution' => $data['suggested_resolution'] ?? $aiAnalysis['ai_suggested_resolution'],
-                    'ai_analysis_summary' => $data['summary'] ?? $aiAnalysis['ai_analysis_summary'],
-                ];
-            }
+            $this->showDisputeModal = false;
+            $this->disputeReason = '';
+
+            session()->flash('success', 'Dispute submitted successfully. Governance moderation review initiated.');
+        } catch (DisputeWindowExpiredException $e) {
+            session()->flash('error', $e->getMessage());
         } catch (\Exception $e) {
-            // Keep default fallback score when service is offline
+            session()->flash('error', $e->getMessage());
         }
-
-        // Create Dispute
-        $dispute = Dispute::create(array_merge([
-            'transaction_id' => $tx->id,
-            'raised_by' => Auth::id(),
-            'reason' => $this->disputeReason,
-            'status' => 'open',
-        ], $aiAnalysis));
-
-        // Audit Log Entry
-        app(\App\Services\AuditLoggerService::class)->log(
-            'DISPUTE_RAISED',
-            'Dispute',
-            $dispute->id,
-            [
-                'reason' => $this->disputeReason,
-                'ai_analysis' => $aiAnalysis,
-            ],
-            Auth::user()
-        );
-
-        $this->showDisputeModal = false;
-        $this->disputeReason = '';
-
-        session()->flash('success', 'Dispute submitted. Python AI sentiment engine processed initial claims for moderation review.');
     }
 
     public function render()
     {
         $currentUserId = Auth::id();
 
-        // Eager load all relations to prevent N+1 queries
         $userTransactions = Transaction::with(['buyer', 'seller', 'listing', 'dispute'])
             ->where('buyer_id', $currentUserId)
             ->orWhere('seller_id', $currentUserId)

@@ -38,6 +38,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Traditional Controller Endpoints
     Route::post('/listings/{listing}/buy', [TransactionController::class, 'initiate'])->name('transactions.initiate');
+    Route::post('/transactions/{transaction}/verify-handover', [TransactionController::class, 'verifyHandover'])->name('transactions.verify-handover');
     Route::post('/transactions/{transaction}/complete', [TransactionController::class, 'complete'])->name('transactions.complete');
     Route::post('/transactions/{transaction}/dispute', [DisputeController::class, 'store'])->name('disputes.store');
 

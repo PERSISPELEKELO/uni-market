@@ -1,13 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use App\Models\Transaction;
-use App\Models\Dispute;
 use App\Models\AuditLog;
+use App\Models\Dispute;
+use App\Models\Transaction;
+use App\Services\AuditLoggerService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class DisputeController extends Controller
 {
@@ -17,7 +21,18 @@ class DisputeController extends Controller
             'reason' => 'required|string|min:10',
         ]);
 
-        $transaction->update(['status' => 'disputed']);
+        $status = strtoupper($transaction->status);
+        $inspectionEnd = $transaction->inspection_expires_at ?? $transaction->inspection_ends_at;
+
+        // Enforce Rule: Dispute can ONLY be raised during ITEM_INSPECTION mode within inspection window
+        if (!in_array($status, ['ITEM_INSPECTION', 'HANDED_OVER'], true) || !$inspectionEnd || now()->greaterThan($inspectionEnd)) {
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json(['status' => 'error', 'message' => 'Dispute window not active or expired.'], 422);
+            }
+            return back()->with('error', 'Dispute window not active or expired.');
+        }
+
+        $transaction->update(['status' => 'DISPUTED']);
 
         // 1. Call Python NLP microservice for sentiment & dispute evaluation
         $aiAnalysis = [
@@ -28,7 +43,6 @@ class DisputeController extends Controller
         ];
 
         try {
-            // Replace port with the Python service address (e.g. FastAPI / Flask)
             $response = Http::timeout(3)->post('http://127.0.0.1:8000/api/analyze-dispute', [
                 'transaction_id' => $transaction->id,
                 'dispute_reason' => $validated['reason'],
@@ -44,8 +58,7 @@ class DisputeController extends Controller
                 ];
             }
         } catch (\Exception $e) {
-            // Fallback gracefully if Python microservice is offline
-            \Log::warning('AI Service offline: ' . $e->getMessage());
+            Log::warning('AI Service offline: ' . $e->getMessage());
         }
 
         // 2. Save dispute with AI analysis
@@ -57,12 +70,12 @@ class DisputeController extends Controller
         ], $aiAnalysis));
 
         // 3. Record Audit Log
-        app(\App\Services\AuditLoggerService::class)->log(
+        app(AuditLoggerService::class)->recordAction(
+            Auth::user(),
             'DISPUTE_RAISED',
             'Dispute',
-            $dispute->id,
-            $dispute->toArray(),
-            Auth::user()
+            (string) $dispute->id,
+            $dispute->toArray()
         );
 
         return back()->with('success', 'Dispute raised. AI moderation has processed the initial claims.');

@@ -52,19 +52,18 @@ class ListingShow extends Component
         $this->listing->update(['status' => 'pending']);
 
         // Log Audit Trail
-        AuditLog::create([
-            'user_id' => Auth::id(),
-            'action' => 'TRANSACTION_INITIATED',
-            'entity_type' => Transaction::class,
-            'entity_id' => $transaction->id,
-            'payload' => [
+        app(\App\Services\AuditLoggerService::class)->recordAction(
+            Auth::user(),
+            'TRANSACTION_INITIATED',
+            'Transaction',
+            (string) $transaction->id,
+            [
                 'listing_id' => $this->listing->id,
                 'amount' => $this->listing->price,
                 'buyer_id' => Auth::id(),
                 'seller_id' => $this->listing->user_id,
-            ],
-            'ip_address' => request()->ip(),
-        ]);
+            ]
+        );
 
         return redirect()->route('transactions.tracker', ['transaction' => $transaction->id])
             ->with('success', 'Transaction initiated successfully! You can now arrange meeting details with the seller.');
