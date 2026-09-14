@@ -54,47 +54,115 @@ UniMarket is a full-stack campus student marketplace built with **Laravel 13**, 
 ## Technology Stack
 
 - **Core Framework**: Laravel 13 / PHP 8.3+
-- **Frontend Architecture**: Livewire 3 + Alpine.js + Tailwind CSS
+- **Frontend Architecture**: Livewire 3 + Alpine.js + Tailwind CSS v4
 - **Admin Panel**: Filament v3
-- **Database**: MySQL
-- **AI/ML** :Python Flask (For Dispute Moderation)
+- **Database**: MySQL (via DBngin / TablePlus)
+- **Local Dev Server**: Laravel Herd
+- **AI/ML**: Python Flask (For Dispute Moderation)
+
 ---
 
-## Installation & Setup
+## Prerequisites & Recommended Tools
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/aaron28zulu/uni-market.git
-   cd uni-market
+Before setting up the project, make sure to install the following tools:
+
+1. **[Laravel Herd](https://herd.laravel.com/)**: Fast, zero-config local development environment for Laravel on macOS (includes PHP, Nginx, and automatic local domain routing).
+2. **[DBngin](https://dbngin.com/)**: Free, lightweight database manager to easily start local database engines (MySQL, PostgreSQL, Redis) with a single click.
+3. **[TablePlus](https://tableplus.com/)**: Modern native GUI database management application for inspecting and querying your MySQL database.
+4. **[Node.js & NPM](https://nodejs.org/)** (v18+ recommended): For Vite frontend compilation.
+5. **[Composer](https://getcomposer.org/)**: Dependency manager for PHP.
+
+---
+
+## Installation & Setup Guide (with Laravel Herd & MySQL)
+
+Follow these steps to set up and run the application locally:
+
+### 1. Clone the Repository
+Clone the repository into your Laravel Herd parked directory (by default `~/Herd`):
+
+```bash
+cd ~/Herd
+git clone https://github.com/aaron28zulu/uni-market.git
+cd uni-market
+```
+
+> **Note**: If you clone the repository in a directory outside of `~/Herd`, navigate into the project directory and run `herd link uni-market` (or add the folder in the Herd desktop app under **Sites**).
+
+### 2. Start MySQL Service in DBngin
+1. Open **[DBngin](https://dbngin.com/)**.
+2. If you don't already have a MySQL service, click **+ New Server**, choose **MySQL** (version 8.0 or 5.7), and click **Create**.
+3. Click **Start** next to the MySQL service. By default, it runs on port `3306`.
+
+### 3. Create the Database in TablePlus
+1. Open **[TablePlus](https://tableplus.com/)** (or click the arrow icon next to MySQL in DBngin to automatically open TablePlus).
+2. Create a new MySQL connection:
+   - **Host**: `127.0.0.1`
+   - **Port**: `3306`
+   - **User**: `root`
+   - **Password**: *(leave empty)*
+3. Connect and create a new database named:
+   ```sql
+   unimarket
    ```
 
-2. **Install Composer dependencies**:
-   ```bash
-   composer install
-   ```
+### 4. Install Dependencies
+Install PHP packages via Composer and frontend packages via NPM:
 
-3. **Configure Environment File**:
-   ```bash
-   cp .env.example .env
-   php artisan key:generate
-   ```
+```bash
+composer install
+npm install
+```
 
-4. **Run Migrations & Seeders**:
-   ```bash
-   php artisan migrate:fresh --seed
-   ```
+### 5. Configure Environment Variables
+Copy the example `.env` file and generate an application key:
 
-5. **Link Storage**:
-   ```bash
-   php artisan storage:link
-   ```
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-6. **Start Local Development Server**:
-   ```bash
-   php artisan serve
-   ```
+Ensure your `.env` file has the following database and URL configurations:
 
-Visit `http-[#]127.0.0.1:8000` in your browser.
+```dotenv
+APP_NAME=UniMarket
+APP_ENV=local
+APP_KEY=base64:...
+APP_DEBUG=true
+APP_URL=http://uni-market.test
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=unimarket
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+### 6. Run Migrations & Seeders
+Run the database migrations and populate the database with initial demo data (users, categories, listings, disputes, audit logs):
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+### 7. Link Public Storage & Build Assets
+Create the storage symlink for uploaded product images and compile the frontend:
+
+```bash
+php artisan storage:link
+npm run dev
+```
+
+> For a production build, run `npm run build`.
+
+### 8. Access the Application via Herd
+Because the site is hosted in Laravel Herd, you don't need to run `php artisan serve`. Herd automatically serves the site locally:
+
+- **Storefront & Student Marketplace**: [http://uni-market.test](http://uni-market.test)
+- **Filament Admin Moderation Panel**: [http://uni-market.test/admin](http://uni-market.test/admin)
+
+*(Optional: To enable HTTPS with a trusted SSL certificate, run `herd secure uni-market` inside the project folder, which will make the site available at [https://uni-market.test](https://uni-market.test)).*
 
 ---
 
@@ -102,13 +170,13 @@ Visit `http-[#]127.0.0.1:8000` in your browser.
 
 - **Student Buyer**: `chileshe@student.zut.zm` / `password123`
 - **Student Seller**: `mwamba@student.zut.zm` / `password123`
-- **Admin Moderator**: `admin@zut.zm` / `password123` (Admin Panel: `http-[#]127.0.0.1:8000/admin`)
+- **Admin Moderator**: `admin@zut.zm` / `password123` (Admin Panel: [http://uni-market.test/admin](http://uni-market.test/admin))
 
 ---
 
 ## Testing
 
-Run the automated test suite with Pest / PHPUnit:
+Run the automated test suite with Pest:
 
 ```bash
 php artisan test
