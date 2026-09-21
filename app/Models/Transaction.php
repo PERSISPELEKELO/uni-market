@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,6 +45,31 @@ class Transaction extends Model
         'inspection_expires_at' => 'datetime',
         'completed_at' => 'datetime',
     ];
+
+    /**
+     * Transactions the given user takes part in, either as buyer or as seller.
+     */
+    public function scopeForParticipant(Builder $query, int $userId): Builder
+    {
+        return $query->where(function (Builder $inner) use ($userId): void {
+            $inner->where('buyer_id', $userId)->orWhere('seller_id', $userId);
+        });
+    }
+
+    public function isBuyer(?User $user): bool
+    {
+        return $user !== null && $user->id === $this->buyer_id;
+    }
+
+    public function isSeller(?User $user): bool
+    {
+        return $user !== null && $user->id === $this->seller_id;
+    }
+
+    public function isInInspection(): bool
+    {
+        return in_array(strtoupper((string) $this->status), ['ITEM_INSPECTION', 'HANDED_OVER'], true);
+    }
 
     public function listing(): BelongsTo
     {

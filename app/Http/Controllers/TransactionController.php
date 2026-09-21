@@ -8,75 +8,77 @@ use App\Models\Listing;
 use App\Models\Transaction;
 use App\Services\AuditLoggerService;
 use App\Services\HandoverVerificationService;
-
+use App\Services\InspectionService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 
 class TransactionController extends Controller
 {
     public function __construct(
-        protected HandoverVerificationService $handoverService
+        protected HandoverVerificationService $handoverService,
+        protected InspectionService $inspectionService
     ) {}
 
     // Initiate purchase request
-    public function initiate(Request $request, Listing $listing)
+    public function initiate(Request $request, Listing $listing): RedirectResponse
     {
-        if ($listing->user_id === Auth::id()) {
+        if ($listing->isOwnedBy(Auth::user())) {
             return back()->with('error', 'You cannot purchase your own listing.');
         }
 
         $plainOtp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $hashed = Hash::make($plainOtp);
 
-        $transaction = Transaction::create([
-            'listing_id' => $listing->id,
-            'buyer_id' => Auth::id(),
-            'seller_id' => $listing->user_id,
-            'amount' => $listing->price,
-            'status' => 'PENDING_MEETING',
-            'handover_otp_hash' => $hashed,
-            'handover_otp_plain' => $plainOtp,
-            'handover_code_hash' => $hashed,
-            'handover_code_plain' => $plainOtp,
-            'handover_code_expires_at' => now()->addDays(3),
-            'handover_attempts' => 0,
-        ]);
+        $transaction = DB::transaction(function () use ($listing, $plainOtp, $hashed): ?Transaction {
+            $lockedListing = Listing::whereKey($listing->id)->lockForUpdate()->first();
 
-        $listing->update(['status' => 'pending']);
+            if (! $lockedListing || $lockedListing->status !== Listing::STATUS_ACTIVE) {
+                return null;
+            }
+
+            $transaction = Transaction::create([
+                'listing_id' => $lockedListing->id,
+                'buyer_id' => Auth::id(),
+                'seller_id' => $lockedListing->user_id,
+                'amount' => $lockedListing->price,
+                'status' => 'PENDING_MEETING',
+                'handover_otp_hash' => $hashed,
+                'handover_otp_plain' => $plainOtp,
+                'handover_code_hash' => $hashed,
+                'handover_code_plain' => $plainOtp,
+                'handover_code_expires_at' => now()->addDays(3),
+                'handover_attempts' => 0,
+            ]);
+
+            $lockedListing->update(['status' => Listing::STATUS_PENDING]);
+
+            return $transaction;
+        });
+
+        if (! $transaction) {
+            return back()->with('error', 'Sorry, this item is no longer available.');
+        }
 
         app(AuditLoggerService::class)->recordAction(
             Auth::user(),
             'TRANSACTION_INITIATED',
             'Transaction',
             (string) $transaction->id,
-            $transaction->toArray()
+            $transaction->makeHidden(['handover_code_hash', 'handover_code_plain', 'handover_otp_hash', 'handover_otp_plain'])->toArray()
         );
 
         return redirect()->route('transactions.tracker', ['transaction' => $transaction->id])
             ->with('success', 'Purchase reserved! Show your 6-digit Campus Handoff Code to the seller at the meet-up.');
     }
 
-    public function store(Request $request, Listing $listing)
-    {
-        return $this->initiate($request, $listing);
-    }
-
-    public function show(Transaction $transaction)
-    {
-        return view('livewire.transactions.tracker', [
-            'transaction' => $transaction,
-            'isBuyer' => Auth::id() === $transaction->buyer_id,
-            'isSeller' => Auth::id() === $transaction->seller_id,
-        ]);
-    }
-
     // Verify handover OTP (Seller Action)
-    public function verifyHandover(Request $request, Transaction $transaction)
+    public function verifyHandover(Request $request, Transaction $transaction): RedirectResponse
     {
-        if (Auth::id() !== $transaction->seller_id) {
-            abort(403, 'Unauthorized action.');
-        }
+        Gate::authorize('verifyHandover', $transaction);
 
         if ($transaction->handover_attempts >= 5) {
             return back()->with('error', 'Maximum handover verification attempts exceeded.');
@@ -90,36 +92,24 @@ class TransactionController extends Controller
 
         try {
             $this->handoverService->verifyHandoverCode($transaction, $submittedOtp, Auth::user());
+
             return back()->with('success', 'Handover confirmed! 48-hour item inspection window is now active.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
 
-    // Complete transaction (Buyer Action or Admin)
-    public function complete(Request $request, Transaction $transaction)
+    // Complete transaction (Buyer Action, after the handover has been verified)
+    public function complete(Request $request, Transaction $transaction): RedirectResponse
     {
-        if (!in_array(Auth::id(), [$transaction->buyer_id, $transaction->seller_id], true)) {
-            abort(403);
+        Gate::authorize('complete', $transaction);
+
+        try {
+            $this->inspectionService->confirmItemAcceptance($transaction, Auth::user());
+        } catch (\DomainException|\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        $completedAt = now();
-        $transaction->update([
-            'status' => 'COMPLETED',
-            'completed_at' => $completedAt,
-        ]);
-        if ($transaction->listing) {
-            $transaction->listing->update(['status' => 'sold']);
-        }
-
-        app(AuditLoggerService::class)->recordAction(
-            Auth::user(),
-            'TRANSACTION_COMPLETED',
-            'Transaction',
-            (string) $transaction->id,
-            ['status' => 'COMPLETED', 'completed_at' => $completedAt->toIso8601String()],
-        );
-
-        return back()->with('success', 'Escrow transaction fulfilled and completed!');
+        return back()->with('success', 'Transaction completed. The item is now marked as sold.');
     }
 }

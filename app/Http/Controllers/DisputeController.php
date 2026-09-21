@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\AuditLog;
 use App\Models\Dispute;
 use App\Models\Transaction;
 use App\Services\AuditLoggerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -17,6 +17,8 @@ class DisputeController extends Controller
 {
     public function store(Request $request, Transaction $transaction)
     {
+        Gate::authorize('dispute', $transaction);
+
         $validated = $request->validate([
             'reason' => 'required|string|min:10',
         ]);
@@ -25,10 +27,11 @@ class DisputeController extends Controller
         $inspectionEnd = $transaction->inspection_expires_at ?? $transaction->inspection_ends_at;
 
         // Enforce Rule: Dispute can ONLY be raised during ITEM_INSPECTION mode within inspection window
-        if (!in_array($status, ['ITEM_INSPECTION', 'HANDED_OVER'], true) || !$inspectionEnd || now()->greaterThan($inspectionEnd)) {
+        if (! in_array($status, ['ITEM_INSPECTION', 'HANDED_OVER'], true) || ! $inspectionEnd || now()->greaterThan($inspectionEnd)) {
             if ($request->wantsJson() || $request->is('api/*')) {
                 return response()->json(['status' => 'error', 'message' => 'Dispute window not active or expired.'], 422);
             }
+
             return back()->with('error', 'Dispute window not active or expired.');
         }
 
@@ -58,7 +61,7 @@ class DisputeController extends Controller
                 ];
             }
         } catch (\Exception $e) {
-            Log::warning('AI Service offline: ' . $e->getMessage());
+            Log::warning('AI Service offline: '.$e->getMessage());
         }
 
         // 2. Save dispute with AI analysis

@@ -28,7 +28,7 @@ class HandoverOtpTest extends TestCase
             'description' => 'Math Textbook 8th edition',
             'price' => 450.00,
             'condition' => 'good',
-            'status' => 'pending',
+            'status' => 'active',
         ]);
 
         // Initiate purchase via controller endpoint

@@ -6,12 +6,15 @@ UniMarket is a full-stack campus student marketplace built with **Laravel 13**, 
 
 ## Design System & Typography
 
-- **Typography**: Google Sans (`400 Regular`, `500 Medium`, `600 SemiBold`).
-- **3-Color Palette Standard**:
-  - **Neutral Base**: Neutral Light (`#F8FAFC` background, `#0F172A` body text, `#E2E8F0` borders).
-  - **Primary Brand**: Deep Slate Indigo (`#1E293B` / `#312E81`) for headers, primary action buttons, active states, and focus rings.
-  - **Accent & Status**: Emerald Green (`#059669`) for verified badges, successful transactions, and price tags. Subtle Amber (`#D97706`) for pending/disputed states.
-- **Aesthetics**: Minimalist, high-whitespace card layouts with `border border-slate-200`, `rounded-lg`, and soft micro-shadows (`shadow-sm`).
+- **Typography**: Google Sans (`400`–`700`), configured once in `resources/css/app.css` (`--font-sans`).
+- **Colour tokens** (Tailwind v4 `@theme` in `resources/css/app.css`, used as `bg-brand-700`, `text-accent-700`, ...):
+  - **Neutral base**: `surface` `#F8FAFC` background, `ink` `#0F172A` body text, slate borders.
+  - **Brand** (deep indigo, `brand-50`–`brand-950`; `brand-900` is `#312E81`): primary buttons (`brand-700`), links, active states and focus rings.
+  - **Accent** (emerald, `accent-*`): prices, verified badges, success states.
+  - **Warn** (amber, `warn-*`): reserved / inspection / disputed. **Danger** (red, `danger-*`): errors and destructive actions. **Info** (sky, `info-*`): neutral notices.
+  - Text colours use the `-700`/`-800` steps so they keep at least 4.5:1 contrast on white.
+- **Shared classes** (`@layer components`): `.btn` (+ `-primary`, `-secondary`, `-success`, `-warning`, `-danger`), `.form-input`, `.form-label`, `.form-error`, `.alert-*`, `.badge-*`, `.chip`, `.card`. Prefer these, and the Blade components in `resources/views/components/`, over hard-coded hex colours.
+- **Responsive & accessible by default**: mobile-first layouts checked from 320px to 1920px, 44px touch targets on buttons, visible focus rings, labelled form fields, and status conveyed with text and icons as well as colour.
 
 ---
 
@@ -29,9 +32,10 @@ UniMarket is a full-stack campus student marketplace built with **Laravel 13**, 
 - Responsive 3-column desktop / 1-column mobile card grid with eager-loaded relations (`with(['seller', 'category'])`) to prevent N+1 database queries.
 
 ### 3. Product Listings Management
-- Multi-photo drag-and-drop uploader supporting up to 4 images with real-time thumbnail previews.
-- Detailed single-item page featuring image gallery carousel, seller profile card, item condition badge, and direct call-to-action buttons (*Reserve Item* & *Chat with Seller*).
-- Security audit logging (`AuditLog::create()`) on listing publication.
+- Multi-photo drag-and-drop uploader supporting up to 4 images (JPG/PNG/WebP, 3 MB each) with real-time thumbnail previews and instant validation.
+- Sellers can create, edit and remove their own listings from **My listings**. Access is enforced by `ListingPolicy` (owner only; no edits while an item is reserved).
+- Detailed single-item page featuring image gallery, seller card, item condition badge, and direct call-to-action buttons (*Reserve this item* & *Message seller*). A seller's student ID is never shown publicly.
+- Security audit logging on listing publication, edits and removal.
 
 ### 4. Real-Time Secure Messaging Flow
 - Split-view chat interface (conversation list on left, chat thread on right).
@@ -181,6 +185,8 @@ Run the automated test suite with Pest:
 ```bash
 php artisan test
 ```
+
+The tests use an in-memory SQLite database, so PHP needs the `pdo_sqlite` extension enabled. On Windows, uncomment `extension=pdo_sqlite` and `extension=sqlite3` in `php.ini` (and `extension=gd` for the image-upload tests).
 
 ---
 

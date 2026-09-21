@@ -1,88 +1,99 @@
-<div class="max-w-md mx-auto py-6">
-    <!-- Centered Auth Card -->
-    <div class="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm space-y-6">
+<div class="mx-auto w-full max-w-md py-4 sm:py-8">
+    <div class="card space-y-6 p-6 sm:p-8">
 
         <div class="text-center">
-            <div class="w-12 h-12 rounded-lg bg-[#1E293B] text-white flex items-center justify-center font-semibold text-xl mx-auto shadow-sm">
-                U
-            </div>
-            <h2 class="text-xl font-semibold text-[#0F172A] tracking-tight mt-3">Student Registration</h2>
-            <p class="text-xs text-slate-500 font-regular mt-1">
-                Enter your student details to register your campus account.
-            </p>
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-brand-700 text-xl font-bold text-white shadow-sm" aria-hidden="true">U</div>
+            <h1 class="mt-3 text-2xl font-bold tracking-tight text-ink">Create your account</h1>
+            <p class="mt-1 text-sm text-slate-600">Join your campus marketplace. It only takes a minute.</p>
         </div>
 
-        <form wire:submit.prevent="register" class="space-y-4">
+        <form wire:submit="register" novalidate class="space-y-5">
+            @error('form')
+                <x-alert type="error">{{ $message }}</x-alert>
+            @enderror
 
-            <!-- Full Name -->
             <div>
-                <label class="block text-xs font-semibold text-[#0F172A] uppercase tracking-wider mb-1.5">Full Name *</label>
+                <label for="name" class="form-label">Full name</label>
                 <input
+                    id="name"
                     type="text"
                     wire:model="name"
+                    autocomplete="name"
                     placeholder="Chileshe Mwansa"
-                    class="w-full bg-[#F8FAFC] border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#059669]"
+                    class="form-input"
+                    @error('name') aria-invalid="true" aria-describedby="name-error" @enderror
                 />
-                @error('name') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                <x-form-error name="name" />
             </div>
 
-            <!-- Email -->
             <div>
-                <label class="block text-xs font-semibold text-[#0F172A] uppercase tracking-wider mb-1.5">Email Address *</label>
+                <label for="email" class="form-label">Email address</label>
                 <input
+                    id="email"
                     type="email"
                     wire:model="email"
-                    placeholder="email@example.com"
-                    class="w-full bg-[#F8FAFC] border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#059669]"
+                    autocomplete="email"
+                    inputmode="email"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    placeholder="you@example.com"
+                    class="form-input"
+                    @error('email') aria-invalid="true" aria-describedby="email-error" @enderror
                 />
-                @error('email') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                <x-form-error name="email" />
             </div>
 
-            <!-- Student ID -->
             <div>
-                <label class="block text-xs font-semibold text-[#0F172A] uppercase tracking-wider mb-1.5">Student ID Number *</label>
+                <label for="student_id" class="form-label">Student ID number</label>
                 <input
+                    id="student_id"
                     type="text"
                     wire:model="student_id"
+                    autocomplete="off"
                     placeholder="2024198273"
-                    class="w-full bg-[#F8FAFC] border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#059669]"
+                    class="form-input"
+                    @error('student_id') aria-invalid="true" aria-describedby="student_id-error" @enderror
                 />
-                @error('student_id') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                <x-form-error name="student_id" />
             </div>
 
-            <!-- Password -->
             <div>
-                <label class="block text-xs font-semibold text-[#0F172A] uppercase tracking-wider mb-1.5">Password *</label>
+                <label for="phone_number" class="form-label">Phone number <span class="font-normal text-slate-600">(optional)</span></label>
                 <input
-                    type="password"
-                    wire:model="password"
-                    placeholder="••••••••"
-                    class="w-full bg-[#F8FAFC] border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#059669]"
+                    id="phone_number"
+                    type="tel"
+                    wire:model="phone_number"
+                    autocomplete="tel"
+                    inputmode="tel"
+                    placeholder="+260971234567"
+                    class="form-input"
+                    @error('phone_number') aria-invalid="true" aria-describedby="phone_number-error" @enderror
                 />
-                @error('password') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                <x-form-error name="phone_number" />
             </div>
 
-            <!-- Confirm Password -->
             <div>
-                <label class="block text-xs font-semibold text-[#0F172A] uppercase tracking-wider mb-1.5">Confirm Password *</label>
-                <input
-                    type="password"
-                    wire:model="password_confirmation"
-                    placeholder="••••••••"
-                    class="w-full bg-[#F8FAFC] border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#059669]"
-                />
+                <label for="password" class="form-label">Password</label>
+                <x-password-input id="password" wire:model="password" autocomplete="new-password" placeholder="At least 8 characters" />
+                <p class="form-hint">Use at least 8 characters, with a letter and a number.</p>
+                <x-form-error name="password" />
             </div>
 
-            <button
-                type="submit"
-                class="w-full bg-[#1E293B] hover:bg-[#312E81] text-white font-medium py-3 px-4 rounded-lg text-sm transition shadow-sm mt-2"
-            >
-                Create Verified Student Account
+            <div>
+                <label for="password_confirmation" class="form-label">Confirm password</label>
+                <x-password-input id="password_confirmation" wire:model="password_confirmation" autocomplete="new-password" placeholder="Type your password again" />
+                <x-form-error name="password_confirmation" />
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" wire:loading.attr="disabled" wire:target="register">
+                <span wire:loading.remove wire:target="register">Create account</span>
+                <span wire:loading wire:target="register">Creating account...</span>
             </button>
         </form>
 
-        <div class="text-center pt-2 border-t border-slate-100 text-xs text-slate-500">
-            Already registered? <a href="{{ route('login') }}" class="text-[#312E81] font-semibold hover:underline">Log in here</a>
-        </div>
+        <p class="border-t border-slate-100 pt-5 text-center text-sm text-slate-600">
+            Already have an account?
+            <a href="{{ route('login') }}" class="font-semibold text-brand-800 underline underline-offset-2 hover:text-brand-900">Log in</a>
+        </p>
     </div>
 </div>

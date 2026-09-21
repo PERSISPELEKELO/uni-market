@@ -3,7 +3,239 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+|--------------------------------------------------------------------------
+| UniMarket design tokens
+|--------------------------------------------------------------------------
+| brand  : deep indigo  -> primary actions, links, active states, focus rings
+| accent : emerald      -> prices, verified badges, success
+| warn   : amber        -> pending / disputed / caution
+| danger : red          -> errors and destructive actions
+| info   : sky          -> neutral information
+|
+| Text colours use the -700/-800 steps so they keep at least a 4.5:1 contrast
+| ratio on white and on their own tinted backgrounds.
+*/
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Google Sans', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-brand-50: #eef2ff;
+    --color-brand-100: #e0e7ff;
+    --color-brand-200: #c7d2fe;
+    --color-brand-300: #a5b4fc;
+    --color-brand-400: #818cf8;
+    --color-brand-500: #6366f1;
+    --color-brand-600: #4f46e5;
+    --color-brand-700: #4338ca;
+    --color-brand-800: #3730a3;
+    --color-brand-900: #312e81;
+    --color-brand-950: #1e1b4b;
+
+    --color-accent-50: #ecfdf5;
+    --color-accent-100: #d1fae5;
+    --color-accent-200: #a7f3d0;
+    --color-accent-500: #10b981;
+    --color-accent-600: #059669;
+    --color-accent-700: #047857;
+    --color-accent-800: #065f46;
+
+    --color-warn-50: #fffbeb;
+    --color-warn-100: #fef3c7;
+    --color-warn-200: #fde68a;
+    --color-warn-500: #f59e0b;
+    --color-warn-600: #d97706;
+    --color-warn-800: #92400e;
+
+    --color-danger-50: #fef2f2;
+    --color-danger-100: #fee2e2;
+    --color-danger-200: #fecaca;
+    --color-danger-600: #dc2626;
+    --color-danger-700: #b91c1c;
+    --color-danger-800: #991b1b;
+
+    --color-info-50: #f0f9ff;
+    --color-info-200: #bae6fd;
+    --color-info-700: #0369a1;
+    --color-info-800: #075985;
+
+    --color-ink: #0f172a;
+    --color-surface: #f8fafc;
+}
+
+@utility no-scrollbar {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+@layer base {
+    html {
+        color-scheme: light;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        @apply bg-surface font-sans text-ink antialiased;
+    }
+
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-brand-600;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+}
+
+@layer components {
+    /* Cards */
+    .card {
+        @apply rounded-xl border border-slate-200 bg-white shadow-sm;
+    }
+
+    /* Buttons - every tap target is at least 44px tall on touch screens */
+    .btn {
+        @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold
+            transition-colors focus-visible:outline-2 focus-visible:outline-offset-2
+            disabled:cursor-not-allowed disabled:opacity-60;
+    }
+
+    .btn-primary {
+        @apply bg-brand-700 text-white shadow-sm hover:bg-brand-800 focus-visible:outline-brand-700;
+    }
+
+    .btn-secondary {
+        @apply border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 focus-visible:outline-brand-700;
+    }
+
+    .btn-success {
+        @apply bg-accent-700 text-white shadow-sm hover:bg-accent-800 focus-visible:outline-accent-700;
+    }
+
+    .btn-warning {
+        @apply border border-warn-600 bg-white text-warn-800 hover:bg-warn-50 focus-visible:outline-warn-600;
+    }
+
+    .btn-danger {
+        @apply bg-danger-700 text-white shadow-sm hover:bg-danger-800 focus-visible:outline-danger-700;
+    }
+
+    .btn-danger-outline {
+        @apply border border-danger-200 bg-white text-danger-700 hover:bg-danger-50 focus-visible:outline-danger-700;
+    }
+
+    .btn-sm {
+        @apply min-h-9 px-3 py-1.5 text-xs;
+    }
+
+    .btn-block {
+        @apply w-full;
+    }
+
+    /* Forms */
+    .form-label {
+        @apply mb-1.5 block text-sm font-semibold text-slate-800;
+    }
+
+    .form-hint {
+        @apply mt-1 text-xs text-slate-600;
+    }
+
+    .form-input {
+        @apply block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-base text-ink
+            placeholder:text-slate-500 focus:border-brand-600 focus:outline-2 focus:outline-offset-0
+            focus:outline-brand-600 sm:text-sm;
+    }
+
+    .form-input[aria-invalid='true'] {
+        @apply border-danger-600 bg-danger-50;
+    }
+
+    .form-error {
+        @apply mt-1.5 flex items-start gap-1.5 text-sm font-medium text-danger-700;
+    }
+
+    /* Alerts: colour + icon + text, never colour alone */
+    .alert {
+        @apply flex items-start gap-3 rounded-lg border px-4 py-3 text-sm font-medium;
+    }
+
+    .alert-success {
+        @apply border-accent-200 bg-accent-50 text-accent-800;
+    }
+
+    .alert-warning {
+        @apply border-warn-200 bg-warn-50 text-warn-800;
+    }
+
+    .alert-error {
+        @apply border-danger-200 bg-danger-50 text-danger-800;
+    }
+
+    .alert-info {
+        @apply border-info-200 bg-info-50 text-info-800;
+    }
+
+    /* Badges and status indicators */
+    .badge {
+        @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold;
+    }
+
+    .badge-success {
+        @apply border-accent-200 bg-accent-50 text-accent-800;
+    }
+
+    .badge-warning {
+        @apply border-warn-200 bg-warn-50 text-warn-800;
+    }
+
+    .badge-danger {
+        @apply border-danger-200 bg-danger-50 text-danger-800;
+    }
+
+    .badge-info {
+        @apply border-info-200 bg-info-50 text-info-800;
+    }
+
+    .badge-brand {
+        @apply border-brand-200 bg-brand-50 text-brand-800;
+    }
+
+    .badge-neutral {
+        @apply border-slate-200 bg-slate-100 text-slate-700;
+    }
+
+    /* Filter chips */
+    .chip {
+        @apply inline-flex min-h-10 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border
+            border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition-colors
+            hover:bg-slate-50;
+    }
+
+    .chip-active {
+        @apply border-brand-700 bg-brand-700 text-white hover:bg-brand-800;
+    }
+
+    .nav-link {
+        @apply rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-brand-50
+            hover:text-brand-800;
+    }
+
+    .nav-link-active {
+        @apply bg-brand-50 text-brand-800;
+    }
 }

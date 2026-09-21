@@ -1,157 +1,175 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full bg-[#F8FAFC]">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="description" content="UniMarket is the campus marketplace where verified students buy, sell and swap textbooks, electronics, dorm gear and more.">
+    <meta name="theme-color" content="#4338ca">
 
     <title>{{ $title ?? 'UniMarket - Campus Student Marketplace' }}</title>
 
-    <!-- Google Sans Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Tailwind CSS / Vite -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
-
-    <style>
-        body, button, input, select, textarea {
-            font-family: 'Google Sans', sans-serif !important;
-        }
-    </style>
 </head>
-<body class="h-full bg-[#F8FAFC] text-[#0F172A] antialiased flex flex-col min-h-screen">
+<body class="flex min-h-screen flex-col">
 
-    <!-- Top Navigation Header -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <!-- Brand Logo & Main Nav -->
-                <div class="flex items-center space-x-8">
-                    <a href="{{ route('listings.index') }}" class="flex items-center space-x-2 text-[#1E293B] font-semibold text-lg tracking-tight">
-                        <div class="w-9 h-9 rounded-lg bg-[#1E293B] flex items-center justify-center text-white shadow-sm font-semibold">
-                            U
-                        </div>
+    <a href="#main-content" class="sr-only z-50 rounded-lg bg-white px-4 py-2 font-semibold text-brand-800 shadow focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
+        Skip to main content
+    </a>
+
+    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur" x-data="{ mobileOpen: false }" x-on:keydown.escape.window="mobileOpen = false">
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 items-center justify-between gap-2">
+
+                <div class="flex min-w-0 items-center gap-6">
+                    <a href="{{ route('listings.index') }}" class="flex flex-shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-brand-900">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-700 font-bold text-white shadow-sm" aria-hidden="true">U</span>
                         <span>UniMarket</span>
                     </a>
 
-                    <nav class="hidden md:flex items-center space-x-6">
-                        <a href="{{ route('listings.index') }}" class="text-sm font-medium text-[#0F172A] hover:text-[#312E81] transition">
-                            Explore Marketplace
-                        </a>
+                    <nav class="hidden items-center gap-1 md:flex" aria-label="Main navigation">
+                        <a href="{{ route('listings.index') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('listings.index', 'listings.show')]) @if(request()->routeIs('listings.index')) aria-current="page" @endif>Marketplace</a>
                         @auth
-                            <a href="{{ route('chat.index') }}" class="text-sm font-medium text-[#0F172A] hover:text-[#312E81] transition flex items-center space-x-1.5">
-                                <span>Messages</span>
-                                @php
-                                    $unreadCount = \App\Models\Message::where('receiver_id', auth()->id())->where('is_read', false)->count();
-                                @endphp
-                                @if($unreadCount > 0)
-                                    <span class="bg-[#059669] text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                                        {{ $unreadCount }}
-                                    </span>
+                            <a href="{{ route('listings.mine') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('listings.mine', 'listings.edit')]) @if(request()->routeIs('listings.mine')) aria-current="page" @endif>My listings</a>
+                            <a href="{{ route('chat.index') }}" @class(['nav-link inline-flex items-center gap-1.5', 'nav-link-active' => request()->routeIs('chat.*')]) @if(request()->routeIs('chat.*')) aria-current="page" @endif>
+                                Messages
+                                @if ($unreadMessageCount > 0)
+                                    <span class="badge border-accent-700 bg-accent-700 px-2 py-0 text-white">{{ $unreadMessageCount }}<span class="sr-only"> unread</span></span>
                                 @endif
                             </a>
-                            <a href="{{ route('transactions.tracker') }}" class="text-sm font-medium text-[#0F172A] hover:text-[#312E81] transition">
-                                My Transactions
-                            </a>
+                            <a href="{{ route('transactions.tracker') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('transactions.*')]) @if(request()->routeIs('transactions.*')) aria-current="page" @endif>My transactions</a>
                         @endauth
                     </nav>
                 </div>
 
-                <!-- Right Action Buttons & Auth Status -->
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center gap-2">
                     @auth
-                        <!-- Student Verification Badge -->
-                        <div class="hidden sm:flex items-center space-x-2 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg text-xs">
-                            <span class="text-[#0F172A] font-medium">{{ auth()->user()->name }}</span>
-                            @if(auth()->user()->is_verified)
-                                <span class="bg-[#059669]/10 text-[#059669] border border-[#059669]/20 font-medium px-2 py-0.5 rounded-full flex items-center space-x-1">
-                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                    </svg>
-                                    <span>Official Student</span>
-                                </span>
-                            @endif
-                        </div>
-
-                        <!-- Post Listing Button -->
-                        <a href="{{ route('listings.create') }}" class="bg-[#1E293B] hover:bg-[#312E81] text-white font-medium px-4 py-2 rounded-lg text-sm transition shadow-sm flex items-center space-x-1.5">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            <span>Sell Item</span>
+                        <a href="{{ route('listings.create') }}" class="btn btn-primary btn-sm sm:min-h-11 sm:px-4 sm:text-sm">
+                            <x-app-icon name="plus" class="h-4 w-4" />
+                            <span>Sell item</span>
                         </a>
 
-                        <!-- Logout Form -->
-                        <form method="POST" action="{{ route('logout') }}" class="inline">
+                        <div class="relative hidden md:block" x-data="{ menuOpen: false }" x-on:click.outside="menuOpen = false" x-on:keydown.escape="menuOpen = false">
+                            <button type="button" class="btn btn-secondary btn-sm sm:min-h-11" x-on:click="menuOpen = !menuOpen" x-bind:aria-expanded="menuOpen" aria-haspopup="true">
+                                <x-app-icon name="user" class="h-5 w-5" />
+                                <span class="max-w-[9rem] truncate">{{ auth()->user()->name }}</span>
+                                <x-app-icon name="chevron-down" class="h-4 w-4" />
+                            </button>
+
+                            <div x-cloak x-show="menuOpen" x-transition.opacity class="absolute right-0 mt-2 w-64 origin-top-right rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                                <div class="border-b border-slate-100 px-3 pb-3 pt-2">
+                                    <p class="truncate text-sm font-semibold text-ink">{{ auth()->user()->name }}</p>
+                                    <p class="truncate text-xs text-slate-600">{{ auth()->user()->email }}</p>
+                                    @if (auth()->user()->is_verified)
+                                        <span class="badge badge-success mt-2"><x-app-icon name="check-circle" class="h-3.5 w-3.5" /> Official Student</span>
+                                    @endif
+                                </div>
+                                <form method="POST" action="{{ route('logout') }}" class="mt-1">
+                                    @csrf
+                                    <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
+                                        <x-app-icon name="logout" class="h-5 w-5" /> Log out
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @else
+                        <a href="{{ route('login') }}" class="nav-link">Log in</a>
+                        <a href="{{ route('register') }}" class="btn btn-primary btn-sm hidden sm:inline-flex sm:min-h-11 sm:px-4 sm:text-sm">Join UniMarket</a>
+                    @endauth
+
+                    <button type="button" class="btn btn-secondary btn-sm min-h-11 min-w-11 px-2 md:hidden" x-on:click="mobileOpen = !mobileOpen" x-bind:aria-expanded="mobileOpen" aria-controls="mobile-menu">
+                        <span class="sr-only">Toggle menu</span>
+                        <x-app-icon name="menu" x-show="!mobileOpen" />
+                        <x-app-icon name="x" x-cloak x-show="mobileOpen" />
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <nav id="mobile-menu" x-cloak x-show="mobileOpen" x-transition.opacity class="border-t border-slate-200 bg-white md:hidden" aria-label="Mobile navigation">
+            <div class="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 sm:px-6">
+                <a href="{{ route('listings.index') }}" class="nav-link py-3">Marketplace</a>
+                @auth
+                    <a href="{{ route('listings.mine') }}" class="nav-link py-3">My listings</a>
+                    <a href="{{ route('chat.index') }}" class="nav-link flex items-center justify-between py-3">
+                        <span>Messages</span>
+                        @if ($unreadMessageCount > 0)
+                            <span class="badge border-accent-700 bg-accent-700 text-white">{{ $unreadMessageCount }}<span class="sr-only"> unread</span></span>
+                        @endif
+                    </a>
+                    <a href="{{ route('transactions.tracker') }}" class="nav-link py-3">My transactions</a>
+                    <div class="mt-2 border-t border-slate-100 pt-3">
+                        <p class="truncate px-3 text-sm font-semibold text-ink">{{ auth()->user()->name }}</p>
+                        <p class="truncate px-3 text-xs text-slate-600">{{ auth()->user()->email }}</p>
+                        <form method="POST" action="{{ route('logout') }}" class="mt-2">
                             @csrf
-                            <button type="submit" class="text-xs font-medium text-slate-500 hover:text-slate-800 transition">
-                                Logout
+                            <button type="submit" class="nav-link flex w-full items-center gap-2 py-3 text-left">
+                                <x-app-icon name="logout" class="h-5 w-5" /> Log out
                             </button>
                         </form>
-                    @else
-                        <a href="{{ route('login') }}" class="text-sm font-medium text-[#1E293B] hover:text-[#312E81] transition">
-                            Log In
-                        </a>
-                        <a href="{{ route('register') }}" class="bg-[#1E293B] hover:bg-[#312E81] text-white font-medium px-4 py-2 rounded-lg text-sm transition shadow-sm">
-                            Join Campus Market
-                        </a>
-                    @endauth
-                </div>
+                    </div>
+                @else
+                    <a href="{{ route('register') }}" class="btn btn-primary mt-2">Join UniMarket</a>
+                @endauth
             </div>
-        </div>
+        </nav>
     </header>
 
-    <!-- Global Success / Warning Alerts -->
-    @if(session()->has('success'))
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-            <div class="bg-[#059669]/10 border border-[#059669]/30 text-[#059669] px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-between shadow-sm">
-                <div class="flex items-center space-x-2">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                    </svg>
-                    <span>{{ session('success') }}</span>
-                </div>
+    @foreach (['success' => 'success', 'error' => 'error', 'warning' => 'warning', 'status' => 'info'] as $flashKey => $flashType)
+        @if (session()->has($flashKey))
+            <div class="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+                <x-alert :type="$flashType">{{ session($flashKey) }}</x-alert>
             </div>
-        </div>
-    @endif
+        @endif
+    @endforeach
 
-    @if(session()->has('error'))
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-            <div class="bg-[#D97706]/10 border border-[#D97706]/30 text-[#D97706] px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-between shadow-sm">
-                <div class="flex items-center space-x-2">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                    </svg>
-                    <span>{{ session('error') }}</span>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    <!-- Main Content Area -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main id="main-content" class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         {{ $slot }}
     </main>
 
-    <!-- Clean Minimal Footer -->
-    <footer class="bg-white border-t border-slate-200 py-6 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center md:flex md:justify-between md:items-center">
-            <p class="text-xs text-slate-500 font-regular">
-                &copy; {{ date('Y') }} UniMarket. Verified Student Marketplace for Campus Communities.
-            </p>
-            <div class="flex justify-center space-x-6 mt-3 md:mt-0 text-xs font-medium text-slate-600">
-                <span class="flex items-center space-x-1">
-                    <span class="w-2 h-2 rounded-full bg-[#059669]"></span>
-                    <span>Verified Domain Protection</span>
-                </span>
-                <span>Escrow Lifecycle</span>
-                <span>AI Moderated Disputes</span>
-            </div>
+    <footer class="mt-auto border-t border-slate-200 bg-white py-6">
+        <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 text-center text-sm text-slate-600 sm:px-6 md:flex-row md:items-center md:justify-between md:text-left lg:px-8">
+            <p>&copy; {{ date('Y') }} UniMarket. The student marketplace for campus communities.</p>
+            <ul class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-medium text-slate-700">
+                <li class="flex items-center gap-1.5"><x-app-icon name="shield" class="h-4 w-4 text-accent-700" /> Verified students</li>
+                <li>Escrow protection</li>
+                <li>Moderated disputes</li>
+            </ul>
         </div>
     </footer>
+
+    {{-- Notifications dispatched from Livewire components: $this->dispatch('notify', message: '...', type: 'success') --}}
+    <div
+        x-data="{
+            toasts: [],
+            add(detail) {
+                const id = Date.now() + Math.random();
+                this.toasts.push({ id, type: detail.type ?? 'success', message: detail.message });
+                setTimeout(() => this.remove(id), 7000);
+            },
+            remove(id) {
+                this.toasts = this.toasts.filter((toast) => toast.id !== id);
+            },
+        }"
+        x-on:notify.window="add($event.detail)"
+        class="pointer-events-none fixed inset-x-0 bottom-4 z-50 mx-auto flex max-w-md flex-col gap-2 px-4"
+        aria-live="polite"
+    >
+        <template x-for="toast in toasts" :key="toast.id">
+            <div class="alert pointer-events-auto shadow-lg" x-bind:class="'alert-' + toast.type" x-bind:role="toast.type === 'error' ? 'alert' : 'status'">
+                <div class="min-w-0 flex-1 break-words" x-text="toast.message"></div>
+                <button type="button" class="-m-1 flex-shrink-0 rounded p-1 hover:bg-black/5" x-on:click="remove(toast.id)">
+                    <span class="sr-only">Dismiss</span>
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+        </template>
+    </div>
 
     @livewireScripts
 </body>

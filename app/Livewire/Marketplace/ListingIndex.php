@@ -2,18 +2,23 @@
 
 namespace App\Livewire\Marketplace;
 
+use App\Models\Category;
+use App\Models\Listing;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\Listing;
-use App\Models\Category;
 
 class ListingIndex extends Component
 {
     use WithPagination;
 
+    private const SORTS = ['latest', 'price_asc', 'price_desc'];
+
     public string $search = '';
+
     public ?int $selectedCategory = null;
+
     public string $conditionFilter = '';
+
     public string $sortBy = 'latest';
 
     protected $queryString = [
@@ -24,6 +29,11 @@ class ListingIndex extends Component
     ];
 
     public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSortBy(): void
     {
         $this->resetPage();
     }
@@ -40,41 +50,36 @@ class ListingIndex extends Component
         $this->resetPage();
     }
 
+    public function clearFilters(): void
+    {
+        $this->reset('search', 'selectedCategory', 'conditionFilter', 'sortBy');
+        $this->resetPage();
+    }
+
     public function render()
     {
-        $query = Listing::query()
-            ->with(['seller', 'category'])
-            ->where('status', 'active');
+        $condition = array_key_exists($this->conditionFilter, Listing::CONDITIONS) ? $this->conditionFilter : '';
+        $sortBy = in_array($this->sortBy, self::SORTS, true) ? $this->sortBy : 'latest';
 
-        if (!empty($this->search)) {
-            $query->where(function ($q) {
-                $q->where('title', 'like', '%' . $this->search . '%')
-                  ->orWhere('description', 'like', '%' . $this->search . '%');
-            });
-        }
+        $listings = Listing::query()
+            ->with(['seller:id,name,is_verified', 'category:id,name'])
+            ->active()
+            ->search($this->search)
+            ->when($this->selectedCategory, fn ($query, $categoryId) => $query->where('category_id', $categoryId))
+            ->when($condition !== '', fn ($query) => $query->where('condition', $condition))
+            ->when($sortBy === 'price_asc', fn ($query) => $query->orderBy('price'))
+            ->when($sortBy === 'price_desc', fn ($query) => $query->orderByDesc('price'))
+            ->when($sortBy === 'latest', fn ($query) => $query->latest())
+            ->paginate(12);
 
-        if ($this->selectedCategory) {
-            $query->where('category_id', $this->selectedCategory);
-        }
-
-        if (!empty($this->conditionFilter)) {
-            $query->where('condition', $this->conditionFilter);
-        }
-
-        if ($this->sortBy === 'price_asc') {
-            $query->orderBy('price', 'asc');
-        } elseif ($this->sortBy === 'price_desc') {
-            $query->orderBy('price', 'desc');
-        } else {
-            $query->latest();
-        }
-
-        $listings = $query->paginate(9);
-        $categories = Category::withCount(['listings' => fn($q) => $q->where('status', 'active')])->get();
+        $categories = Category::withCount(['listings' => fn ($query) => $query->active()])
+            ->orderBy('name')
+            ->get();
 
         return view('livewire.marketplace.listing-index', [
             'listings' => $listings,
             'categories' => $categories,
-        ])->layout('layouts.app', ['title' => 'Explore Campus Marketplace - UniMarket']);
+            'hasActiveFilters' => $this->search !== '' || $this->selectedCategory !== null || $condition !== '' || $sortBy !== 'latest',
+        ])->layout('layouts.app', ['title' => 'Campus Marketplace - UniMarket']);
     }
 }

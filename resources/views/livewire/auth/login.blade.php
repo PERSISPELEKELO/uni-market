@@ -1,56 +1,54 @@
-<div class="max-w-md mx-auto py-8">
-    <div class="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 shadow-sm space-y-6">
+<div class="mx-auto w-full max-w-md py-4 sm:py-8">
+    <div class="card space-y-6 p-6 sm:p-8">
 
         <div class="text-center">
-            <div class="w-12 h-12 rounded-lg bg-[#1E293B] text-white flex items-center justify-center font-semibold text-xl mx-auto shadow-sm">
-                U
-            </div>
-            <h2 class="text-xl font-semibold text-[#0F172A] tracking-tight mt-3">Welcome Back</h2>
-            <p class="text-xs text-slate-500 font-regular mt-1">
-                Log in with your registered student account.
-            </p>
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-brand-700 text-xl font-bold text-white shadow-sm" aria-hidden="true">U</div>
+            <h1 class="mt-3 text-2xl font-bold tracking-tight text-ink">Welcome back</h1>
+            <p class="mt-1 text-sm text-slate-600">Log in to buy, sell and chat with students on campus.</p>
         </div>
 
-        <form wire:submit.prevent="login" class="space-y-4">
+        <form wire:submit="login" novalidate class="space-y-5">
+            @error('credentials')
+                <x-alert type="error">{{ $message }}</x-alert>
+            @enderror
+
             <div>
-                <label class="block text-xs font-semibold text-[#0F172A] uppercase tracking-wider mb-1.5">Email Address</label>
+                <label for="email" class="form-label">Email address</label>
                 <input
+                    id="email"
                     type="email"
                     wire:model="email"
-                    placeholder="email@example.com"
-                    class="w-full bg-[#F8FAFC] border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#059669]"
+                    autocomplete="email"
+                    inputmode="email"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    placeholder="you@example.com"
+                    class="form-input"
+                    @error('email') aria-invalid="true" aria-describedby="email-error" @enderror
                 />
-                @error('email') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                <x-form-error name="email" />
             </div>
 
             <div>
-                <label class="block text-xs font-semibold text-[#0F172A] uppercase tracking-wider mb-1.5">Password</label>
-                <input
-                    type="password"
-                    wire:model="password"
-                    placeholder="••••••••"
-                    class="w-full bg-[#F8FAFC] border border-slate-200 rounded-lg px-3.5 py-2.5 text-sm text-[#0F172A] focus:bg-white focus:ring-2 focus:ring-[#059669]"
-                />
-                @error('password') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
+                <label for="password" class="form-label">Password</label>
+                <x-password-input id="password" wire:model="password" autocomplete="current-password" placeholder="Your password" />
+                <x-form-error name="password" />
             </div>
 
-            <div class="flex items-center justify-between text-xs">
-                <label class="flex items-center space-x-2 text-slate-600 cursor-pointer">
-                    <input type="checkbox" wire:model="remember" class="rounded border-slate-300 text-[#059669] focus:ring-[#059669]" />
-                    <span>Remember me</span>
-                </label>
-            </div>
+            <label class="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-slate-800">
+                <input type="checkbox" wire:model="remember" class="h-5 w-5 rounded border-slate-400 text-brand-700 focus:ring-brand-700" />
+                <span>Keep me logged in on this device</span>
+            </label>
 
-            <button
-                type="submit"
-                class="w-full bg-[#1E293B] hover:bg-[#312E81] text-white font-medium py-3 px-4 rounded-lg text-sm transition shadow-sm"
-            >
-                Log In to Campus Market
+            <button type="submit" class="btn btn-primary btn-block" wire:loading.attr="disabled" wire:target="login">
+                <span wire:loading.remove wire:target="login">Log in</span>
+                <span wire:loading wire:target="login">Logging in...</span>
             </button>
         </form>
 
-        <div class="text-center pt-2 border-t border-slate-100 text-xs text-slate-500">
-            Don't have an account? <a href="{{ route('register') }}" class="text-[#312E81] font-semibold hover:underline">Register here</a>
-        </div>
+        <p class="border-t border-slate-100 pt-5 text-center text-sm text-slate-600">
+            New to UniMarket?
+            <a href="{{ route('register') }}" class="font-semibold text-brand-800 underline underline-offset-2 hover:text-brand-900">Create an account</a>
+        </p>
     </div>
 </div>

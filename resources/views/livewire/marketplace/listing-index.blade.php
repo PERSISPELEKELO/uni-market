@@ -1,158 +1,117 @@
 <div>
-    <!-- Hero / Discovery Banner -->
-    <div class="bg-gradient-to-r from-[#1E293B] to-[#312E81] text-white rounded-xl p-8 mb-8 shadow-sm">
+    <section class="rounded-2xl bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 p-6 text-white shadow-sm sm:p-10" aria-labelledby="hero-heading">
         <div class="max-w-2xl">
-            <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight leading-snug">
-                Buy & Sell Safely Within Your Campus Community
+            <h1 id="hero-heading" class="text-2xl font-bold leading-tight tracking-tight sm:text-4xl">
+                Buy and sell within your campus community
             </h1>
-            <p class="text-slate-300 text-sm font-regular mt-2">
-                Verified student profiles, instant messaging, and secure escrow lifecycle.
+            <p class="mt-2 text-sm text-brand-100 sm:text-base">
+                Textbooks, laptops, dorm gear and more from verified students, with in-app chat and protected handovers.
             </p>
 
-            <!-- Search Bar Input -->
-            <div class="mt-6 relative">
-                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
+            <form role="search" x-on:submit.prevent class="mt-5 sm:mt-6">
+                <label for="search" class="sr-only">Search listings</label>
+                <div class="relative">
+                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                        <x-app-icon name="search" class="h-5 w-5" />
+                    </span>
+                    <input
+                        id="search"
+                        type="search"
+                        wire:model.live.debounce.300ms="search"
+                        maxlength="100"
+                        autocomplete="off"
+                        placeholder="Search textbooks, laptops, dorm gear..."
+                        class="form-input border-transparent pl-11 shadow-sm"
+                    />
                 </div>
-                <input
-                    type="text"
-                    wire:model.live.debounce.300ms="search"
-                    placeholder="Search textbooks, electronics, dorm gear..."
-                    class="w-full pl-10 pr-4 py-3 bg-white text-[#0F172A] border-0 rounded-lg shadow-sm focus:ring-2 focus:ring-[#059669] text-sm font-regular placeholder-slate-400"
-                />
-            </div>
+            </form>
+
+            @guest
+                <p class="mt-4 text-sm text-brand-100">
+                    New here?
+                    <a href="{{ route('register') }}" class="font-semibold text-white underline underline-offset-2 hover:text-brand-200">Create a free account</a>
+                    to start selling.
+                </p>
+            @endguest
         </div>
-    </div>
+    </section>
 
-    <!-- Category Chip Selector Pills -->
-    <div class="flex items-center space-x-2 overflow-x-auto pb-4 mb-6 scrollbar-none">
-        <button
-            wire:click="selectCategory(null)"
-            class="px-4 py-2 rounded-full text-xs font-medium transition flex-shrink-0 {{ is_null($selectedCategory) ? 'bg-[#1E293B] text-white shadow-sm' : 'bg-white border border-slate-200 text-[#0F172A] hover:bg-slate-50' }}"
-        >
-            All Items
-        </button>
-
-        @foreach($categories as $category)
-            <button
-                wire:click="selectCategory({{ $category->id }})"
-                class="px-4 py-2 rounded-full text-xs font-medium transition flex-shrink-0 flex items-center space-x-1.5 {{ $selectedCategory === $category->id ? 'bg-[#1E293B] text-white shadow-sm' : 'bg-white border border-slate-200 text-[#0F172A] hover:bg-slate-50' }}"
-            >
-                <span>{{ $category->name }}</span>
-                <span class="text-[10px] opacity-75">({{ $category->listings_count }})</span>
+    <section class="mt-6 sm:mt-8" aria-label="Filter listings">
+        <div class="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Categories">
+            <button type="button" wire:click="selectCategory(null)" @class(['chip', 'chip-active' => is_null($selectedCategory)]) aria-pressed="{{ is_null($selectedCategory) ? 'true' : 'false' }}">
+                All items
             </button>
-        @endforeach
-    </div>
-
-    <!-- Toolbar: Condition Filters & Sort -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-slate-200">
-        <!-- Condition Pills -->
-        <div class="flex items-center space-x-2 text-xs font-medium">
-            <span class="text-slate-500 font-regular">Condition:</span>
-            @foreach(['new' => 'New', 'like_new' => 'Like New', 'good' => 'Good', 'fair' => 'Fair'] as $key => $label)
-                <button
-                    wire:click="setCondition('{{ $key }}')"
-                    class="px-3 py-1 rounded-md transition {{ $conditionFilter === $key ? 'bg-[#059669] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}"
-                >
-                    {{ $label }}
+            @foreach ($categories as $category)
+                <button type="button" wire:key="category-{{ $category->id }}" wire:click="selectCategory({{ $category->id }})" @class(['chip', 'chip-active' => $selectedCategory === $category->id]) aria-pressed="{{ $selectedCategory === $category->id ? 'true' : 'false' }}">
+                    <span>{{ $category->name }}</span>
+                    <span class="text-xs opacity-80">({{ $category->listings_count }})</span>
                 </button>
             @endforeach
         </div>
 
-        <!-- Sort Select -->
-        <div class="flex items-center space-x-2 text-xs">
-            <span class="text-slate-500 font-regular">Sort by:</span>
-            <select wire:model.live="sortBy" class="bg-white border border-slate-200 text-[#0F172A] rounded-lg text-xs py-1.5 px-3 font-medium focus:ring-[#059669]">
-                <option value="latest">Newest First</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- Product Grid (Responsive 3-column desktop, 1-column mobile) -->
-    @if($listings->count() > 0)
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            @foreach($listings as $listing)
-                <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between group">
-                    <div>
-                        <!-- Image Container with Aspect Ratio & Condition Pill -->
-                        <div class="relative h-48 bg-slate-100 overflow-hidden">
-                            @php
-                                $firstImage = is_array($listing->images) && count($listing->images) > 0 ? asset('storage/' . $listing->images[0]) : 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80';
-                            @endphp
-                            <img
-                                src="{{ $firstImage }}"
-                                alt="{{ $listing->title }}"
-                                class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                            />
-                            <!-- Condition Badge -->
-                            <div class="absolute top-3 left-3 bg-white/95 backdrop-blur-sm border border-slate-200 px-2.5 py-1 rounded-md text-[11px] font-medium text-[#0F172A] capitalize shadow-sm">
-                                {{ str_replace('_', ' ', $listing->condition) }}
-                            </div>
-                        </div>
-
-                        <!-- Listing Body -->
-                        <div class="p-5">
-                            <!-- Category Name -->
-                            <div class="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-1">
-                                {{ $listing->category->name }}
-                            </div>
-
-                            <!-- Title -->
-                            <h3 class="text-base font-semibold text-[#0F172A] line-clamp-1 group-hover:text-[#312E81] transition">
-                                <a href="{{ route('listings.show', $listing->id) }}">
-                                    {{ $listing->title }}
-                                </a>
-                            </h3>
-
-                            <!-- Price Tag (Emerald Green #059669) -->
-                            <div class="mt-3 text-lg font-semibold text-[#059669]">
-                                K{{ number_format($listing->price, 2) }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Footer Details: Seller Badge & Relative Age -->
-                    <div class="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <div class="flex items-center space-x-1.5">
-                            <span class="font-medium text-[#0F172A]">{{ $listing->seller->name }}</span>
-                            @if($listing->seller->is_verified)
-                                <span class="bg-[#059669]/10 text-[#059669] border border-[#059669]/20 font-medium px-1.5 py-0.5 rounded text-[10px] flex items-center space-x-0.5">
-                                    <svg class="w-2.5 h-2.5 fill-current" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                    </svg>
-                                    <span>Verified</span>
-                                </span>
-                            @endif
-                        </div>
-
-                        <span class="text-slate-400 font-regular">
-                            {{ $listing->created_at->diffForHumans() }}
-                        </span>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-
-        <!-- Pagination -->
-        <div class="mt-8">
-            {{ $listings->links() }}
-        </div>
-    @else
-        <!-- Empty State -->
-        <div class="bg-white border border-slate-200 rounded-lg p-12 text-center my-8 shadow-sm">
-            <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+        <div class="mt-4 flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Condition">
+                <span class="mr-1 text-sm font-medium text-slate-700">Condition:</span>
+                @foreach (\App\Models\Listing::CONDITIONS as $key => $label)
+                    <button type="button" wire:key="condition-{{ $key }}" wire:click="setCondition('{{ $key }}')" @class(['chip min-h-9 px-3 py-1.5', 'chip-active' => $conditionFilter === $key]) aria-pressed="{{ $conditionFilter === $key ? 'true' : 'false' }}">
+                        {{ $label }}
+                    </button>
+                @endforeach
             </div>
-            <h3 class="text-base font-semibold text-[#0F172A]">No listings found</h3>
-            <p class="text-sm font-regular text-slate-500 mt-1 max-w-sm mx-auto">
-                Try adjusting your search criteria or category filter to discover campus items.
-            </p>
+
+            <div class="flex items-center gap-2">
+                <label for="sort" class="text-sm font-medium text-slate-700">Sort by</label>
+                <select id="sort" wire:model.live="sortBy" class="form-input min-h-10 w-auto py-2">
+                    <option value="latest">Newest first</option>
+                    <option value="price_asc">Price: low to high</option>
+                    <option value="price_desc">Price: high to low</option>
+                </select>
+            </div>
         </div>
-    @endif
+    </section>
+
+    <section class="mt-6" aria-live="polite" aria-busy="false">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm text-slate-700">
+                <span class="font-semibold text-ink">{{ number_format($listings->total()) }}</span>
+                {{ \Illuminate\Support\Str::plural('item', $listings->total()) }} available
+            </p>
+            @if ($hasActiveFilters)
+                <button type="button" wire:click="clearFilters" class="btn btn-secondary btn-sm">
+                    <x-app-icon name="x" class="h-4 w-4" /> Clear filters
+                </button>
+            @endif
+        </div>
+
+        <div wire:loading.delay.class="opacity-60" class="transition-opacity">
+            @if ($listings->count() > 0)
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    @foreach ($listings as $listing)
+                        <x-listing-card :listing="$listing" wire:key="listing-{{ $listing->id }}" />
+                    @endforeach
+                </div>
+
+                <div class="mt-8">
+                    {{ $listings->links() }}
+                </div>
+            @else
+                <div class="card px-6 py-12 text-center">
+                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
+                        <x-app-icon name="search" class="h-6 w-6" />
+                    </div>
+                    @if ($hasActiveFilters)
+                        <h2 class="mt-3 text-base font-semibold text-ink">No listings match your search</h2>
+                        <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">Try a different keyword, or remove some filters to see more items.</p>
+                        <button type="button" wire:click="clearFilters" class="btn btn-primary mt-4">Clear all filters</button>
+                    @else
+                        <h2 class="mt-3 text-base font-semibold text-ink">Nothing for sale yet</h2>
+                        <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">Be the first to list an item on the campus marketplace.</p>
+                        <a href="{{ auth()->check() ? route('listings.create') : route('register') }}" class="btn btn-primary mt-4">
+                            {{ auth()->check() ? 'Sell an item' : 'Create an account to sell' }}
+                        </a>
+                    @endif
+                </div>
+            @endif
+        </div>
+    </section>
 </div>

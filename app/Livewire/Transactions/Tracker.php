@@ -4,115 +4,108 @@ declare(strict_types=1);
 
 namespace App\Livewire\Transactions;
 
-use App\Exceptions\DisputeWindowExpiredException;
-use App\Models\Dispute;
 use App\Models\Transaction;
-use App\Services\AuditLoggerService;
 use App\Services\HandoverVerificationService;
 use App\Services\InspectionService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class Tracker extends Component
 {
+    use AuthorizesRequests;
+
+    /**
+     * Locked so the browser cannot swap in another user's transaction id.
+     */
+    #[Locked]
     public ?int $selectedTransactionId = null;
+
     public bool $showDisputeModal = false;
+
     public string $disputeReason = '';
+
     public string $handoverOtp = '';
 
     public function mount(?Transaction $transaction = null): void
     {
         if ($transaction && $transaction->exists) {
+            $this->authorize('view', $transaction);
             $this->selectedTransactionId = $transaction->id;
-        } else {
-            $first = Transaction::where('buyer_id', Auth::id())
-                ->orWhere('seller_id', Auth::id())
-                ->latest()
-                ->first();
-            $this->selectedTransactionId = $first?->id;
+
+            return;
         }
+
+        $this->selectedTransactionId = Transaction::forParticipant(Auth::id())->latest()->value('id');
     }
 
     public function selectTransaction(int $transactionId): void
     {
-        $this->selectedTransactionId = $transactionId;
+        $transaction = Transaction::findOrFail($transactionId);
+        $this->authorize('view', $transaction);
+
+        $this->selectedTransactionId = $transaction->id;
         $this->showDisputeModal = false;
         $this->disputeReason = '';
         $this->handoverOtp = '';
     }
 
-    public function verifyHandoverOtp(int $transactionId): void
+    public function verifyHandoverOtp(): void
     {
-        $tx = Transaction::findOrFail($transactionId);
+        $transaction = $this->selectedTransaction();
 
-        if (Auth::id() !== $tx->seller_id) {
-            session()->flash('error', 'Only the seller can verify the handover code.');
+        if (! $transaction || ! $this->passesPolicy('verifyHandover', $transaction)) {
             return;
         }
 
-        $this->validate([
-            'handoverOtp' => 'required|string|size:6',
-        ]);
+        $this->validate(
+            ['handoverOtp' => ['required', 'string', 'size:6']],
+            [
+                'handoverOtp.required' => "Please enter the buyer's 6-digit code.",
+                'handoverOtp.size' => 'The handover code must be exactly 6 digits.',
+            ]
+        );
 
         try {
-            app(HandoverVerificationService::class)->verifyHandoverCode($tx, $this->handoverOtp, Auth::user());
+            app(HandoverVerificationService::class)->verifyHandoverCode($transaction, $this->handoverOtp, Auth::user());
             $this->handoverOtp = '';
-            session()->flash('success', 'Handover verified successfully! 48-hour post-purchase inspection period started.');
-        } catch (\Exception $e) {
-            session()->flash('error', $e->getMessage());
+            $this->notify('success', 'Handover verified! The 48-hour inspection period has started.');
+        } catch (\DomainException|\InvalidArgumentException $exception) {
+            $this->notify('error', $exception->getMessage());
         }
     }
 
-    public function markCompleted(int $transactionId): void
+    public function markCompleted(): void
     {
-        $tx = Transaction::with(['buyer', 'seller', 'listing'])->findOrFail($transactionId);
+        $transaction = $this->selectedTransaction();
 
-        if (Auth::id() !== $tx->buyer_id && Auth::id() !== $tx->seller_id) {
-            session()->flash('error', 'Unauthorized action.');
+        if (! $transaction || ! $this->passesPolicy('complete', $transaction)) {
             return;
         }
 
         try {
-            if (Auth::id() === $tx->buyer_id && in_array(strtoupper($tx->status), ['ITEM_INSPECTION', 'HANDED_OVER'], true)) {
-                app(InspectionService::class)->confirmItemAcceptance($tx, Auth::user());
-            } else {
-                $completedAt = now();
-                $tx->update([
-                    'status' => 'COMPLETED',
-                    'completed_at' => $completedAt,
-                ]);
-                if ($tx->listing) {
-                    $tx->listing->update(['status' => 'sold']);
-                }
-
-                app(AuditLoggerService::class)->recordAction(
-                    Auth::user(),
-                    'TRANSACTION_COMPLETED',
-                    'Transaction',
-                    (string) $tx->id,
-                    ['status' => 'COMPLETED', 'completed_at' => $completedAt->toIso8601String()]
-                );
-            }
-
-            session()->flash('success', 'Transaction marked as COMPLETED! Escrow funds released.');
-        } catch (\Exception $e) {
-            session()->flash('error', $e->getMessage());
+            app(InspectionService::class)->confirmItemAcceptance($transaction, Auth::user());
+            $this->notify('success', 'Transaction completed. The item is now marked as sold.');
+        } catch (\DomainException|\InvalidArgumentException $exception) {
+            $this->notify('error', $exception->getMessage());
         }
     }
 
     public function openDisputeModal(): void
     {
-        $tx = Transaction::find($this->selectedTransactionId);
-        if (!$tx) {
+        $transaction = $this->selectedTransaction();
+
+        if (! $transaction || ! $this->passesPolicy('dispute', $transaction)) {
             return;
         }
 
-        $status = strtoupper($tx->status);
-        $inspectionEnd = $tx->inspection_expires_at ?? $tx->inspection_ends_at;
+        $inspectionEnd = $transaction->inspection_expires_at ?? $transaction->inspection_ends_at;
 
-        if (!in_array($status, ['ITEM_INSPECTION', 'HANDED_OVER'], true) || !$inspectionEnd || now()->greaterThan($inspectionEnd)) {
-            session()->flash('error', 'Dispute window not active or expired. Disputes can only be raised during active item inspection.');
+        if (! $transaction->isInInspection() || ! $inspectionEnd || now()->greaterThan($inspectionEnd)) {
+            $this->notify('error', 'The dispute window is not active or has expired. Disputes can only be raised during the item inspection period.');
+
             return;
         }
 
@@ -127,52 +120,93 @@ class Tracker extends Component
 
     public function submitDispute(): void
     {
-        $this->validate([
-            'disputeReason' => 'required|string|min:10',
-        ]);
+        $transaction = $this->selectedTransaction();
 
-        $tx = Transaction::findOrFail($this->selectedTransactionId);
-
-        if (Auth::id() !== $tx->buyer_id) {
-            session()->flash('error', 'Only the buyer can raise a post-purchase dispute.');
+        if (! $transaction || ! $this->passesPolicy('dispute', $transaction)) {
             return;
         }
 
+        $this->validate(
+            ['disputeReason' => ['required', 'string', 'min:10', 'max:2000']],
+            [
+                'disputeReason.required' => 'Please describe the problem with the item.',
+                'disputeReason.min' => 'Please give a little more detail - at least 10 characters.',
+                'disputeReason.max' => 'Please keep your description under 2,000 characters.',
+            ]
+        );
+
         try {
-            app(InspectionService::class)->raisePostPurchaseDispute($tx, Auth::user(), [
+            app(InspectionService::class)->raisePostPurchaseDispute($transaction, Auth::user(), [
                 'reason' => $this->disputeReason,
             ]);
 
             $this->showDisputeModal = false;
             $this->disputeReason = '';
 
-            session()->flash('success', 'Dispute submitted successfully. Governance moderation review initiated.');
-        } catch (DisputeWindowExpiredException $e) {
-            session()->flash('error', $e->getMessage());
-        } catch (\Exception $e) {
-            session()->flash('error', $e->getMessage());
+            $this->notify('success', 'Dispute submitted. It has been sent for moderation review.');
+        } catch (\DomainException|\InvalidArgumentException $exception) {
+            $this->notify('error', $exception->getMessage());
         }
     }
 
     public function render()
     {
-        $currentUserId = Auth::id();
+        $userId = (int) Auth::id();
 
-        $userTransactions = Transaction::with(['buyer', 'seller', 'listing', 'dispute'])
-            ->where('buyer_id', $currentUserId)
-            ->orWhere('seller_id', $currentUserId)
+        $transactions = Transaction::with(['buyer:id,name', 'seller:id,name', 'listing:id,title'])
+            ->forParticipant($userId)
             ->latest()
             ->get();
 
-        $activeTransaction = null;
-        if ($this->selectedTransactionId) {
-            $activeTransaction = Transaction::with(['buyer', 'seller', 'listing', 'dispute.reporter'])
-                ->find($this->selectedTransactionId);
+        $activeTransaction = $this->selectedTransaction(['buyer', 'seller', 'listing', 'dispute.reporter']);
+
+        if ($activeTransaction && $this->needsHandoverCode($activeTransaction)) {
+            app(HandoverVerificationService::class)->generateHandoverCode($activeTransaction);
+            $activeTransaction->refresh();
         }
 
         return view('livewire.transactions.tracker', [
-            'transactions' => $userTransactions,
+            'transactions' => $transactions,
             'activeTransaction' => $activeTransaction,
-        ])->layout('layouts.app', ['title' => 'Transaction Escrow Tracker - UniMarket']);
+        ])->layout('layouts.app', ['title' => 'My Transactions - UniMarket']);
+    }
+
+    /**
+     * The currently selected transaction, only if the signed-in user takes part in it.
+     *
+     * @param  array<int, string>  $relations
+     */
+    private function selectedTransaction(array $relations = []): ?Transaction
+    {
+        if (! $this->selectedTransactionId) {
+            return null;
+        }
+
+        return Transaction::with($relations)
+            ->forParticipant((int) Auth::id())
+            ->find($this->selectedTransactionId);
+    }
+
+    private function needsHandoverCode(Transaction $transaction): bool
+    {
+        $isPending = in_array(strtoupper((string) $transaction->status), ['PENDING_MEETING', 'INITIATED', 'RESERVED', 'PENDING'], true);
+
+        return $isPending && ! $transaction->handover_otp_plain && ! $transaction->handover_code_plain;
+    }
+
+    private function passesPolicy(string $ability, Transaction $transaction): bool
+    {
+        $response = Gate::inspect($ability, $transaction);
+
+        if ($response->denied()) {
+            $this->notify('error', $response->message() ?? 'You are not allowed to do that.');
+        }
+
+        return $response->allowed();
+    }
+
+    private function notify(string $type, string $message): void
+    {
+        $this->dispatch('notify', type: $type, message: $message);
     }
 }

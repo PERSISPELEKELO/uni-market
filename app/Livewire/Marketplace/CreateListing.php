@@ -2,69 +2,39 @@
 
 namespace App\Livewire\Marketplace;
 
-use Livewire\Component;
-use Livewire\WithFileUploads;
+use App\Livewire\Concerns\ManagesListingForm;
 use App\Models\Listing;
-use App\Models\Category;
-use App\Models\AuditLog;
+use App\Services\AuditLoggerService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
+use Livewire\Component;
 
 class CreateListing extends Component
 {
-    use WithFileUploads;
+    use ManagesListingForm;
 
-    public ?int $category_id = null;
-    public string $title = '';
-    public string $description = '';
-    public string $price = '';
-    public string $condition = 'good';
-    public array $images = [];
-
-    protected function rules(): array
+    public function mount(): void
     {
-        return [
-            'category_id' => 'required|exists:categories,id',
-            'title' => 'required|string|min:5|max:150',
-            'description' => 'required|string|min:15',
-            'price' => 'required|numeric|min:0.50|max:999999.99',
-            'condition' => 'required|in:new,like_new,good,fair',
-            'images.*' => 'image|max:3072', // 3MB max per image
-            'images' => 'required|array|min:1|max:4',
-        ];
-    }
-
-    protected array $messages = [
-        'images.required' => 'Please upload at least one image of your item.',
-        'images.max' => 'You can upload a maximum of 4 images per listing.',
-    ];
-
-    public function removeImage(int $index): void
-    {
-        array_splice($this->images, $index, 1);
+        $this->authorize('create', Listing::class);
     }
 
     public function save()
     {
-        $this->validate();
+        $this->authorize('create', Listing::class);
 
-        $imagePaths = [];
-        foreach ($this->images as $image) {
-            $imagePaths[] = $image->store('listings', 'public');
+        try {
+            $listing = $this->form->store(Auth::user());
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            $this->dispatch('notify', type: 'error', message: 'We could not publish your listing right now. Please try again in a moment.');
+
+            return null;
         }
 
-        $listing = Listing::create([
-            'user_id' => Auth::id(),
-            'category_id' => $this->category_id,
-            'title' => $this->title,
-            'description' => $this->description,
-            'price' => $this->price,
-            'condition' => $this->condition,
-            'images' => $imagePaths,
-            'status' => 'active',
-        ]);
-
-        // Log Audit Trail
-        app(\App\Services\AuditLoggerService::class)->log(
+        app(AuditLoggerService::class)->log(
             'LISTING_CREATED',
             'Listing',
             $listing->id,
@@ -76,14 +46,14 @@ class CreateListing extends Component
             Auth::user()
         );
 
-        return redirect()->route('listings.show', $listing->id)
-            ->with('success', 'Your listing has been published to the campus marketplace!');
+        return redirect()->route('listings.show', $listing)
+            ->with('success', 'Your listing is live on the campus marketplace!');
     }
 
     public function render()
     {
         return view('livewire.marketplace.create-listing', [
-            'categories' => Category::all(),
-        ])->layout('layouts.app', ['title' => 'Post New Item - UniMarket']);
+            'categories' => $this->categories(),
+        ])->layout('layouts.app', ['title' => 'Sell an Item - UniMarket']);
     }
 }
