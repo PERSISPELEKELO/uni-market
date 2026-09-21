@@ -1,11 +1,16 @@
 <?php
 
 use App\Http\Controllers\AppealController;
+use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\DataPortabilityController;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\TransactionController;
+use App\Livewire\Account\Profile;
+use App\Livewire\Auth\ForgotPassword;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
+use App\Livewire\Auth\ResetPassword;
+use App\Livewire\Auth\VerifyEmail;
 use App\Livewire\Chat\MessageThread;
 use App\Livewire\Marketplace\CreateListing;
 use App\Livewire\Marketplace\EditListing;
@@ -24,10 +29,19 @@ Route::get('/listings/{listing}', ListingShow::class)->name('listings.show');
 Route::middleware(['guest'])->group(function () {
     Route::get('/login', Login::class)->name('login');
     Route::get('/register', Register::class)->name('register');
+    Route::get('/forgot-password', ForgotPassword::class)->name('password.request');
+    Route::get('/reset-password/{token}', ResetPassword::class)->name('password.reset');
 });
 
 // Authenticated Student Actions
 Route::middleware(['auth'])->group(function () {
+    // Account and email verification
+    Route::get('/account', Profile::class)->name('account');
+    Route::get('/email/verify', VerifyEmail::class)->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+
     // Seller listing management
     Route::get('/listings-create', CreateListing::class)->name('listings.create');
     Route::get('/my-listings', MyListings::class)->name('listings.mine');

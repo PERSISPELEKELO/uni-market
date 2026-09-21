@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Testing\File;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 /*
@@ -47,4 +49,14 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * A real (1x1) PNG upload that needs no GD extension. Pass $kilobytes to pad it to a given size.
+ */
+function fakePhoto(string $name = 'photo.png', int $kilobytes = 1): File
+{
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+
+    return UploadedFile::fake()->createWithContent($name, str_pad($png, max(strlen($png), $kilobytes * 1024), "\0"));
 }

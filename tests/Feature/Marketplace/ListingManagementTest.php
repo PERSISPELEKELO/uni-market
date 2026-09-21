@@ -44,7 +44,7 @@ describe('creating a listing', function () {
 
         $component = Livewire::actingAs($seller)->test(CreateListing::class);
         fillListingForm($component, validListingData($category, [
-            'form.images' => [UploadedFile::fake()->image('front.jpg'), UploadedFile::fake()->image('back.png')],
+            'form.images' => [fakePhoto('front.png'), fakePhoto('back.png')],
         ]))->call('save')->assertHasNoErrors();
 
         $listing = Listing::firstOrFail();
@@ -80,7 +80,7 @@ describe('creating a listing', function () {
         $component = Livewire::actingAs(User::factory()->create())->test(CreateListing::class);
         fillListingForm($component, validListingData($category, [
             'form.price' => $price,
-            'form.images' => [UploadedFile::fake()->image('front.jpg')],
+            'form.images' => [fakePhoto('front.png')],
         ]))->call('save')->assertHasErrors('form.price');
 
         expect(Listing::count())->toBe(0);
@@ -100,14 +100,14 @@ describe('creating a listing', function () {
     it('rejects photos over 3 MB', function () {
         Livewire::actingAs(User::factory()->create())
             ->test(CreateListing::class)
-            ->set('form.images', [UploadedFile::fake()->image('huge.jpg')->size(4096)])
+            ->set('form.images', [fakePhoto('huge.png', 4096)])
             ->assertHasErrors('form.images.0');
     });
 
     it('allows at most four photos', function () {
         Livewire::actingAs(User::factory()->create())
             ->test(CreateListing::class)
-            ->set('form.images', collect(range(1, 5))->map(fn ($n) => UploadedFile::fake()->image("p{$n}.jpg"))->all())
+            ->set('form.images', collect(range(1, 5))->map(fn ($n) => fakePhoto("p{$n}.png"))->all())
             ->assertHasErrors('form.images');
     });
 
@@ -118,7 +118,7 @@ describe('creating a listing', function () {
         fillListingForm($component, validListingData($category, [
             'form.category_id' => 9999,
             'form.condition' => 'destroyed',
-            'form.images' => [UploadedFile::fake()->image('front.jpg')],
+            'form.images' => [fakePhoto('front.png')],
         ]))->call('save')->assertHasErrors(['form.category_id', 'form.condition']);
     });
 
@@ -129,7 +129,7 @@ describe('creating a listing', function () {
         $component = Livewire::actingAs($seller)->test(CreateListing::class);
         fillListingForm($component, validListingData($category, [
             'form.title' => '<script>alert("x")</script> Textbook',
-            'form.images' => [UploadedFile::fake()->image('front.jpg')],
+            'form.images' => [fakePhoto('front.png')],
         ]))->call('save');
 
         $listing = Listing::firstOrFail();
@@ -153,7 +153,7 @@ describe('editing a listing', function () {
             ->set('form.title', 'Brand new title')
             ->set('form.price', '99.50')
             ->call('removeExistingPhoto', 0)
-            ->set('form.images', [UploadedFile::fake()->image('new.jpg')])
+            ->set('form.images', [fakePhoto('new.png')])
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('listings.show', $listing));

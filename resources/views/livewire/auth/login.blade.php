@@ -30,7 +30,10 @@
             </div>
 
             <div>
-                <label for="password" class="form-label">Password</label>
+                <div class="flex items-baseline justify-between gap-2">
+                    <label for="password" class="form-label">Password</label>
+                    <a href="{{ route('password.request') }}" class="mb-1.5 text-sm font-semibold text-brand-800 underline underline-offset-2 hover:text-brand-900">Forgot password?</a>
+                </div>
                 <x-password-input id="password" wire:model="password" autocomplete="current-password" placeholder="Your password" />
                 <x-form-error name="password" />
             </div>

@@ -69,7 +69,10 @@
                                         <span class="badge badge-success mt-2"><x-app-icon name="check-circle" class="h-3.5 w-3.5" /> Official Student</span>
                                     @endif
                                 </div>
-                                <form method="POST" action="{{ route('logout') }}" class="mt-1">
+                                <a href="{{ route('account') }}" class="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
+                                    <x-app-icon name="user" class="h-5 w-5" /> My account
+                                </a>
+                                <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
                                         <x-app-icon name="logout" class="h-5 w-5" /> Log out
@@ -106,7 +109,10 @@
                     <div class="mt-2 border-t border-slate-100 pt-3">
                         <p class="truncate px-3 text-sm font-semibold text-ink">{{ auth()->user()->name }}</p>
                         <p class="truncate px-3 text-xs text-slate-600">{{ auth()->user()->email }}</p>
-                        <form method="POST" action="{{ route('logout') }}" class="mt-2">
+                        <a href="{{ route('account') }}" class="nav-link mt-1 flex items-center gap-2 py-3">
+                            <x-app-icon name="user" class="h-5 w-5" /> My account
+                        </a>
+                        <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <button type="submit" class="nav-link flex w-full items-center gap-2 py-3 text-left">
                                 <x-app-icon name="logout" class="h-5 w-5" /> Log out
@@ -119,6 +125,17 @@
             </div>
         </nav>
     </header>
+
+    @auth
+        @if (auth()->user()->isAwaitingEmailVerification() && ! request()->routeIs('verification.notice'))
+            <div class="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+                <x-alert type="warning">
+                    Confirm your email address to earn the Official Student badge.
+                    <a href="{{ route('verification.notice') }}" class="font-semibold underline underline-offset-2">Verify now</a>
+                </x-alert>
+            </div>
+        @endif
+    @endauth
 
     @foreach (['success' => 'success', 'error' => 'error', 'warning' => 'warning', 'status' => 'info'] as $flashKey => $flashType)
         @if (session()->has($flashKey))

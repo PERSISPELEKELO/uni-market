@@ -45,6 +45,7 @@ it('registers a student, hashes the password and signs them in', function () {
     $user = User::where('email', 'chileshe@example.com')->firstOrFail();
 
     expect($user->role)->toBe('student')
+        ->and($user->is_verified)->toBeFalse()
         ->and($user->password)->not->toBe('Sunshine123')
         ->and(Hash::check('Sunshine123', $user->password))->toBeTrue();
 

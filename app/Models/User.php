@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +13,7 @@ use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -73,6 +73,32 @@ class User extends Authenticatable
         return $this->hasMany(AuditLog::class, 'actor_id');
     }
 
+    /**
+     * Whether the user still has to confirm their email to earn the verified badge.
+     * Members verified before email confirmation existed keep their badge.
+     */
+    public function isAwaitingEmailVerification(): bool
+    {
+        return ! $this->hasVerifiedEmail() && ! $this->is_verified;
+    }
+
+    /**
+     * Whether the email domain is accepted for the "Official Student" badge.
+     * With no STUDENT_EMAIL_DOMAINS configured, every domain is accepted.
+     */
+    public function hasStudentEmailDomain(): bool
+    {
+        $allowed = config('unimarket.student_email_domains', []);
+
+        if ($allowed === []) {
+            return true;
+        }
+
+        $domain = strtolower(substr(strrchr((string) $this->email, '@') ?: '', 1));
+
+        return collect($allowed)->contains(fn (string $suffix): bool => $domain === $suffix || str_ends_with($domain, '.'.$suffix));
+    }
+
     public function isStudent(): bool
     {
         return $this->role === 'student' || empty($this->role);
@@ -87,7 +113,6 @@ class User extends Authenticatable
     {
         return $this->role === 'admin';
     }
-
 
     /**
      * Get the attributes that should be cast.

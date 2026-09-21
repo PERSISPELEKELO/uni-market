@@ -14,7 +14,8 @@ use InvalidArgumentException;
 class InspectionService
 {
     public function __construct(
-        protected AuditLoggerService $auditLogger
+        protected AuditLoggerService $auditLogger,
+        protected DisputeAnalysisService $disputeAnalysis
     ) {}
 
     /**
@@ -27,12 +28,12 @@ class InspectionService
         }
 
         $status = strtoupper($transaction->status);
-        if (!in_array($status, ['ITEM_INSPECTION', 'HANDED_OVER'], true)) {
+        if (! in_array($status, ['ITEM_INSPECTION', 'HANDED_OVER'], true)) {
             return false;
         }
 
         $expiration = $transaction->inspection_expires_at ?? $transaction->inspection_ends_at;
-        if (!$expiration) {
+        if (! $expiration) {
             return false;
         }
 
@@ -48,9 +49,16 @@ class InspectionService
             throw new InvalidArgumentException('Only the buyer can raise a post-purchase dispute.');
         }
 
-        if (!$this->canRaiseDispute($transaction, $buyer)) {
+        if (! $this->canRaiseDispute($transaction, $buyer)) {
             $hours = $transaction->inspection_duration_hours ?? $transaction->inspection_period_hours ?? 48;
             throw new DisputeWindowExpiredException("Inspection period of {$hours} hours has lapsed. Disputes can no longer be raised automatically.");
+        }
+
+        $reason = $disputeData['reason'] ?? 'Defective or non-matching item during inspection window.';
+
+        // Ask the AI microservice unless the caller already supplied an analysis. Advisory only: failures return nulls.
+        if (! array_key_exists('ai_sentiment_score', $disputeData)) {
+            $disputeData += $this->disputeAnalysis->analyze($transaction, $reason);
         }
 
         $transaction->update([
@@ -60,7 +68,7 @@ class InspectionService
         $dispute = Dispute::create([
             'transaction_id' => $transaction->id,
             'raised_by' => $buyer->id,
-            'reason' => $disputeData['reason'] ?? 'Defective or non-matching item during inspection window.',
+            'reason' => $reason,
             'status' => 'open',
             'ai_sentiment_score' => $disputeData['ai_sentiment_score'] ?? null,
             'ai_confidence_score' => $disputeData['ai_confidence_score'] ?? null,
@@ -93,7 +101,7 @@ class InspectionService
         }
 
         $status = strtoupper($transaction->status);
-        if (!in_array($status, ['ITEM_INSPECTION', 'HANDED_OVER'], true)) {
+        if (! in_array($status, ['ITEM_INSPECTION', 'HANDED_OVER'], true)) {
             throw new DomainException("Cannot accept item for a transaction with status '{$transaction->status}'. Expected 'ITEM_INSPECTION'.");
         }
 

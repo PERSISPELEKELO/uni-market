@@ -21,9 +21,10 @@ UniMarket is a full-stack campus student marketplace built with **Laravel 13**, 
 ## Key Modules & Capabilities
 
 ### 1. Authentication & Student Verification
-- Minimalist centered auth cards for sign-up and login.
-- Email verification accepting student emails and general providers.
-- Assigns **"Official Student"** verified badge displayed across listings and profile components.
+- Minimalist centered auth cards for sign-up, login, forgot-password and reset-password. Login is throttled and never reveals whether an email has an account.
+- **Email verification**: new members receive a signed link. Opening it earns the **"Official Student"** badge shown across listings, chat and the account page. Set `STUDENT_EMAIL_DOMAINS` (e.g. `student.zut.zm`) to require a university address for the badge; leave it empty to accept any provider, in which case the badge only proves the member controls that email.
+- **My account** page: update name and phone, change password (current password required), see verification status.
+- Emails are sent with the configured mailer. Locally `MAIL_MAILER=log` writes verification and reset links to `storage/logs/laravel.log`; use a real mailer in production.
 
 ### 2. Search, Discovery & Marketplace Grid
 - Livewire instant search filter with `300ms` debounce.
@@ -151,7 +152,7 @@ php artisan migrate:fresh --seed
 ```
 
 ### 7. Link Public Storage & Build Assets
-Create the storage symlink for uploaded product images and compile the frontend:
+Create the storage symlink for uploaded product images (without it listing photos show as missing; `composer setup` does this for you) and compile the frontend:
 
 ```bash
 php artisan storage:link
@@ -186,7 +187,15 @@ Run the automated test suite with Pest:
 php artisan test
 ```
 
-The tests use an in-memory SQLite database, so PHP needs the `pdo_sqlite` extension enabled. On Windows, uncomment `extension=pdo_sqlite` and `extension=sqlite3` in `php.ini` (and `extension=gd` for the image-upload tests).
+The tests use an in-memory SQLite database, so PHP needs `pdo_sqlite` and `sqlite3` enabled. On Windows, uncomment `extension=pdo_sqlite` and `extension=sqlite3` in `php.ini`. The tests do not need the GD extension; leave `extension=gd` disabled, because on some Windows PHP builds it stops `php artisan serve` from booting.
+
+### AI dispute analysis
+
+Disputes are analysed by the Python NLP microservice configured with `AI_MODERATION_URL` (default `http://127.0.0.1:8000`, endpoint `POST /api/analyze-dispute`). The analysis (sentiment -1 to 1, confidence 0 to 1, suggested resolution, summary) is advisory: if the service is off, slow (`AI_MODERATION_TIMEOUT`) or returns invalid data, the dispute is still recorded and left for a human moderator. Set `AI_MODERATION_ENABLED=false` to turn it off.
+
+### API
+
+The `/api` routes serve the site's own pages and authenticate with the signed-in browser session (send the `X-CSRF-TOKEN` header from the page's `csrf-token` meta tag). Callers without a session receive a JSON `401`. There are no API tokens.
 
 ---
 

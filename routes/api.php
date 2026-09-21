@@ -22,7 +22,10 @@ Route::post('/reputation/verify', [DataPortabilityController::class, 'verify'])-
 Route::post('/v1/reputation/verify', [DataPortabilityController::class, 'verify'])->name('api.v1.reputation.verify');
 
 // Authenticated Endpoints
-Route::middleware(['auth'])->group(function () {
+// UniMarket is a web application: these endpoints are called by its own pages, so they authenticate with the
+// browser session (the "web" group supplies session, cookies and CSRF - send the X-CSRF-TOKEN header from the
+// page's <meta name="csrf-token">). Unauthenticated callers receive a JSON 401.
+Route::middleware(['web', 'auth', 'throttle:60,1'])->group(function () {
     Route::get('/reputation/export', [DataPortabilityController::class, 'export'])->name('api.reputation.export');
 
     Route::prefix('v1')->group(function () {

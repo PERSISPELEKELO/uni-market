@@ -7,20 +7,23 @@ namespace App\Http\Controllers;
 use App\Models\Dispute;
 use App\Models\Transaction;
 use App\Services\AuditLoggerService;
+use App\Services\DisputeAnalysisService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class DisputeController extends Controller
 {
+    public function __construct(
+        protected DisputeAnalysisService $disputeAnalysis
+    ) {}
+
     public function store(Request $request, Transaction $transaction)
     {
         Gate::authorize('dispute', $transaction);
 
         $validated = $request->validate([
-            'reason' => 'required|string|min:10',
+            'reason' => 'required|string|min:10|max:2000',
         ]);
 
         $status = strtoupper($transaction->status);
@@ -35,36 +38,11 @@ class DisputeController extends Controller
             return back()->with('error', 'Dispute window not active or expired.');
         }
 
+        // The AI analysis is advisory: if the microservice is unavailable the dispute is still recorded.
+        $aiAnalysis = $this->disputeAnalysis->analyze($transaction, $validated['reason']);
+
         $transaction->update(['status' => 'DISPUTED']);
 
-        // 1. Call Python NLP microservice for sentiment & dispute evaluation
-        $aiAnalysis = [
-            'ai_sentiment_score' => null,
-            'ai_confidence_score' => null,
-            'ai_suggested_resolution' => null,
-            'ai_analysis_summary' => null,
-        ];
-
-        try {
-            $response = Http::timeout(3)->post('http://127.0.0.1:8000/api/analyze-dispute', [
-                'transaction_id' => $transaction->id,
-                'dispute_reason' => $validated['reason'],
-            ]);
-
-            if ($response->successful()) {
-                $aiData = $response->json();
-                $aiAnalysis = [
-                    'ai_sentiment_score' => $aiData['sentiment_score'] ?? null,
-                    'ai_confidence_score' => $aiData['confidence_score'] ?? null,
-                    'ai_suggested_resolution' => $aiData['suggested_resolution'] ?? null,
-                    'ai_analysis_summary' => $aiData['summary'] ?? null,
-                ];
-            }
-        } catch (\Exception $e) {
-            Log::warning('AI Service offline: '.$e->getMessage());
-        }
-
-        // 2. Save dispute with AI analysis
         $dispute = Dispute::create(array_merge([
             'transaction_id' => $transaction->id,
             'raised_by' => Auth::id(),
@@ -72,7 +50,6 @@ class DisputeController extends Controller
             'status' => 'open',
         ], $aiAnalysis));
 
-        // 3. Record Audit Log
         app(AuditLoggerService::class)->recordAction(
             Auth::user(),
             'DISPUTE_RAISED',
@@ -81,6 +58,8 @@ class DisputeController extends Controller
             $dispute->toArray()
         );
 
-        return back()->with('success', 'Dispute raised. AI moderation has processed the initial claims.');
+        return back()->with('success', $dispute->ai_sentiment_score !== null
+            ? 'Dispute raised. AI analysis is attached and a moderator will review it.'
+            : 'Dispute raised. A moderator will review it.');
     }
 }

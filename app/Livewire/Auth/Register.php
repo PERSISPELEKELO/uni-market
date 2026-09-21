@@ -4,6 +4,7 @@ namespace App\Livewire\Auth;
 
 use App\Models\User;
 use App\Services\AuditLoggerService;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -67,6 +68,8 @@ class Register extends Component
 
     public function register()
     {
+        $this->resetErrorBag();
+
         $this->name = trim($this->name);
         $this->email = Str::lower(trim($this->email));
         $this->student_id = trim($this->student_id);
@@ -94,7 +97,7 @@ class Register extends Component
                 'phone_number' => $this->phone_number,
                 'password' => $this->password,
                 'role' => 'student',
-                'is_verified' => true,
+                'is_verified' => false,
             ]);
         } catch (UniqueConstraintViolationException) {
             $this->addError('email', 'An account with these details already exists. Try logging in instead.');
@@ -113,11 +116,24 @@ class Register extends Component
             $user
         );
 
+        // Sends the verification email; the "Official Student" badge is granted once the link is opened.
+        // A mail-server problem must never block sign-up: the member can resend the email from the banner.
+        $emailSent = true;
+
+        try {
+            event(new Registered($user));
+        } catch (\Throwable $exception) {
+            report($exception);
+            $emailSent = false;
+        }
+
         Auth::login($user);
         session()->regenerate();
 
         return redirect()->route('listings.index')
-            ->with('success', 'Account created successfully! Welcome to UniMarket.');
+            ->with('success', $emailSent
+                ? 'Account created! We emailed you a link - confirm your address to earn the Official Student badge.'
+                : 'Account created! We could not send your verification email just now - use "Verify now" below to try again.');
     }
 
     public function render()
