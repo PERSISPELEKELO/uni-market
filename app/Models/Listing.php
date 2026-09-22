@@ -65,6 +65,21 @@ class Listing extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
+    public function activeReservations(): HasMany
+    {
+        return $this->reservations()->active()->with('buyer')->latest();
+    }
+
+    public function hasActiveReservationFrom(?User $user): bool
+    {
+        return $user !== null && $this->reservations()->active()->where('buyer_id', $user->id)->exists();
+    }
+
     /**
      * Listings that are currently open for purchase.
      */

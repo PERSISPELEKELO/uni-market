@@ -31,12 +31,17 @@ class HandoverOtpTest extends TestCase
             'status' => 'active',
         ]);
 
-        // Initiate purchase via controller endpoint
-        $initResponse = $this->actingAs($buyer)->post("/listings/{$listing->id}/buy");
-        $initResponse->assertRedirect();
+        // Set up a transaction the way selecting a buyer does, then generate its handover code.
+        $transaction = Transaction::create([
+            'listing_id' => $listing->id,
+            'buyer_id' => $buyer->id,
+            'seller_id' => $seller->id,
+            'amount' => $listing->price,
+            'status' => 'PENDING_MEETING',
+        ]);
+        $listing->update(['status' => 'pending']);
 
-        $transaction = Transaction::latest('id')->first();
-        $initialOtp = $transaction->handover_otp_plain;
+        $initialOtp = app(HandoverVerificationService::class)->generateHandoverCode($transaction);
 
         $this->assertNotNull($initialOtp);
         $this->assertEquals(6, strlen($initialOtp));

@@ -63,6 +63,7 @@ class ListingIndex extends Component
 
         $listings = Listing::query()
             ->with(['seller:id,name,is_verified', 'category:id,name'])
+            ->withCount(['reservations as active_reservations_count' => fn ($query) => $query->active()])
             ->active()
             ->search($this->search)
             ->when($this->selectedCategory, fn ($query, $categoryId) => $query->where('category_id', $categoryId))

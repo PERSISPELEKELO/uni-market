@@ -4,6 +4,7 @@ use App\Livewire\Marketplace\ListingIndex;
 use App\Livewire\Marketplace\ListingShow;
 use App\Models\Category;
 use App\Models\Listing;
+use App\Models\Reservation;
 use App\Models\Transaction;
 use App\Models\User;
 use Livewire\Livewire;
@@ -11,6 +12,25 @@ use Livewire\Livewire;
 beforeEach(fn () => $this->withoutVite());
 
 describe('browsing', function () {
+    it('shows the reservation count on a listing card, and hides it when there are none', function () {
+        $withReservations = Listing::factory()->create(['title' => 'Popular textbook']);
+        Reservation::factory()->for($withReservations)->count(2)->create();
+        $withoutReservations = Listing::factory()->create(['title' => 'Quiet listing']);
+
+        $this->get(route('listings.index'))
+            ->assertSee('Popular textbook')
+            ->assertSee('2 reservations')
+            ->assertSee('Quiet listing');
+
+        // The "Quiet listing" card renders with no reservation count text at all.
+        Livewire::test(ListingIndex::class)
+            ->assertViewHas('listings', function ($listings) use ($withoutReservations) {
+                $card = $listings->firstWhere('id', $withoutReservations->id);
+
+                return ($card->active_reservations_count ?? 0) === 0;
+            });
+    });
+
     it('lists only active listings with their key details', function () {
         $category = Category::factory()->create(['name' => 'Textbooks']);
         Listing::factory()->create(['title' => 'Chemistry notes bundle', 'price' => 120, 'condition' => 'like_new', 'category_id' => $category->id]);
@@ -158,55 +178,126 @@ describe('reserving an item', function () {
         $listing = Listing::factory()->create();
 
         Livewire::test(ListingShow::class, ['listing' => $listing])
-            ->call('initiatePurchase')
+            ->call('reserve')
             ->assertRedirect(route('login'));
+
+        expect(Reservation::count())->toBe(0);
+    });
+
+    it('reserves an available item for a buyer without starting a transaction or hiding the listing', function () {
+        $listing = Listing::factory()->create(['price' => 300]);
+        $buyer = User::factory()->create();
+
+        Livewire::actingAs($buyer)->test(ListingShow::class, ['listing' => $listing])
+            ->call('reserve')
+            ->assertDispatched('notify', type: 'success');
+
+        $reservation = Reservation::firstOrFail();
+
+        expect($reservation->buyer_id)->toBe($buyer->id)
+            ->and($reservation->listing_id)->toBe($listing->id)
+            ->and($reservation->status)->toBe(Reservation::STATUS_ACTIVE)
+            ->and($listing->fresh()->status)->toBe('active')
+            ->and(Transaction::count())->toBe(0);
+    });
+
+    it('reserving twice is a harmless no-op, not a duplicate reservation', function () {
+        $listing = Listing::factory()->create();
+        $buyer = User::factory()->create();
+
+        $component = Livewire::actingAs($buyer)->test(ListingShow::class, ['listing' => $listing]);
+        $component->call('reserve');
+        $component->call('reserve');
+
+        expect(Reservation::count())->toBe(1);
+    });
+
+    it('shows the reservation count to any visitor and the "already reserved" state to the buyer', function () {
+        $listing = Listing::factory()->create();
+        User::factory()->create()->reservations()->create(['listing_id' => $listing->id, 'status' => Reservation::STATUS_ACTIVE]);
+        $buyer = User::factory()->create();
+
+        $this->get(route('listings.show', $listing))->assertSee('1 reservation');
+
+        Livewire::actingAs($buyer)->test(ListingShow::class, ['listing' => $listing])
+            ->call('reserve')
+            ->assertSee('2 reservations')
+            ->assertSee('reserved this item');
+    });
+
+    it('does not let a seller reserve their own item', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id]);
+
+        Livewire::actingAs($seller)->test(ListingShow::class, ['listing' => $listing])
+            ->call('reserve')
+            ->assertDispatched('notify', type: 'error');
+
+        expect(Reservation::count())->toBe(0);
+    });
+
+    it('does not let anyone reserve an item that is no longer active', function () {
+        $listing = Listing::factory()->pending()->create();
+        $buyer = User::factory()->create();
+
+        Livewire::actingAs($buyer)->test(ListingShow::class, ['listing' => $listing])
+            ->call('reserve')
+            ->assertDispatched('notify', type: 'error');
+
+        expect(Reservation::count())->toBe(0);
+    });
+});
+
+describe('selecting a buyer', function () {
+    it('lets the seller choose one reservation, starting the transaction and cancelling the rest', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id, 'price' => 500]);
+        $chosen = Reservation::factory()->for($listing)->create();
+        $other = Reservation::factory()->for($listing)->create();
+
+        Livewire::actingAs($seller)->test(ListingShow::class, ['listing' => $listing])
+            ->call('selectBuyer', $chosen->id)
+            ->assertRedirect(route('transactions.tracker', ['transaction' => Transaction::first()->id]));
+
+        $transaction = Transaction::firstOrFail();
+        expect($transaction->buyer_id)->toBe($chosen->buyer_id)
+            ->and((float) $transaction->amount)->toBe(500.0)
+            ->and($listing->fresh()->status)->toBe('pending')
+            ->and($chosen->fresh()->status)->toBe(Reservation::STATUS_SELECTED)
+            ->and($other->fresh()->status)->toBe(Reservation::STATUS_CANCELLED);
+    });
+
+    it('does not let a random user select a buyer for someone else\'s listing', function () {
+        $listing = Listing::factory()->create();
+        $reservation = Reservation::factory()->for($listing)->create();
+
+        Livewire::actingAs(User::factory()->create())->test(ListingShow::class, ['listing' => $listing])
+            ->call('selectBuyer', $reservation->id)
+            ->assertForbidden();
+
+        expect($listing->fresh()->status)->toBe('active')->and(Transaction::count())->toBe(0);
+    });
+
+    it('does not let the buyer select themselves via a crafted request', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id]);
+        $reservation = Reservation::factory()->for($listing)->create();
+
+        Livewire::actingAs($reservation->buyer)->test(ListingShow::class, ['listing' => $listing])
+            ->call('selectBuyer', $reservation->id)
+            ->assertForbidden();
 
         expect(Transaction::count())->toBe(0);
     });
 
-    it('reserves an available item for a buyer', function () {
-        $listing = Listing::factory()->create(['price' => 300]);
-        $buyer = User::factory()->create();
-
-        Livewire::actingAs($buyer)->test(ListingShow::class, ['listing' => $listing])->call('initiatePurchase');
-
-        $transaction = Transaction::firstOrFail();
-
-        expect($transaction->buyer_id)->toBe($buyer->id)
-            ->and($transaction->seller_id)->toBe($listing->user_id)
-            ->and((float) $transaction->amount)->toBe(300.0)
-            ->and($listing->fresh()->status)->toBe('pending');
-    });
-
-    it('does not let a seller buy their own item', function () {
+    it('refuses to act on a reservation that does not belong to this listing', function () {
         $seller = User::factory()->create();
         $listing = Listing::factory()->create(['user_id' => $seller->id]);
+        $foreignReservation = Reservation::factory()->create();
 
-        Livewire::actingAs($seller)->test(ListingShow::class, ['listing' => $listing])->call('initiatePurchase');
-
-        expect(Transaction::count())->toBe(0)->and($listing->fresh()->status)->toBe('active');
-    });
-
-    it('does not double-book an item that is already reserved', function () {
-        $listing = Listing::factory()->create();
-        $firstBuyer = User::factory()->create();
-        $secondBuyer = User::factory()->create();
-
-        $secondBuyerView = Livewire::actingAs($secondBuyer)->test(ListingShow::class, ['listing' => $listing]);
-
-        Livewire::actingAs($firstBuyer)->test(ListingShow::class, ['listing' => $listing])->call('initiatePurchase');
-        $secondBuyerView->call('initiatePurchase');
-
-        expect(Transaction::count())->toBe(1);
-    });
-
-    it('rejects the buy endpoint for items that are no longer available', function () {
-        $listing = Listing::factory()->pending()->create();
-        $buyer = User::factory()->create();
-
-        $this->actingAs($buyer)->post(route('transactions.initiate', $listing))
-            ->assertRedirect()
-            ->assertSessionHas('error', 'Sorry, this item is no longer available.');
+        Livewire::actingAs($seller)->test(ListingShow::class, ['listing' => $listing])
+            ->call('selectBuyer', $foreignReservation->id)
+            ->assertDispatched('notify', type: 'error');
 
         expect(Transaction::count())->toBe(0);
     });

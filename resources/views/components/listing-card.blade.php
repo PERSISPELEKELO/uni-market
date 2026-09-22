@@ -17,6 +17,13 @@
         </h3>
 
         <p class="mt-3 text-lg font-bold text-accent-700">K{{ number_format($listing->price, 2) }}</p>
+
+        @if (($listing->active_reservations_count ?? 0) > 0)
+            <p class="mt-1.5 flex items-center gap-1 text-xs font-medium text-info-700">
+                <x-app-icon name="user" class="h-3.5 w-3.5" />
+                {{ $listing->active_reservations_count }} {{ \Illuminate\Support\Str::plural('reservation', $listing->active_reservations_count) }}
+            </p>
+        @endif
     </div>
 
     <div class="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs sm:px-5">

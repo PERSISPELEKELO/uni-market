@@ -51,6 +51,12 @@
                 <div class="flex flex-wrap items-baseline gap-3">
                     <span class="text-3xl font-bold text-accent-700">K{{ number_format($listing->price, 2) }}</span>
                     <span class="badge badge-neutral">Condition: {{ $listing->condition_label }}</span>
+                    @if ($reservationCount > 0)
+                        <span class="badge badge-info">
+                            <x-app-icon name="user" class="h-3.5 w-3.5" />
+                            {{ $reservationCount }} {{ \Illuminate\Support\Str::plural('reservation', $reservationCount) }}
+                        </span>
+                    @endif
                 </div>
 
                 <div class="border-t border-slate-100 pt-4">
@@ -86,25 +92,67 @@
                             @endcan
                             <a href="{{ route('listings.mine') }}" class="btn btn-secondary flex-1">My listings</a>
                         </div>
-                    @else
-                        @if ($listing->status === 'active')
-                            <button type="button" wire:click="initiatePurchase" wire:loading.attr="disabled" wire:target="initiatePurchase" class="btn btn-primary btn-block">
-                                <x-app-icon name="bag" class="h-5 w-5" />
-                                <span wire:loading.remove wire:target="initiatePurchase">{{ auth()->check() ? 'Reserve this item' : 'Log in to reserve this item' }}</span>
-                                <span wire:loading wire:target="initiatePurchase">Reserving...</span>
-                            </button>
+                    @elseif ($listing->status === 'active')
+                        @if ($hasReserved)
+                            <x-alert type="success">You've reserved this item. The seller will reach out if they choose you.</x-alert>
                         @else
-                            <button type="button" disabled class="btn btn-secondary btn-block">
-                                {{ $listing->status === 'sold' ? 'This item has been sold' : 'This item is not available right now' }}
+                            <button type="button" wire:click="reserve" wire:loading.attr="disabled" wire:target="reserve" class="btn btn-primary btn-block">
+                                <x-app-icon name="bag" class="h-5 w-5" />
+                                <span wire:loading.remove wire:target="reserve">{{ auth()->check() ? 'Reserve this item' : 'Log in to reserve this item' }}</span>
+                                <span wire:loading wire:target="reserve">Reserving...</span>
                             </button>
                         @endif
 
                         <button type="button" wire:click="contactSeller" class="btn btn-secondary btn-block">
                             <x-app-icon name="chat" class="h-5 w-5" /> {{ auth()->check() ? 'Message seller' : 'Log in to message seller' }}
                         </button>
+                    @else
+                        <button type="button" disabled class="btn btn-secondary btn-block">
+                            {{ $listing->status === 'sold' ? 'This item has been sold' : 'This item is not available right now' }}
+                        </button>
                     @endif
                 </div>
             </div>
+
+            @if ($isOwner && $activeReservations->isNotEmpty())
+                <div class="card space-y-4 p-5 sm:p-6" aria-labelledby="reservations-heading">
+                    <div class="flex items-center justify-between">
+                        <h2 id="reservations-heading" class="text-sm font-semibold text-slate-800">
+                            Interested buyers ({{ $activeReservations->count() }})
+                        </h2>
+                    </div>
+                    <p class="text-xs text-slate-600">Choose who to sell to. Everyone else's reservation will be cancelled automatically.</p>
+
+                    <ul class="divide-y divide-slate-100">
+                        @foreach ($activeReservations as $reservation)
+                            <li wire:key="reservation-{{ $reservation->id }}" class="flex items-center justify-between gap-3 py-3">
+                                <div class="flex min-w-0 items-center gap-2.5">
+                                    <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-semibold text-white" aria-hidden="true">
+                                        {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($reservation->buyer->name, 0, 1)) }}
+                                    </span>
+                                    <div class="min-w-0">
+                                        <p class="truncate text-sm font-medium text-ink">
+                                            {{ $reservation->buyer->name }}
+                                            @if ($reservation->buyer->is_verified)
+                                                <x-app-icon name="check-circle" class="inline h-3.5 w-3.5 text-accent-700" />
+                                            @endif
+                                        </p>
+                                        <p class="text-xs text-slate-600">Reserved {{ $reservation->created_at->diffForHumans() }}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    wire:click="selectBuyer({{ $reservation->id }})"
+                                    wire:confirm="Sell this item to {{ $reservation->buyer->name }}? Every other reservation will be cancelled."
+                                    class="btn btn-primary btn-sm flex-shrink-0"
+                                >
+                                    Select
+                                </button>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
             <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 p-4 text-sm">
                 <x-app-icon name="shield" class="mt-0.5 h-5 w-5 flex-shrink-0 text-accent-700" />

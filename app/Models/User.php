@@ -50,6 +50,11 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         return $this->hasMany(Transaction::class, 'buyer_id');
     }
 
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class, 'buyer_id');
+    }
+
     public function sales(): HasMany
     {
         return $this->hasMany(Transaction::class, 'seller_id');

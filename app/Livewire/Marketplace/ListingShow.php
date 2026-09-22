@@ -3,11 +3,11 @@
 namespace App\Livewire\Marketplace;
 
 use App\Models\Listing;
-use App\Models\Transaction;
-use App\Services\AuditLoggerService;
+use App\Models\Reservation;
+use App\Services\ReservationService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use InvalidArgumentException;
 use Livewire\Component;
 
 class ListingShow extends Component
@@ -28,61 +28,49 @@ class ListingShow extends Component
         $this->activeImageIndex = max(0, min($index, count($this->listing->image_urls) - 1));
     }
 
-    public function initiatePurchase()
+    public function reserve(ReservationService $reservations)
     {
         if (! Auth::check()) {
             return redirect()->guest(route('login'))
                 ->with('status', 'Please log in to reserve this item.');
         }
 
-        if ($this->listing->isOwnedBy(Auth::user())) {
-            $this->dispatch('notify', type: 'error', message: 'You cannot purchase your own listing.');
+        try {
+            $reservations->reserve($this->listing, Auth::user());
+        } catch (InvalidArgumentException $exception) {
+            $this->dispatch('notify', type: 'error', message: $exception->getMessage());
 
             return null;
         }
 
-        $transaction = DB::transaction(function (): ?Transaction {
-            $listing = Listing::whereKey($this->listing->id)->lockForUpdate()->first();
+        $this->listing->refresh();
+        $this->dispatch('notify', type: 'success', message: "You're on the interest list! The seller will reach out if they choose you.");
 
-            if (! $listing || $listing->status !== Listing::STATUS_ACTIVE) {
-                return null;
-            }
+        return null;
+    }
 
-            $transaction = Transaction::create([
-                'listing_id' => $listing->id,
-                'buyer_id' => Auth::id(),
-                'seller_id' => $listing->user_id,
-                'amount' => $listing->price,
-                'status' => 'initiated',
-            ]);
+    /**
+     * Seller action: choose one of the people who reserved this listing to sell to.
+     */
+    public function selectBuyer(int $reservationId, ReservationService $reservations)
+    {
+        if (! $this->listing->isOwnedBy(Auth::user())) {
+            abort(403);
+        }
 
-            $listing->update(['status' => Listing::STATUS_PENDING]);
+        $reservation = Reservation::findOrFail($reservationId);
 
-            return $transaction;
-        });
-
-        if (! $transaction) {
+        try {
+            $transaction = $reservations->selectBuyer($reservation, Auth::user());
+        } catch (InvalidArgumentException $exception) {
             $this->listing->refresh();
-            $this->dispatch('notify', type: 'error', message: 'Sorry, this item is no longer available.');
+            $this->dispatch('notify', type: 'error', message: $exception->getMessage());
 
             return null;
         }
-
-        app(AuditLoggerService::class)->recordAction(
-            Auth::user(),
-            'TRANSACTION_INITIATED',
-            'Transaction',
-            (string) $transaction->id,
-            [
-                'listing_id' => $transaction->listing_id,
-                'amount' => $transaction->amount,
-                'buyer_id' => $transaction->buyer_id,
-                'seller_id' => $transaction->seller_id,
-            ]
-        );
 
         return redirect()->route('transactions.tracker', ['transaction' => $transaction->id])
-            ->with('success', 'Item reserved! Arrange a meet-up with the seller and share your handover code once you have the item.');
+            ->with('success', 'Buyer selected! Arrange a meet-up and confirm the handover code once you receive it.');
     }
 
     public function contactSeller()
@@ -104,7 +92,14 @@ class ListingShow extends Component
 
     public function render()
     {
-        return view('livewire.marketplace.listing-show')
-            ->layout('layouts.app', ['title' => $this->listing->title.' - UniMarket']);
+        $activeReservations = $this->listing->isOwnedBy(Auth::user())
+            ? $this->listing->activeReservations()->get()
+            : collect();
+
+        return view('livewire.marketplace.listing-show', [
+            'reservationCount' => $this->listing->reservations()->active()->count(),
+            'hasReserved' => $this->listing->hasActiveReservationFrom(Auth::user()),
+            'activeReservations' => $activeReservations,
+        ])->layout('layouts.app', ['title' => $this->listing->title.' - UniMarket']);
     }
 }
