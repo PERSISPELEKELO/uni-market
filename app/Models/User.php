@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -13,7 +15,7 @@ use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -80,7 +82,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function verificationDocuments(): HasMany
     {
-        return $this->hasMany(StudentVerificationDocument::class)->latest();
+        return $this->hasMany(StudentVerificationDocument::class)->latest('id');
     }
 
     /**
@@ -158,6 +160,15 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    /**
+     * Only admin and governance-committee accounts may sign in to the admin panel.
+     * Without this, Filament allows any authenticated user in by default.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->isAdmin() || $this->isGovernanceCommittee();
     }
 
     /**

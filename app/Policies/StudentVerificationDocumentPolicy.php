@@ -8,6 +8,14 @@ use App\Models\User;
 class StudentVerificationDocumentPolicy
 {
     /**
+     * Only staff may browse the verification queue in the admin panel.
+     */
+    public function viewAny(User $user): bool
+    {
+        return $user->isAdmin() || $user->isGovernanceCommittee();
+    }
+
+    /**
      * Only the student who submitted the document, or staff who review
      * verification requests, may ever see it.
      */

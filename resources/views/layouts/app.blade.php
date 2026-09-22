@@ -49,10 +49,12 @@
 
                 <div class="flex items-center gap-2">
                     @auth
-                        <a href="{{ route('listings.create') }}" class="btn btn-primary btn-sm sm:min-h-11 sm:px-4 sm:text-sm">
+                        <a href="{{ route('listings.create') }}" class="btn btn-primary btn-sm min-w-11 px-2 sm:min-h-11 sm:px-4 sm:text-sm">
                             <x-app-icon name="plus" class="h-4 w-4" />
-                            <span>Sell item</span>
+                            <span class="sr-only sm:not-sr-only">Sell item</span>
                         </a>
+
+                        @livewire('notifications.bell')
 
                         <div class="relative hidden md:block" x-data="{ menuOpen: false }" x-on:click.outside="menuOpen = false" x-on:keydown.escape="menuOpen = false">
                             <button type="button" class="btn btn-secondary btn-sm sm:min-h-11" x-on:click="menuOpen = !menuOpen" x-bind:aria-expanded="menuOpen" aria-haspopup="true">
