@@ -28,6 +28,7 @@
 
     <div class="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs sm:px-5">
         <div class="flex min-w-0 items-center gap-1.5">
+            <x-avatar :user="$listing->seller" class="h-5 w-5 flex-shrink-0 text-[10px]" />
             <span class="truncate font-medium text-slate-800">{{ $listing->seller->name }}</span>
             @if ($listing->seller->is_verified)
                 <span class="badge badge-success flex-shrink-0 px-1.5 py-0 text-[11px]">

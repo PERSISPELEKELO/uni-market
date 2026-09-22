@@ -249,6 +249,15 @@ describe('reserving an item', function () {
 });
 
 describe('selecting a buyer', function () {
+    it('lets the seller message a reservation\'s buyer directly from the listing page', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id]);
+        $reservation = Reservation::factory()->for($listing)->create();
+
+        $this->actingAs($seller)->get(route('listings.show', $listing))
+            ->assertSee(route('chat.thread', ['receiver' => $reservation->buyer_id, 'listing' => $listing->id]), false);
+    });
+
     it('lets the seller choose one reservation, starting the transaction and cancelling the rest', function () {
         $seller = User::factory()->create();
         $listing = Listing::factory()->create(['user_id' => $seller->id, 'price' => 500]);

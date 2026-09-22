@@ -16,11 +16,15 @@ class MessageThread extends Component
 
     private const THREAD_MESSAGE_LIMIT = 200;
 
+    private const SEARCH_RESULTS_LIMIT = 8;
+
     public ?int $activeUserId = null;
 
     public ?int $activeListingId = null;
 
     public string $newMessage = '';
+
+    public string $userSearch = '';
 
     public function mount(?int $receiver = null, ?int $listing = null)
     {
@@ -64,7 +68,29 @@ class MessageThread extends Component
         $this->activeUserId = $userId;
         $this->activeListingId = $listingId && Listing::whereKey($listingId)->exists() ? $listingId : null;
         $this->newMessage = '';
+        $this->userSearch = '';
         $this->resetValidation();
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    private function searchResults(int $currentUserId): Collection
+    {
+        $term = trim($this->userSearch);
+
+        if ($term === '') {
+            return collect();
+        }
+
+        $escaped = addcslashes($term, '\\%_');
+
+        return User::query()
+            ->where('id', '!=', $currentUserId)
+            ->where('name', 'like', "%{$escaped}%")
+            ->orderBy('name')
+            ->limit(self::SEARCH_RESULTS_LIMIT)
+            ->get(['id', 'name', 'is_verified', 'avatar_path']);
     }
 
     public function markAsRead(): void
@@ -146,6 +172,7 @@ class MessageThread extends Component
             'activeMessages' => $activeMessages,
             'activeUser' => $activeUser,
             'activeListing' => $activeListing,
+            'searchResults' => $this->searchResults($currentUserId),
         ])->layout('layouts.app', ['title' => 'Messages - UniMarket']);
     }
 
@@ -170,7 +197,7 @@ class MessageThread extends Component
             ->pluck('total', 'sender_id');
 
         return Message::query()
-            ->with(['sender:id,name,is_verified', 'receiver:id,name,is_verified'])
+            ->with(['sender:id,name,is_verified,avatar_path', 'receiver:id,name,is_verified,avatar_path'])
             ->whereIn('id', $latestMessageIds)
             ->orderByDesc('id')
             ->get()

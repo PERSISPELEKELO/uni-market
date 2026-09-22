@@ -68,10 +68,8 @@
             <div class="card space-y-4 p-5 sm:p-6">
                 <h2 class="text-sm font-semibold text-slate-800">Seller</h2>
 
-                <div class="flex items-center gap-3">
-                    <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-brand-700 text-base font-semibold text-white" aria-hidden="true">
-                        {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($listing->seller->name, 0, 1)) }}
-                    </div>
+                <a href="{{ route('profiles.show', $listing->seller) }}" class="flex items-center gap-3 rounded-lg hover:bg-slate-50">
+                    <x-avatar :user="$listing->seller" class="h-11 w-11 flex-shrink-0 text-base" />
                     <div class="min-w-0">
                         <p class="truncate text-sm font-semibold text-ink">{{ $listing->seller->name }}</p>
                         <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600">
@@ -81,7 +79,7 @@
                             <span>Member since {{ $listing->seller->created_at->format('M Y') }}</span>
                         </div>
                     </div>
-                </div>
+                </a>
 
                 <div class="space-y-3 border-t border-slate-100 pt-4">
                     @if ($isOwner)
@@ -125,11 +123,9 @@
 
                     <ul class="divide-y divide-slate-100">
                         @foreach ($activeReservations as $reservation)
-                            <li wire:key="reservation-{{ $reservation->id }}" class="flex items-center justify-between gap-3 py-3">
-                                <div class="flex min-w-0 items-center gap-2.5">
-                                    <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-semibold text-white" aria-hidden="true">
-                                        {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($reservation->buyer->name, 0, 1)) }}
-                                    </span>
+                            <li wire:key="reservation-{{ $reservation->id }}" class="flex flex-wrap items-center justify-between gap-3 py-3">
+                                <a href="{{ route('profiles.show', $reservation->buyer) }}" class="flex min-w-0 items-center gap-2.5 hover:opacity-80">
+                                    <x-avatar :user="$reservation->buyer" class="h-9 w-9 flex-shrink-0 text-xs" />
                                     <div class="min-w-0">
                                         <p class="truncate text-sm font-medium text-ink">
                                             {{ $reservation->buyer->name }}
@@ -139,15 +135,20 @@
                                         </p>
                                         <p class="text-xs text-slate-600">Reserved {{ $reservation->created_at->diffForHumans() }}</p>
                                     </div>
+                                </a>
+                                <div class="flex flex-shrink-0 items-center gap-2">
+                                    <a href="{{ route('chat.thread', ['receiver' => $reservation->buyer_id, 'listing' => $listing->id]) }}" class="btn btn-secondary btn-sm">
+                                        <x-app-icon name="chat" class="h-4 w-4" /> <span class="sr-only sm:not-sr-only">Message</span>
+                                    </a>
+                                    <button
+                                        type="button"
+                                        wire:click="selectBuyer({{ $reservation->id }})"
+                                        wire:confirm="Sell this item to {{ $reservation->buyer->name }}? Every other reservation will be cancelled."
+                                        class="btn btn-primary btn-sm"
+                                    >
+                                        Select
+                                    </button>
                                 </div>
-                                <button
-                                    type="button"
-                                    wire:click="selectBuyer({{ $reservation->id }})"
-                                    wire:confirm="Sell this item to {{ $reservation->buyer->name }}? Every other reservation will be cancelled."
-                                    class="btn btn-primary btn-sm flex-shrink-0"
-                                >
-                                    Select
-                                </button>
                             </li>
                         @endforeach
                     </ul>

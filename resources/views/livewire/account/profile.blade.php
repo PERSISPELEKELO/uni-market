@@ -1,8 +1,46 @@
 <div class="mx-auto max-w-3xl space-y-6">
-    <div>
-        <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">My account</h1>
-        <p class="mt-1 text-sm text-slate-600">Manage your details and keep your account secure.</p>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">My account</h1>
+            <p class="mt-1 text-sm text-slate-600">Manage your details and keep your account secure.</p>
+        </div>
+        <a href="{{ route('profiles.show', $user) }}" class="btn btn-secondary btn-sm">View my public profile</a>
     </div>
+
+    <section class="card space-y-4 p-5 sm:p-6" aria-labelledby="photo-heading">
+        <h2 id="photo-heading" class="text-base font-semibold text-ink">Profile photo</h2>
+
+        <div class="flex flex-wrap items-center gap-4">
+            <x-avatar :user="$user" class="h-16 w-16 text-xl" />
+
+            <div class="flex-1">
+                <form wire:submit="updateAvatar" novalidate class="flex flex-wrap items-center gap-3">
+                    <label for="avatar" class="btn btn-secondary btn-sm cursor-pointer">
+                        <x-app-icon name="upload" class="h-4 w-4" /> Choose photo
+                        <input id="avatar" type="file" wire:model="avatar" accept="image/jpeg,image/png,image/webp" class="sr-only" />
+                    </label>
+
+                    @if ($avatar)
+                        <button type="submit" class="btn btn-primary btn-sm" wire:loading.attr="disabled" wire:target="updateAvatar,avatar">
+                            <span wire:loading.remove wire:target="updateAvatar">Save photo</span>
+                            <span wire:loading wire:target="updateAvatar">Uploading...</span>
+                        </button>
+                    @endif
+
+                    @if ($user->avatar_url)
+                        <button type="button" wire:click="removeAvatar" wire:confirm="Remove your profile photo?" class="btn btn-danger-outline btn-sm">Remove</button>
+                    @endif
+                </form>
+
+                <div wire:loading wire:target="avatar" class="mt-2 flex items-center gap-2 text-sm font-medium text-brand-800" role="status">
+                    <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                    Uploading...
+                </div>
+                <p class="form-hint">JPG, PNG or WebP, up to 2 MB. Shown to other students in listings, messages and your profile.</p>
+                <x-form-error name="avatar" />
+            </div>
+        </div>
+    </section>
 
     <section class="card space-y-4 p-5 sm:p-6" aria-labelledby="identity-heading">
         <h2 id="identity-heading" class="text-base font-semibold text-ink">Your identity</h2>
@@ -58,6 +96,25 @@
             <label for="phone_number" class="form-label">Phone number <span class="font-normal text-slate-600">(optional)</span></label>
             <input id="phone_number" type="tel" wire:model="phone_number" autocomplete="tel" inputmode="tel" placeholder="+260971234567" class="form-input" @error('phone_number') aria-invalid="true" aria-describedby="phone_number-error" @enderror />
             <x-form-error name="phone_number" />
+        </div>
+
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+                <label for="programme" class="form-label">Programme / course <span class="font-normal text-slate-600">(optional)</span></label>
+                <input id="programme" type="text" wire:model="programme" placeholder="e.g. BSc Computer Science" class="form-input" @error('programme') aria-invalid="true" aria-describedby="programme-error" @enderror />
+                <x-form-error name="programme" />
+            </div>
+            <div>
+                <label for="business_type" class="form-label">Business type <span class="font-normal text-slate-600">(optional)</span></label>
+                <input id="business_type" type="text" wire:model="business_type" placeholder="e.g. Reseller, Baking, Tailoring" class="form-input" @error('business_type') aria-invalid="true" aria-describedby="business_type-error" @enderror />
+                <x-form-error name="business_type" />
+            </div>
+        </div>
+
+        <div>
+            <label for="bio" class="form-label">Bio <span class="font-normal text-slate-600">(optional)</span></label>
+            <textarea id="bio" wire:model="bio" rows="3" maxlength="1000" placeholder="Tell other students a bit about yourself." class="form-input" @error('bio') aria-invalid="true" aria-describedby="bio-error" @enderror></textarea>
+            <x-form-error name="bio" />
         </div>
 
         <div class="flex justify-end border-t border-slate-100 pt-5">

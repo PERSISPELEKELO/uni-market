@@ -8,10 +8,12 @@ use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
@@ -25,6 +27,10 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'email',
         'student_id',
         'phone_number',
+        'avatar_path',
+        'bio',
+        'programme',
+        'business_type',
         'password',
         'role',
         'is_verified',
@@ -150,6 +156,22 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
             self::STUDENT_VERIFICATION_RESUBMISSION_REQUIRED => 'Resubmission Required',
             default => 'Email Verified - Student Verification Pending',
         };
+    }
+
+    /**
+     * The uploaded photo's public URL, or null so views fall back to the
+     * initials avatar (see the <x-avatar> component).
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function avatarUrl(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->avatar_path ? asset('storage/'.$this->avatar_path) : null);
+    }
+
+    public function initial(): string
+    {
+        return Str::upper(Str::substr($this->name, 0, 1));
     }
 
     public function isStudent(): bool

@@ -12,43 +12,79 @@
         <div class="border-b border-slate-200 bg-white p-4">
             <h1 id="conversations-heading" class="text-lg font-bold tracking-tight text-ink">Messages</h1>
             <p class="text-xs text-slate-600">Chat with buyers and sellers on campus</p>
+
+            <div class="relative mt-3">
+                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+                    <x-app-icon name="search" class="h-4 w-4" />
+                </span>
+                <label for="userSearch" class="sr-only">Find a student to message</label>
+                <input
+                    id="userSearch"
+                    type="search"
+                    wire:model.live.debounce.300ms="userSearch"
+                    autocomplete="off"
+                    placeholder="Find a student to message..."
+                    class="form-input min-h-10 pl-9 text-sm"
+                />
+            </div>
         </div>
 
-        <ul class="flex-1 divide-y divide-slate-200 overflow-y-auto">
-            @forelse ($conversations as $partnerId => $item)
-                <li wire:key="conversation-{{ $partnerId }}">
-                    <button
-                        type="button"
-                        wire:click="selectConversation({{ $partnerId }}, {{ $item->latest_message->listing_id ?? 'null' }})"
-                        x-on:click="pane = 'thread'"
-                        aria-current="{{ $activeUserId === $partnerId ? 'true' : 'false' }}"
-                        @class(['flex min-h-16 w-full items-start gap-3 p-4 text-left transition-colors hover:bg-white', 'bg-white border-l-4 border-brand-700' => $activeUserId === $partnerId])
-                    >
-                        <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-700 text-sm font-semibold text-white" aria-hidden="true">
-                            {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($item->user->name, 0, 1)) }}
-                        </span>
+        @if (trim($userSearch) !== '')
+            <ul class="flex-1 divide-y divide-slate-200 overflow-y-auto" aria-label="Search results">
+                @forelse ($searchResults as $result)
+                    <li wire:key="search-result-{{ $result->id }}">
+                        <button
+                            type="button"
+                            wire:click="selectConversation({{ $result->id }})"
+                            x-on:click="pane = 'thread'"
+                            class="flex min-h-16 w-full items-center gap-3 p-4 text-left transition-colors hover:bg-white"
+                        >
+                            <x-avatar :user="$result" class="h-10 w-10 flex-shrink-0 text-sm" />
+                            <span class="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{{ $result->name }}</span>
+                            @if ($result->is_verified)
+                                <x-app-icon name="check-circle" class="h-4 w-4 flex-shrink-0 text-accent-700" />
+                            @endif
+                        </button>
+                    </li>
+                @empty
+                    <li class="p-8 text-center text-sm text-slate-600">No students found matching "{{ $userSearch }}".</li>
+                @endforelse
+            </ul>
+        @else
+            <ul class="flex-1 divide-y divide-slate-200 overflow-y-auto">
+                @forelse ($conversations as $partnerId => $item)
+                    <li wire:key="conversation-{{ $partnerId }}">
+                        <button
+                            type="button"
+                            wire:click="selectConversation({{ $partnerId }}, {{ $item->latest_message->listing_id ?? 'null' }})"
+                            x-on:click="pane = 'thread'"
+                            aria-current="{{ $activeUserId === $partnerId ? 'true' : 'false' }}"
+                            @class(['flex min-h-16 w-full items-start gap-3 p-4 text-left transition-colors hover:bg-white', 'bg-white border-l-4 border-brand-700' => $activeUserId === $partnerId])
+                        >
+                            <x-avatar :user="$item->user" class="h-10 w-10 flex-shrink-0 text-sm" />
 
-                        <span class="min-w-0 flex-1">
-                            <span class="flex items-center justify-between gap-2">
-                                <span class="truncate text-sm font-semibold text-ink">{{ $item->user->name }}</span>
-                                <span class="flex-shrink-0 text-xs text-slate-600">{{ $item->latest_message->created_at->diffForHumans(short: true) }}</span>
+                            <span class="min-w-0 flex-1">
+                                <span class="flex items-center justify-between gap-2">
+                                    <span class="truncate text-sm font-semibold text-ink">{{ $item->user->name }}</span>
+                                    <span class="flex-shrink-0 text-xs text-slate-600">{{ $item->latest_message->created_at->diffForHumans(short: true) }}</span>
+                                </span>
+                                <span class="mt-0.5 block truncate text-sm text-slate-600">{{ $item->latest_message->message }}</span>
                             </span>
-                            <span class="mt-0.5 block truncate text-sm text-slate-600">{{ $item->latest_message->message }}</span>
-                        </span>
 
-                        @if ($item->unread_count > 0)
-                            <span class="badge flex-shrink-0 border-accent-700 bg-accent-700 text-white">
-                                {{ $item->unread_count }}<span class="sr-only"> unread</span>
-                            </span>
-                        @endif
-                    </button>
-                </li>
-            @empty
-                <li class="p-8 text-center text-sm text-slate-600">
-                    No conversations yet. Open a listing and choose "Message seller" to start one.
-                </li>
-            @endforelse
-        </ul>
+                            @if ($item->unread_count > 0)
+                                <span class="badge flex-shrink-0 border-accent-700 bg-accent-700 text-white">
+                                    {{ $item->unread_count }}<span class="sr-only"> unread</span>
+                                </span>
+                            @endif
+                        </button>
+                    </li>
+                @empty
+                    <li class="p-8 text-center text-sm text-slate-600">
+                        No conversations yet. Search for a student above, or message a seller from any listing.
+                    </li>
+                @endforelse
+            </ul>
+        @endif
     </section>
 
     <section class="min-w-0 flex-1 flex-col bg-white md:flex" x-bind:class="pane === 'thread' ? 'flex' : 'hidden'" aria-label="Conversation">
@@ -59,15 +95,15 @@
                     <span class="sr-only">Back to conversations</span>
                 </button>
 
-                <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand-700 text-xs font-semibold text-white" aria-hidden="true">
-                    {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($activeUser->name, 0, 1)) }}
-                </span>
-                <div class="min-w-0 flex-1">
-                    <h2 class="truncate text-sm font-semibold text-ink">{{ $activeUser->name }}</h2>
-                    @if ($activeUser->is_verified)
-                        <span class="badge badge-success px-2 py-0 text-[11px]"><x-app-icon name="check-circle" class="h-3 w-3" /> Official Student</span>
-                    @endif
-                </div>
+                <a href="{{ route('profiles.show', $activeUser) }}" class="flex min-w-0 flex-1 items-center gap-3 hover:opacity-80">
+                    <x-avatar :user="$activeUser" class="h-9 w-9 flex-shrink-0 text-xs" />
+                    <div class="min-w-0">
+                        <h2 class="truncate text-sm font-semibold text-ink">{{ $activeUser->name }}</h2>
+                        @if ($activeUser->is_verified)
+                            <span class="badge badge-success px-2 py-0 text-[11px]"><x-app-icon name="check-circle" class="h-3 w-3" /> Official Student</span>
+                        @endif
+                    </div>
+                </a>
 
                 @if ($activeListing)
                     <a href="{{ route('listings.show', $activeListing) }}" class="flex w-full min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2 hover:bg-slate-100 sm:w-auto sm:max-w-xs">

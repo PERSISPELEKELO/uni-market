@@ -19,6 +19,7 @@ use App\Livewire\Marketplace\EditListing;
 use App\Livewire\Marketplace\ListingIndex;
 use App\Livewire\Marketplace\ListingShow;
 use App\Livewire\Marketplace\MyListings;
+use App\Livewire\Profiles\PublicProfile;
 use App\Livewire\Transactions\Tracker;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Route;
 // Public Marketplace Discovery
 Route::get('/', ListingIndex::class)->name('listings.index');
 Route::get('/listings/{listing}', ListingShow::class)->name('listings.show');
+Route::get('/students/{user}', PublicProfile::class)->name('profiles.show');
 
 // Auth Routes (Guest Only)
 Route::middleware(['guest'])->group(function () {

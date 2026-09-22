@@ -62,7 +62,7 @@ class ListingIndex extends Component
         $sortBy = in_array($this->sortBy, self::SORTS, true) ? $this->sortBy : 'latest';
 
         $listings = Listing::query()
-            ->with(['seller:id,name,is_verified', 'category:id,name'])
+            ->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])
             ->withCount(['reservations as active_reservations_count' => fn ($query) => $query->active()])
             ->active()
             ->search($this->search)

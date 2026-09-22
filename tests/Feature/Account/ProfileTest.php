@@ -2,10 +2,15 @@
 
 use App\Livewire\Account\Profile;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
-beforeEach(fn () => $this->withoutVite());
+beforeEach(function () {
+    $this->withoutVite();
+    Storage::fake('public');
+});
 
 it('needs a login', function () {
     $this->get(route('account'))->assertRedirect(route('login'));
@@ -69,6 +74,93 @@ describe('updating details', function () {
         Livewire::actingAs($user)->test(Profile::class)->set('phone_number', '')->call('updateProfile')->assertHasNoErrors();
 
         expect($user->fresh()->phone_number)->toBeNull();
+    });
+
+    it('saves a bio, programme and business type without an arbitrary minimum length', function () {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test(Profile::class)
+            ->set('bio', 'New!')
+            ->set('programme', 'BSc')
+            ->set('business_type', 'Reseller')
+            ->call('updateProfile')
+            ->assertHasNoErrors();
+
+        $fresh = $user->fresh();
+        expect($fresh->bio)->toBe('New!')
+            ->and($fresh->programme)->toBe('BSc')
+            ->and($fresh->business_type)->toBe('Reseller');
+    });
+
+    it('still rejects a bio that is far too long', function () {
+        Livewire::actingAs(User::factory()->create())->test(Profile::class)
+            ->set('bio', str_repeat('a', 1001))
+            ->call('updateProfile')
+            ->assertHasErrors(['bio' => 'max']);
+    });
+});
+
+describe('profile photo', function () {
+    it('uploads a photo to the public disk and shows it instead of initials', function () {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test(Profile::class)
+            ->set('avatar', fakePhoto('me.png'))
+            ->call('updateAvatar')
+            ->assertHasNoErrors();
+
+        $fresh = $user->fresh();
+        expect($fresh->avatar_path)->not->toBeNull();
+        Storage::disk('public')->assertExists($fresh->avatar_path);
+
+        $this->actingAs($fresh)->get(route('account'))->assertSee($fresh->avatar_url, false);
+    });
+
+    it('rejects the wrong file type or an oversized photo', function () {
+        $user = User::factory()->create();
+        $component = Livewire::actingAs($user)->test(Profile::class);
+
+        $component->set('avatar', UploadedFile::fake()->create('me.pdf', 100, 'application/pdf'))
+            ->call('updateAvatar')
+            ->assertHasErrors('avatar');
+
+        $component->set('avatar', fakePhoto('me.png', 3000))
+            ->call('updateAvatar')
+            ->assertHasErrors('avatar');
+
+        expect($user->fresh()->avatar_path)->toBeNull();
+    });
+
+    it('replaces the old photo file when a new one is uploaded', function () {
+        $user = User::factory()->create();
+        $component = Livewire::actingAs($user)->test(Profile::class);
+
+        $component->set('avatar', fakePhoto('first.png'))->call('updateAvatar');
+        $firstPath = $user->fresh()->avatar_path;
+
+        $component->set('avatar', fakePhoto('second.png'))->call('updateAvatar');
+        $secondPath = $user->fresh()->avatar_path;
+
+        expect($secondPath)->not->toBe($firstPath);
+        Storage::disk('public')->assertMissing($firstPath);
+        Storage::disk('public')->assertExists($secondPath);
+    });
+
+    it('lets a member remove their photo, falling back to initials', function () {
+        $user = User::factory()->create();
+        Livewire::actingAs($user)->test(Profile::class)->set('avatar', fakePhoto('me.png'))->call('updateAvatar');
+        $path = $user->fresh()->avatar_path;
+
+        Livewire::actingAs($user->fresh())->test(Profile::class)->call('removeAvatar');
+
+        expect($user->fresh()->avatar_path)->toBeNull();
+        Storage::disk('public')->assertMissing($path);
+    });
+
+    it('shows the initial as a default avatar when no photo has been uploaded', function () {
+        $user = User::factory()->create(['name' => 'Zainab Tembo']);
+
+        $this->actingAs($user)->get(route('account'))->assertSee('>Z<', false);
     });
 });
 

@@ -58,21 +58,27 @@
 
                         <div class="relative hidden md:block" x-data="{ menuOpen: false }" x-on:click.outside="menuOpen = false" x-on:keydown.escape="menuOpen = false">
                             <button type="button" class="btn btn-secondary btn-sm sm:min-h-11" x-on:click="menuOpen = !menuOpen" x-bind:aria-expanded="menuOpen" aria-haspopup="true">
-                                <x-app-icon name="user" class="h-5 w-5" />
+                                <x-avatar :user="auth()->user()" class="h-6 w-6 text-xs" />
                                 <span class="max-w-[9rem] truncate">{{ auth()->user()->name }}</span>
                                 <x-app-icon name="chevron-down" class="h-4 w-4" />
                             </button>
 
                             <div x-cloak x-show="menuOpen" x-transition.opacity class="absolute right-0 mt-2 w-64 origin-top-right rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                                <div class="border-b border-slate-100 px-3 pb-3 pt-2">
-                                    <p class="truncate text-sm font-semibold text-ink">{{ auth()->user()->name }}</p>
-                                    <p class="truncate text-xs text-slate-600">{{ auth()->user()->email }}</p>
-                                    @if (auth()->user()->is_verified)
-                                        <span class="badge badge-success mt-2"><x-app-icon name="check-circle" class="h-3.5 w-3.5" /> Official Student</span>
-                                    @endif
+                                <div class="flex items-center gap-2.5 border-b border-slate-100 px-3 pb-3 pt-2">
+                                    <x-avatar :user="auth()->user()" class="h-9 w-9 flex-shrink-0 text-sm" />
+                                    <div class="min-w-0">
+                                        <p class="truncate text-sm font-semibold text-ink">{{ auth()->user()->name }}</p>
+                                        <p class="truncate text-xs text-slate-600">{{ auth()->user()->email }}</p>
+                                        @if (auth()->user()->is_verified)
+                                            <span class="badge badge-success mt-1"><x-app-icon name="check-circle" class="h-3.5 w-3.5" /> Official Student</span>
+                                        @endif
+                                    </div>
                                 </div>
-                                <a href="{{ route('account') }}" class="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
-                                    <x-app-icon name="user" class="h-5 w-5" /> My account
+                                <a href="{{ route('profiles.show', auth()->user()) }}" class="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
+                                    <x-app-icon name="user" class="h-5 w-5" /> View public profile
+                                </a>
+                                <a href="{{ route('account') }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
+                                    <x-app-icon name="pencil" class="h-5 w-5" /> My account
                                 </a>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
@@ -109,10 +115,18 @@
                     </a>
                     <a href="{{ route('transactions.tracker') }}" class="nav-link py-3">My transactions</a>
                     <div class="mt-2 border-t border-slate-100 pt-3">
-                        <p class="truncate px-3 text-sm font-semibold text-ink">{{ auth()->user()->name }}</p>
-                        <p class="truncate px-3 text-xs text-slate-600">{{ auth()->user()->email }}</p>
-                        <a href="{{ route('account') }}" class="nav-link mt-1 flex items-center gap-2 py-3">
-                            <x-app-icon name="user" class="h-5 w-5" /> My account
+                        <div class="flex items-center gap-2.5 px-3">
+                            <x-avatar :user="auth()->user()" class="h-9 w-9 flex-shrink-0 text-sm" />
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-semibold text-ink">{{ auth()->user()->name }}</p>
+                                <p class="truncate text-xs text-slate-600">{{ auth()->user()->email }}</p>
+                            </div>
+                        </div>
+                        <a href="{{ route('profiles.show', auth()->user()) }}" class="nav-link mt-1 flex items-center gap-2 py-3">
+                            <x-app-icon name="user" class="h-5 w-5" /> View public profile
+                        </a>
+                        <a href="{{ route('account') }}" class="nav-link flex items-center gap-2 py-3">
+                            <x-app-icon name="pencil" class="h-5 w-5" /> My account
                         </a>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
