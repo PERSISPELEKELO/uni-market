@@ -33,6 +33,10 @@ class PublicProfile extends Component
     {
         return view('livewire.profiles.public-profile', [
             'activeListingsCount' => $this->user->listings()->active()->count(),
+            'averageRating' => $this->user->averageRating(),
+            'ratingsCount' => $this->user->ratingsCount(),
+            'ratingBreakdown' => $this->user->ratingBreakdown(),
+            'recentRatings' => $this->user->ratingsReceived()->with('rater:id,name,avatar_path')->latest()->limit(10)->get(),
         ])->layout('layouts.app', ['title' => $this->user->name.' - UniMarket']);
     }
 }

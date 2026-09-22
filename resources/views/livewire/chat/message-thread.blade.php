@@ -116,6 +116,18 @@
                 @endif
             </div>
 
+            @if ($ratableTransaction)
+                <div class="border-b border-slate-200 bg-brand-50/60 p-3 sm:p-4">
+                    <p class="text-sm text-ink">
+                        <span class="font-semibold">Your transaction with {{ $activeUser->name }} has been completed.</span>
+                        Would you like to rate your experience?
+                    </p>
+                    <div class="mt-2">
+                        @livewire('ratings.rate-transaction', ['transaction' => $ratableTransaction], key('chat-rate-'.$ratableTransaction->id))
+                    </div>
+                </div>
+            @endif
+
             <div
                 class="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4"
                 role="log"

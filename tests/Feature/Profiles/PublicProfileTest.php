@@ -2,6 +2,8 @@
 
 use App\Livewire\Profiles\PublicProfile;
 use App\Models\Listing;
+use App\Models\Rating;
+use App\Models\Transaction;
 use App\Models\User;
 use Livewire\Livewire;
 
@@ -59,6 +61,48 @@ it('is linked from a listing\'s seller card', function () {
     $listing = Listing::factory()->create();
 
     $this->get(route('listings.show', $listing))->assertSee(route('profiles.show', $listing->seller), false);
+});
+
+describe('rating display', function () {
+    it('shows "no ratings yet" and hides the reviews card when there are none', function () {
+        $user = User::factory()->create();
+
+        $this->get(route('profiles.show', $user))
+            ->assertSee('No ratings yet')
+            ->assertDontSee('5 star');
+    });
+
+    it('shows the average, count, breakdown and recent reviews once rated', function () {
+        $seller = User::factory()->create();
+        $reviewer = User::factory()->create(['name' => 'Happy Buyer']);
+        $transaction = Transaction::factory()->create([
+            'seller_id' => $seller->id,
+            'buyer_id' => $reviewer->id,
+            'status' => 'COMPLETED',
+        ]);
+        Rating::create([
+            'transaction_id' => $transaction->id,
+            'rater_id' => $reviewer->id,
+            'rated_id' => $seller->id,
+            'stars' => 5,
+            'comment' => 'Item exactly as described, great communication.',
+        ]);
+
+        $this->get(route('profiles.show', $seller))
+            ->assertSee('5.0')
+            ->assertSee('1 rating')
+            ->assertSee('Happy Buyer')
+            ->assertSee('Item exactly as described, great communication.');
+    });
+
+    it('never shows which listing or transaction a review came from', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id, 'title' => 'Secret Listing Title 12345']);
+        $transaction = Transaction::factory()->create(['listing_id' => $listing->id, 'seller_id' => $seller->id, 'status' => 'COMPLETED']);
+        Rating::create(['transaction_id' => $transaction->id, 'rater_id' => $transaction->buyer_id, 'rated_id' => $seller->id, 'stars' => 5]);
+
+        $this->get(route('profiles.show', $seller))->assertDontSee('Secret Listing Title 12345');
+    });
 });
 
 describe('messaging from a profile', function () {

@@ -3,7 +3,9 @@
 use App\Livewire\Chat\MessageThread;
 use App\Models\Listing;
 use App\Models\Message;
+use App\Models\Transaction;
 use App\Models\User;
+use App\Services\RatingService;
 use Livewire\Livewire;
 
 beforeEach(fn () => $this->withoutVite());
@@ -167,5 +169,35 @@ describe('finding someone to message', function () {
         Livewire::actingAs(User::factory()->create())->test(MessageThread::class)
             ->set('userSearch', '%')
             ->assertSee('No students found');
+    });
+});
+
+describe('rating prompt in the inbox', function () {
+    it('offers to rate a completed, unrated transaction with the person you are chatting to', function () {
+        $buyer = User::factory()->create();
+        $seller = User::factory()->create();
+        Transaction::factory()->create(['buyer_id' => $buyer->id, 'seller_id' => $seller->id, 'status' => 'COMPLETED']);
+
+        Livewire::actingAs($buyer)->test(MessageThread::class, ['receiver' => $seller->id])
+            ->assertSee('Your transaction with '.$seller->name.' has been completed.')
+            ->assertSee('Would you like to rate your experience?');
+    });
+
+    it('does not prompt again once that transaction has been rated', function () {
+        $buyer = User::factory()->create();
+        $seller = User::factory()->create();
+        $transaction = Transaction::factory()->create(['buyer_id' => $buyer->id, 'seller_id' => $seller->id, 'status' => 'COMPLETED']);
+        app(RatingService::class)->rate($transaction, $buyer, 5);
+
+        Livewire::actingAs($buyer)->test(MessageThread::class, ['receiver' => $seller->id])
+            ->assertDontSee('Would you like to rate your experience?');
+    });
+
+    it('does not prompt for a conversation with no completed transaction', function () {
+        $me = User::factory()->create();
+        $other = User::factory()->create();
+
+        Livewire::actingAs($me)->test(MessageThread::class, ['receiver' => $other->id])
+            ->assertDontSee('Would you like to rate your experience?');
     });
 });

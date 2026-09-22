@@ -4,7 +4,9 @@ namespace App\Livewire\Chat;
 
 use App\Models\Listing;
 use App\Models\Message;
+use App\Models\Transaction;
 use App\Models\User;
+use App\Services\RatingService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -173,7 +175,27 @@ class MessageThread extends Component
             'activeUser' => $activeUser,
             'activeListing' => $activeListing,
             'searchResults' => $this->searchResults($currentUserId),
+            'ratableTransaction' => $activeUser ? $this->ratableTransaction($currentUserId, $activeUser->id) : null,
         ])->layout('layouts.app', ['title' => 'Messages - UniMarket']);
+    }
+
+    /**
+     * The most recent completed transaction between the two participants that
+     * the signed-in user can still rate, if any - shown as a prompt in the thread.
+     */
+    private function ratableTransaction(int $currentUserId, int $partnerId): ?Transaction
+    {
+        $ratings = app(RatingService::class);
+
+        return Transaction::query()
+            ->where('status', 'COMPLETED')
+            ->where(function ($query) use ($currentUserId, $partnerId) {
+                $query->where(fn ($inner) => $inner->where('buyer_id', $currentUserId)->where('seller_id', $partnerId))
+                    ->orWhere(fn ($inner) => $inner->where('buyer_id', $partnerId)->where('seller_id', $currentUserId));
+            })
+            ->latest()
+            ->get()
+            ->first(fn (Transaction $transaction) => $ratings->canRate($transaction, Auth::user()) && ! $ratings->hasRated($transaction, Auth::user()));
     }
 
     /**

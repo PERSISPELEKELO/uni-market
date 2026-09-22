@@ -135,6 +135,21 @@ describe('completing a transaction', function () {
 
         expect($transaction->fresh()->status)->toBe('COMPLETED');
     });
+
+    it('offers both the buyer and the seller a rating prompt once completed, not before', function () {
+        [$transaction, $buyer, $seller] = makeTransaction('inspection');
+
+        Livewire::actingAs($buyer)->test(Tracker::class, ['transaction' => $transaction])
+            ->assertDontSee('Rate your experience');
+
+        $transaction->update(['status' => 'COMPLETED']);
+
+        Livewire::actingAs($buyer)->test(Tracker::class, ['transaction' => $transaction])
+            ->assertSee('Rate your experience with '.$seller->name);
+
+        Livewire::actingAs($seller)->test(Tracker::class, ['transaction' => $transaction])
+            ->assertSee('Rate your experience with '.$buyer->name);
+    });
 });
 
 describe('handover verification', function () {

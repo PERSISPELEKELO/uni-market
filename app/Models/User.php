@@ -61,6 +61,46 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         return $this->hasMany(Reservation::class, 'buyer_id');
     }
 
+    public function ratingsReceived(): HasMany
+    {
+        return $this->hasMany(Rating::class, 'rated_id');
+    }
+
+    public function ratingsGiven(): HasMany
+    {
+        return $this->hasMany(Rating::class, 'rater_id');
+    }
+
+    public function averageRating(): ?float
+    {
+        $average = $this->ratingsReceived()->avg('stars');
+
+        return $average !== null ? round((float) $average, 1) : null;
+    }
+
+    public function ratingsCount(): int
+    {
+        return $this->ratingsReceived()->count();
+    }
+
+    /**
+     * @return array<int, int> star value (5 down to 1) => number of ratings
+     */
+    public function ratingBreakdown(): array
+    {
+        $counts = $this->ratingsReceived()
+            ->selectRaw('stars, count(*) as total')
+            ->groupBy('stars')
+            ->pluck('total', 'stars');
+
+        $breakdown = [];
+        for ($stars = Rating::MAX_STARS; $stars >= Rating::MIN_STARS; $stars--) {
+            $breakdown[$stars] = (int) ($counts[$stars] ?? 0);
+        }
+
+        return $breakdown;
+    }
+
     public function sales(): HasMany
     {
         return $this->hasMany(Transaction::class, 'seller_id');

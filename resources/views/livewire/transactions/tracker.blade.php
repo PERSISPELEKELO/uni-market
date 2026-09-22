@@ -197,6 +197,10 @@
                             </div>
                         @endif
                     </div>
+
+                    @if ($isCompleted)
+                        @livewire('ratings.rate-transaction', ['transaction' => $activeTransaction], key('rate-'.$activeTransaction->id))
+                    @endif
                 </div>
             @else
                 <div class="card p-10 text-center text-sm text-slate-600">
