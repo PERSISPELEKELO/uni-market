@@ -3,7 +3,7 @@
 @endphp
 
 <div class="mx-auto max-w-2xl space-y-6">
-    <a href="{{ route('listings.index') }}" class="inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800">
+    <a href="{{ route('listings.index') }}" class="inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800 dark:hover:text-brand-300">
         <x-app-icon name="arrow-left" class="h-4 w-4" /> Back to marketplace
     </a>
 
@@ -110,7 +110,7 @@
         <div class="card p-5 text-center sm:p-6">
             <p class="text-sm text-slate-700">
                 <span class="font-semibold text-ink">{{ $user->name }}</span> has
-                <a href="{{ route('listings.index') }}" class="font-semibold text-brand-800 underline underline-offset-2">{{ $activeListingsCount }} {{ \Illuminate\Support\Str::plural('item', $activeListingsCount) }}</a>
+                <a href="{{ route('listings.index') }}" class="font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2">{{ $activeListingsCount }} {{ \Illuminate\Support\Str::plural('item', $activeListingsCount) }}</a>
                 for sale right now.
             </p>
         </div>

@@ -36,7 +36,7 @@
                                     <x-status-badge :status="$tx->status" class="flex-shrink-0" />
                                 </div>
                                 <div class="flex items-center justify-between border-t border-slate-100 pt-2 text-xs">
-                                    <span class="text-sm font-bold text-accent-700">K{{ number_format($tx->amount, 2) }}</span>
+                                    <span class="text-sm font-bold text-ink">K{{ number_format($tx->amount, 2) }}</span>
                                     <span class="text-slate-600">{{ $tx->created_at->format('M j, Y') }}</span>
                                 </div>
                             </button>
@@ -83,7 +83,7 @@
                         </div>
                         <div class="sm:text-right">
                             <p class="text-xs text-slate-600">Amount</p>
-                            <p class="text-2xl font-bold text-accent-700">K{{ number_format($activeTransaction->amount, 2) }}</p>
+                            <p class="text-2xl font-bold text-ink">K{{ number_format($activeTransaction->amount, 2) }}</p>
                         </div>
                     </div>
 
@@ -108,7 +108,7 @@
                         <div class="rounded-xl border border-info-200 bg-info-50 p-4">
                             <p class="text-sm font-semibold text-info-800">Your handover code</p>
                             <p class="mt-0.5 text-sm text-slate-700">Give this code to the seller only when you meet in person and receive the item.</p>
-                            <p class="mt-3 select-all rounded-lg border-2 border-dashed border-info-700 bg-white px-4 py-3 text-center font-mono text-3xl font-bold tracking-[0.3em] text-ink" aria-label="Handover code {{ $otpPlain }}">{{ $otpPlain }}</p>
+                            <p class="mt-3 select-all rounded-lg border-2 border-dashed border-info-700 bg-white px-4 py-3 text-center font-mono text-3xl font-bold tracking-[0.3em] text-ink dark:bg-slate-800" aria-label="Handover code {{ $otpPlain }}">{{ $otpPlain }}</p>
                         </div>
                     @elseif ($isPendingMeeting && $isSeller)
                         <form wire:submit="verifyHandoverOtp" novalidate class="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -152,7 +152,7 @@
                             </div>
                             <p class="break-words text-sm text-slate-800"><strong>Reason:</strong> {{ $dispute->reason }}</p>
 
-                            <div class="rounded-lg border border-warn-200 bg-white p-3 text-sm">
+                            <div class="rounded-lg border border-warn-200 bg-white p-3 text-sm dark:bg-slate-800">
                                 <p class="font-semibold text-ink">AI dispute analysis</p>
                                 @if (! is_null($dispute->ai_sentiment_score))
                                     <p class="mt-1 text-slate-700">
@@ -178,9 +178,9 @@
                             @elseif ($isDisputed)
                                 <span class="font-semibold text-warn-800">This dispute is waiting for moderator review.</span>
                             @elseif ($isPendingMeeting && $isBuyer)
-                                Arrange a time and place with the seller in <a href="{{ route('chat.thread', ['receiver' => $activeTransaction->seller_id, 'listing' => $activeTransaction->listing_id]) }}" class="font-semibold text-brand-800 underline underline-offset-2">Messages</a>.
+                                Arrange a time and place with the seller in <a href="{{ route('chat.thread', ['receiver' => $activeTransaction->seller_id, 'listing' => $activeTransaction->listing_id]) }}" class="font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2">Messages</a>.
                             @elseif ($isPendingMeeting && $isSeller)
-                                Arrange a meet-up in <a href="{{ route('chat.thread', ['receiver' => $activeTransaction->buyer_id, 'listing' => $activeTransaction->listing_id]) }}" class="font-semibold text-brand-800 underline underline-offset-2">Messages</a>, then enter the buyer's code above.
+                                Arrange a meet-up in <a href="{{ route('chat.thread', ['receiver' => $activeTransaction->buyer_id, 'listing' => $activeTransaction->listing_id]) }}" class="font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2">Messages</a>, then enter the buyer's code above.
                             @elseif ($isInspection && $isSeller)
                                 Waiting for the buyer to finish inspecting the item.
                             @elseif ($isInspection && $isBuyer)
@@ -212,11 +212,11 @@
 
     @if ($showDisputeModal)
         <div
-            class="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 p-0 sm:items-center sm:p-4"
+            class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
             x-data
             x-on:keydown.escape.window="$wire.closeDisputeModal()"
         >
-            <div class="max-h-[92vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl sm:p-6" role="dialog" aria-modal="true" aria-labelledby="dispute-title">
+            <div class="max-h-[92vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl sm:p-6 dark:bg-slate-900" role="dialog" aria-modal="true" aria-labelledby="dispute-title">
                 <div class="flex items-start justify-between gap-4">
                     <h3 id="dispute-title" class="text-lg font-bold text-ink">Raise a dispute</h3>
                     <button type="button" wire:click="closeDisputeModal" class="-m-2 rounded-lg p-2 text-slate-600 hover:bg-slate-100">

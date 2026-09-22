@@ -3,7 +3,7 @@
 <article {{ $attributes->class(['card group flex flex-col overflow-hidden transition-shadow hover:shadow-md']) }}>
     <a href="{{ route('listings.show', $listing) }}" class="block focus-visible:outline-offset-[-2px]" aria-label="{{ $listing->title }}, K{{ number_format($listing->price, 2) }}">
         <x-listing-image :src="$listing->cover_image_url" :alt="$listing->title" class="aspect-[4/3] w-full">
-            <span class="badge badge-neutral absolute left-3 top-3 bg-white/95 shadow-sm">
+            <span class="badge badge-neutral absolute left-3 top-3 bg-white/95 shadow-sm dark:bg-slate-900/95">
                 {{ $listing->condition_label }}
             </span>
         </x-listing-image>
@@ -13,13 +13,13 @@
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">{{ $listing->category->name }}</p>
 
         <h3 class="mt-1 text-base font-semibold text-ink">
-            <a href="{{ route('listings.show', $listing) }}" class="line-clamp-2 break-words hover:text-brand-800">{{ $listing->title }}</a>
+            <a href="{{ route('listings.show', $listing) }}" class="line-clamp-2 break-words hover:text-brand-800 dark:hover:text-brand-300">{{ $listing->title }}</a>
         </h3>
 
-        <p class="mt-3 text-lg font-bold text-accent-700">K{{ number_format($listing->price, 2) }}</p>
+        <p class="mt-3 text-lg font-bold text-ink">K{{ number_format($listing->price, 2) }}</p>
 
         @if (($listing->active_reservations_count ?? 0) > 0)
-            <p class="mt-1.5 flex items-center gap-1 text-xs font-medium text-info-700">
+            <p class="mt-1.5 flex items-center gap-1 text-xs font-medium text-info-700 dark:text-info-400">
                 <x-app-icon name="user" class="h-3.5 w-3.5" />
                 {{ $listing->active_reservations_count }} {{ \Illuminate\Support\Str::plural('reservation', $listing->active_reservations_count) }}
             </p>

@@ -2,6 +2,25 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
     <meta charset="utf-8">
+    <script>
+        (function () {
+            var stored = null;
+            try {
+                stored = localStorage.getItem('uniMarketTheme');
+            } catch (e) {}
+            var isDark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('dark', isDark);
+
+            window.uniMarketTheme = {
+                toggle: function () {
+                    var dark = document.documentElement.classList.toggle('dark');
+                    try {
+                        localStorage.setItem('uniMarketTheme', dark ? 'dark' : 'light');
+                    } catch (e) {}
+                },
+            };
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="UniMarket is the campus marketplace where verified students buy, sell and swap textbooks, electronics, dorm gear and more.">
@@ -18,16 +37,16 @@
 </head>
 <body class="flex min-h-screen flex-col">
 
-    <a href="#main-content" class="sr-only z-50 rounded-lg bg-white px-4 py-2 font-semibold text-brand-800 shadow focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
+    <a href="#main-content" class="sr-only z-50 rounded-lg bg-white px-4 py-2 font-semibold text-brand-800 dark:bg-slate-900 dark:text-brand-300 shadow focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Skip to main content
     </a>
 
-    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur" x-data="{ mobileOpen: false }" x-on:keydown.escape.window="mobileOpen = false">
+    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur dark:bg-slate-900/95" x-data="{ mobileOpen: false }" x-on:keydown.escape.window="mobileOpen = false">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div class="flex h-16 items-center justify-between gap-2">
 
                 <div class="flex min-w-0 items-center gap-6">
-                    <a href="{{ route('listings.index') }}" class="flex flex-shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-brand-900">
+                    <a href="{{ route('listings.index') }}" class="flex flex-shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-brand-900 dark:text-brand-300">
                         <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-700 font-bold text-white shadow-sm" aria-hidden="true">U</span>
                         <span>UniMarket</span>
                     </a>
@@ -48,6 +67,17 @@
                 </div>
 
                 <div class="flex items-center gap-2">
+                    <button
+                        type="button"
+                        class="btn btn-secondary btn-sm min-h-11 min-w-11 px-2"
+                        x-data
+                        x-on:click="window.uniMarketTheme.toggle()"
+                        aria-label="Toggle dark mode"
+                    >
+                        <x-app-icon name="sun" class="hidden h-5 w-5 dark:block" />
+                        <x-app-icon name="moon" class="block h-5 w-5 dark:hidden" />
+                    </button>
+
                     @auth
                         <a href="{{ route('listings.create') }}" class="btn btn-primary btn-sm min-w-11 px-2 sm:min-h-11 sm:px-4 sm:text-sm">
                             <x-app-icon name="plus" class="h-4 w-4" />
@@ -63,7 +93,7 @@
                                 <x-app-icon name="chevron-down" class="h-4 w-4" />
                             </button>
 
-                            <div x-cloak x-show="menuOpen" x-transition.opacity class="absolute right-0 mt-2 w-64 origin-top-right rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                            <div x-cloak x-show="menuOpen" x-transition.opacity class="absolute right-0 mt-2 w-64 origin-top-right rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:bg-slate-900">
                                 <div class="flex items-center gap-2.5 border-b border-slate-100 px-3 pb-3 pt-2">
                                     <x-avatar :user="auth()->user()" class="h-9 w-9 flex-shrink-0 text-sm" />
                                     <div class="min-w-0">
@@ -102,8 +132,18 @@
             </div>
         </div>
 
-        <nav id="mobile-menu" x-cloak x-show="mobileOpen" x-transition.opacity class="border-t border-slate-200 bg-white md:hidden" aria-label="Mobile navigation">
+        <nav id="mobile-menu" x-cloak x-show="mobileOpen" x-transition.opacity class="border-t border-slate-200 bg-white md:hidden dark:bg-slate-900" aria-label="Mobile navigation">
             <div class="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 sm:px-6">
+                <button
+                    type="button"
+                    class="nav-link flex w-full items-center gap-2 py-3 text-left"
+                    x-data
+                    x-on:click="window.uniMarketTheme.toggle()"
+                >
+                    <x-app-icon name="sun" class="hidden h-5 w-5 dark:block" />
+                    <x-app-icon name="moon" class="block h-5 w-5 dark:hidden" />
+                    <span>Toggle dark mode</span>
+                </button>
                 <a href="{{ route('listings.index') }}" class="nav-link py-3">Marketplace</a>
                 @auth
                     <a href="{{ route('listings.mine') }}" class="nav-link py-3">My listings</a>
@@ -179,7 +219,7 @@
         {{ $slot }}
     </main>
 
-    <footer class="mt-auto border-t border-slate-200 bg-white py-6">
+    <footer class="mt-auto border-t border-slate-200 bg-white py-6 dark:bg-slate-900">
         <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 text-center text-sm text-slate-600 sm:px-6 md:flex-row md:items-center md:justify-between md:text-left lg:px-8">
             <p>&copy; {{ date('Y') }} UniMarket. The student marketplace for campus communities.</p>
             <ul class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-medium text-slate-700">

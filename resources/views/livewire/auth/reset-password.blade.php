@@ -49,7 +49,7 @@
 
         <p class="border-t border-slate-100 pt-5 text-center text-sm text-slate-600">
             Link not working?
-            <a href="{{ route('password.request') }}" class="font-semibold text-brand-800 underline underline-offset-2 hover:text-brand-900">Request a new one</a>
+            <a href="{{ route('password.request') }}" class="font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2 hover:text-brand-900 dark:hover:text-brand-200">Request a new one</a>
         </p>
     </div>
 </div>

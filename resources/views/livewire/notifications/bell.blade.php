@@ -15,11 +15,11 @@
         @endif
     </button>
 
-    <div x-cloak x-show="open" x-transition.opacity class="absolute right-0 z-30 mt-2 w-80 max-w-[90vw] origin-top-right rounded-xl border border-slate-200 bg-white shadow-lg">
+    <div x-cloak x-show="open" x-transition.opacity class="absolute right-0 z-30 mt-2 w-80 max-w-[90vw] origin-top-right rounded-xl border border-slate-200 bg-white shadow-lg dark:bg-slate-900">
         <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <h2 class="text-sm font-semibold text-ink">Notifications</h2>
             @if ($unreadCount > 0)
-                <button type="button" wire:click="markAllAsRead" class="text-xs font-semibold text-brand-800 hover:underline">Mark all as read</button>
+                <button type="button" wire:click="markAllAsRead" class="text-xs font-semibold text-brand-800 dark:text-brand-300 hover:underline">Mark all as read</button>
             @endif
         </div>
 

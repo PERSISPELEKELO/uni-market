@@ -32,7 +32,7 @@
             <div>
                 <div class="flex items-baseline justify-between gap-2">
                     <label for="password" class="form-label">Password</label>
-                    <a href="{{ route('password.request') }}" class="mb-1.5 text-sm font-semibold text-brand-800 underline underline-offset-2 hover:text-brand-900">Forgot password?</a>
+                    <a href="{{ route('password.request') }}" class="mb-1.5 text-sm font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2 hover:text-brand-900 dark:hover:text-brand-200">Forgot password?</a>
                 </div>
                 <x-password-input id="password" wire:model="password" autocomplete="current-password" placeholder="Your password" />
                 <x-form-error name="password" />
@@ -51,7 +51,7 @@
 
         <p class="border-t border-slate-100 pt-5 text-center text-sm text-slate-600">
             New to UniMarket?
-            <a href="{{ route('register') }}" class="font-semibold text-brand-800 underline underline-offset-2 hover:text-brand-900">Create an account</a>
+            <a href="{{ route('register') }}" class="font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2 hover:text-brand-900 dark:hover:text-brand-200">Create an account</a>
         </p>
     </div>
 </div>

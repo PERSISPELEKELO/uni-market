@@ -5,7 +5,7 @@
 @endphp
 
 <div>
-    <a href="{{ route('listings.index') }}" class="mb-4 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800">
+    <a href="{{ route('listings.index') }}" class="mb-4 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800 dark:hover:text-brand-300">
         <x-app-icon name="arrow-left" class="h-4 w-4" /> Back to marketplace
     </a>
 
@@ -49,7 +49,7 @@
                 <h1 class="break-words text-2xl font-bold leading-snug tracking-tight text-ink">{{ $listing->title }}</h1>
 
                 <div class="flex flex-wrap items-baseline gap-3">
-                    <span class="text-3xl font-bold text-accent-700">K{{ number_format($listing->price, 2) }}</span>
+                    <span class="text-3xl font-bold text-ink">K{{ number_format($listing->price, 2) }}</span>
                     <span class="badge badge-neutral">Condition: {{ $listing->condition_label }}</span>
                     @if ($reservationCount > 0)
                         <span class="badge badge-info">

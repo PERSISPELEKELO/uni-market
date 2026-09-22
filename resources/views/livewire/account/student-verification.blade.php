@@ -4,7 +4,7 @@
 
 <div class="mx-auto max-w-2xl space-y-6">
     <div>
-        <a href="{{ route('account') }}" class="mb-2 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800">
+        <a href="{{ route('account') }}" class="mb-2 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800 dark:hover:text-brand-300">
             <x-app-icon name="arrow-left" class="h-4 w-4" /> Back to my account
         </a>
         <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Student verification</h1>
@@ -57,7 +57,7 @@
                     <input id="document" x-ref="docInput" type="file" wire:model="document" accept="image/jpeg,image/png,application/pdf" class="sr-only" />
                 </label>
 
-                <div wire:loading wire:target="document" class="mt-2 flex items-center gap-2 text-sm font-medium text-brand-800" role="status">
+                <div wire:loading wire:target="document" class="mt-2 flex items-center gap-2 text-sm font-medium text-brand-800 dark:text-brand-300" role="status">
                     <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                     Uploading...
                 </div>

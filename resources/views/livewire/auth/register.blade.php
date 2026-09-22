@@ -93,7 +93,7 @@
 
         <p class="border-t border-slate-100 pt-5 text-center text-sm text-slate-600">
             Already have an account?
-            <a href="{{ route('login') }}" class="font-semibold text-brand-800 underline underline-offset-2 hover:text-brand-900">Log in</a>
+            <a href="{{ route('login') }}" class="font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2 hover:text-brand-900 dark:hover:text-brand-200">Log in</a>
         </p>
     </div>
 </div>

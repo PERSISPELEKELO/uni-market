@@ -1,5 +1,5 @@
 <div class="mx-auto max-w-3xl">
-    <a href="{{ route('listings.mine') }}" class="mb-4 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800">
+    <a href="{{ route('listings.mine') }}" class="mb-4 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800 dark:hover:text-brand-300">
         <x-app-icon name="arrow-left" class="h-4 w-4" /> Back to my listings
     </a>
 

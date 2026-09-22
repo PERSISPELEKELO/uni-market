@@ -6,7 +6,7 @@
 <div class="space-y-6">
 
     <div>
-        <label for="title" class="form-label">Title <span class="text-danger-700" aria-hidden="true">*</span></label>
+        <label for="title" class="form-label">Title <span class="text-danger-700 dark:text-danger-400" aria-hidden="true">*</span></label>
         <input
             id="title"
             type="text"
@@ -23,7 +23,7 @@
 
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div>
-            <label for="category" class="form-label">Category <span class="text-danger-700" aria-hidden="true">*</span></label>
+            <label for="category" class="form-label">Category <span class="text-danger-700 dark:text-danger-400" aria-hidden="true">*</span></label>
             <select
                 id="category"
                 wire:model="form.category_id"
@@ -40,7 +40,7 @@
         </div>
 
         <div>
-            <label for="price" class="form-label">Price (ZMW) <span class="text-danger-700" aria-hidden="true">*</span></label>
+            <label for="price" class="form-label">Price (ZMW) <span class="text-danger-700 dark:text-danger-400" aria-hidden="true">*</span></label>
             <div class="relative">
                 <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-sm font-semibold text-slate-600" aria-hidden="true">K</span>
                 <input
@@ -61,10 +61,10 @@
     </div>
 
     <fieldset>
-        <legend class="form-label">Condition <span class="text-danger-700" aria-hidden="true">*</span></legend>
+        <legend class="form-label">Condition <span class="text-danger-700 dark:text-danger-400" aria-hidden="true">*</span></legend>
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             @foreach (\App\Models\Listing::CONDITIONS as $value => $label)
-                <label class="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-700 has-[:checked]:text-white has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-700">
+                <label class="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-700 has-[:checked]:text-white has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-700 dark:bg-slate-900">
                     <input type="radio" wire:model="form.condition" value="{{ $value }}" class="sr-only" />
                     <span>{{ $label }}</span>
                 </label>
@@ -74,7 +74,7 @@
     </fieldset>
 
     <div>
-        <label for="description" class="form-label">Description <span class="text-danger-700" aria-hidden="true">*</span></label>
+        <label for="description" class="form-label">Description <span class="text-danger-700 dark:text-danger-400" aria-hidden="true">*</span></label>
         <textarea
             id="description"
             wire:model="form.description"
@@ -90,7 +90,7 @@
 
     <div>
         <p class="form-label" id="photos-label">
-            Photos <span class="text-danger-700" aria-hidden="true">*</span>
+            Photos <span class="text-danger-700 dark:text-danger-400" aria-hidden="true">*</span>
             <span class="ml-1 font-normal text-slate-600">({{ $photoCount }} of {{ \App\Livewire\Forms\ListingForm::MAX_IMAGES }})</span>
         </p>
 
@@ -141,7 +141,7 @@
             <x-alert type="info">You have added the maximum of {{ \App\Livewire\Forms\ListingForm::MAX_IMAGES }} photos. Remove one to add another.</x-alert>
         @endif
 
-        <div wire:loading wire:target="form.images" class="mt-2 flex items-center gap-2 text-sm font-medium text-brand-800" role="status">
+        <div wire:loading wire:target="form.images" class="mt-2 flex items-center gap-2 text-sm font-medium text-brand-800 dark:text-brand-300" role="status">
             <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
             Uploading photos...
         </div>

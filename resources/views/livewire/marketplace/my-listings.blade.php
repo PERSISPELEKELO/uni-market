@@ -23,9 +23,9 @@
                             <span class="text-xs text-slate-600">{{ $listing->category->name }}</span>
                         </div>
                         <h2 class="mt-1 break-words text-base font-semibold text-ink">
-                            <a href="{{ route('listings.show', $listing) }}" class="hover:text-brand-800">{{ $listing->title }}</a>
+                            <a href="{{ route('listings.show', $listing) }}" class="hover:text-brand-800 dark:hover:text-brand-300">{{ $listing->title }}</a>
                         </h2>
-                        <p class="text-sm font-bold text-accent-700">K{{ number_format($listing->price, 2) }}</p>
+                        <p class="text-sm font-bold text-ink">K{{ number_format($listing->price, 2) }}</p>
                     </div>
 
                     <div class="flex flex-wrap gap-2 sm:flex-shrink-0">

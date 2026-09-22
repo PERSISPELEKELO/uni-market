@@ -12,7 +12,7 @@
     />
     <button
         type="button"
-        class="absolute inset-y-0 right-0 flex min-w-11 items-center justify-center rounded-r-lg text-sm font-semibold text-brand-800 hover:text-brand-900"
+        class="absolute inset-y-0 right-0 flex min-w-11 items-center justify-center rounded-r-lg text-sm font-semibold text-brand-800 dark:text-brand-300 hover:text-brand-900 dark:hover:text-brand-200"
         x-on:click="show = !show"
         x-bind:aria-pressed="show"
         x-bind:aria-label="show ? 'Hide password' : 'Show password'"
