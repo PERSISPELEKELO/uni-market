@@ -130,8 +130,22 @@
         @if (auth()->user()->isAwaitingEmailVerification() && ! request()->routeIs('verification.notice'))
             <div class="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <x-alert type="warning">
-                    Confirm your email address to earn the Official Student badge.
+                    Confirm your email address before you can request your Verified Student badge.
                     <a href="{{ route('verification.notice') }}" class="font-semibold underline underline-offset-2">Verify now</a>
+                </x-alert>
+            </div>
+        @elseif (auth()->user()->canSubmitStudentVerification() && ! request()->routeIs('verification.student.form'))
+            <div class="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+                <x-alert type="warning">
+                    Submit your student ID document to earn the Verified Student badge.
+                    <a href="{{ route('verification.student.form') }}" class="font-semibold underline underline-offset-2">Submit now</a>
+                </x-alert>
+            </div>
+        @elseif (auth()->user()->student_verification_status === \App\Models\User::STUDENT_VERIFICATION_PENDING && ! request()->routeIs('verification.student.form'))
+            <div class="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+                <x-alert type="info">
+                    Your student verification document is under review.
+                    <a href="{{ route('verification.student.form') }}" class="font-semibold underline underline-offset-2">View status</a>
                 </x-alert>
             </div>
         @endif

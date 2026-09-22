@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\Account\VerificationDocumentController;
 use App\Http\Controllers\AppealController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\DataPortabilityController;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\TransactionController;
 use App\Livewire\Account\Profile;
+use App\Livewire\Account\StudentVerification;
 use App\Livewire\Auth\ForgotPassword;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
@@ -35,12 +37,15 @@ Route::middleware(['guest'])->group(function () {
 
 // Authenticated Student Actions
 Route::middleware(['auth'])->group(function () {
-    // Account and email verification
+    // Account, email verification and student identity verification
     Route::get('/account', Profile::class)->name('account');
     Route::get('/email/verify', VerifyEmail::class)->name('verification.notice');
     Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)
         ->middleware(['signed', 'throttle:6,1'])
         ->name('verification.verify');
+    Route::get('/account/student-verification', StudentVerification::class)->name('verification.student.form');
+    Route::get('/account/verification-documents/{document}', [VerificationDocumentController::class, 'show'])
+        ->name('verification.documents.show');
 
     // Seller listing management
     Route::get('/listings-create', CreateListing::class)->name('listings.create');

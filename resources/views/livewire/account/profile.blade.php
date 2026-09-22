@@ -16,15 +16,28 @@
                 <dd class="mt-0.5 font-semibold text-ink">{{ $user->student_id ?? 'Not provided' }}</dd>
             </div>
             <div>
-                <dt class="font-medium text-slate-600">Verification</dt>
+                <dt class="font-medium text-slate-600">Email status</dt>
+                <dd class="mt-0.5">
+                    @if ($user->hasVerifiedEmail())
+                        <span class="badge badge-success"><x-app-icon name="check-circle" class="h-3.5 w-3.5" /> Verified</span>
+                    @else
+                        <span class="badge badge-warning">Not verified</span>
+                        <a href="{{ route('verification.notice') }}" class="ml-1 text-sm font-semibold text-brand-800 underline underline-offset-2">Verify now</a>
+                    @endif
+                </dd>
+            </div>
+            <div>
+                <dt class="font-medium text-slate-600">Student verification</dt>
                 <dd class="mt-0.5">
                     @if ($user->is_verified)
-                        <span class="badge badge-success"><x-app-icon name="check-circle" class="h-3.5 w-3.5" /> Official Student</span>
-                    @elseif ($user->hasVerifiedEmail())
-                        <span class="badge badge-info">Email verified - a university email is needed for the student badge</span>
+                        <span class="badge badge-success"><x-app-icon name="check-circle" class="h-3.5 w-3.5" /> Verified Student</span>
                     @else
-                        <span class="badge badge-warning">Email not verified</span>
-                        <a href="{{ route('verification.notice') }}" class="ml-1 text-sm font-semibold text-brand-800 underline underline-offset-2">Verify now</a>
+                        <span class="badge badge-warning">{{ $user->verificationStatusLabel() }}</span>
+                        @if ($user->canSubmitStudentVerification())
+                            <a href="{{ route('verification.student.form') }}" class="ml-1 text-sm font-semibold text-brand-800 underline underline-offset-2">Submit document</a>
+                        @elseif ($user->student_verification_status === \App\Models\User::STUDENT_VERIFICATION_PENDING)
+                            <a href="{{ route('verification.student.form') }}" class="ml-1 text-sm font-semibold text-brand-800 underline underline-offset-2">View status</a>
+                        @endif
                     @endif
                 </dd>
             </div>

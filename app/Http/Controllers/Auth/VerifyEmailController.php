@@ -24,11 +24,7 @@ class VerifyEmailController extends Controller
             event(new Verified($user));
         }
 
-        return redirect()->route('listings.index')->with(
-            'success',
-            $user->fresh()->is_verified
-                ? 'Email verified! Your Official Student badge is now active.'
-                : 'Email verified. The Official Student badge needs a university email address.'
-        );
+        return redirect()->route('verification.student.form')
+            ->with('success', 'Email verified! Next, submit your student ID document so an administrator can verify your student account.');
     }
 }

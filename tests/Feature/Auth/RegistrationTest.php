@@ -109,7 +109,30 @@ it('enforces password strength and confirmation', function (string $password, st
     'does not match' => ['Sunshine123', 'Sunshine124', 'do not match'],
 ]);
 
-it('rejects malformed student ids and phone numbers', function () {
-    fillRegistration(validRegistration(['student_id' => '<script>alert(1)</script>', 'phone_number' => 'call me']))
-        ->assertHasErrors(['student_id' => 'regex', 'phone_number' => 'regex']);
+it('rejects a malformed phone number', function () {
+    fillRegistration(validRegistration(['phone_number' => 'call me']))
+        ->assertHasErrors(['phone_number' => 'regex']);
 });
+
+it('accepts a student id made only of at least 10 digits', function (string $studentId) {
+    fillRegistration(validRegistration(['student_id' => $studentId]))->assertHasNoErrors('student_id');
+
+    expect(User::where('student_id', $studentId)->exists())->toBeTrue();
+})->with([
+    'exactly 10 digits' => ['1234567890'],
+    'longer, e.g. year-prefixed id' => ['202412345678'],
+]);
+
+it('rejects a student id that is not all-digit or is too short', function (string $studentId) {
+    fillRegistration(validRegistration(['student_id' => $studentId]))
+        ->assertHasErrors(['student_id' => 'digits_between'])
+        ->assertSee('Your student ID must contain only numbers, at least 10 digits long.');
+
+    expect(User::count())->toBe(0);
+})->with([
+    'one digit short' => ['123456789'],
+    'letters mixed in' => ['12345ABC890'],
+    'letters only' => ['ABC123456789'],
+    'contains a dash' => ['1234-567890'],
+    'html/script injection attempt' => ['<script>alert(1)</script>'],
+]);

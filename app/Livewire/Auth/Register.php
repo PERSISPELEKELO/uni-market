@@ -36,7 +36,7 @@ class Register extends Component
         return [
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'student_id' => ['required', 'string', 'max:30', 'regex:/^[A-Za-z0-9\-\/]+$/', 'unique:users,student_id'],
+            'student_id' => ['required', 'digits_between:10,20', 'unique:users,student_id'],
             'phone_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9 ()\-]{7,20}$/', 'unique:users,phone_number'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
         ];
@@ -54,7 +54,7 @@ class Register extends Component
             'email.email' => 'Please enter a valid email address.',
             'email.unique' => 'An account with this email already exists. Try logging in instead.',
             'student_id.required' => 'Please enter your student ID number.',
-            'student_id.regex' => 'Your student ID can only contain letters, numbers, dashes and slashes.',
+            'student_id.digits_between' => 'Your student ID must contain only numbers, at least 10 digits long.',
             'student_id.unique' => 'This student ID is already registered.',
             'phone_number.regex' => 'Please enter a valid phone number, for example +260971234567.',
             'phone_number.unique' => 'This phone number is already registered.',

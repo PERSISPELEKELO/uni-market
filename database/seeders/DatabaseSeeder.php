@@ -2,15 +2,15 @@
 
 namespace Database\Seeders;
 
+use App\Models\Category;
+use App\Models\Dispute;
+use App\Models\Listing;
+use App\Models\Message;
+use App\Models\Transaction;
+use App\Models\User;
+use App\Services\AuditLoggerService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
-use App\Models\Category;
-use App\Models\Listing;
-use App\Models\Transaction;
-use App\Models\Dispute;
-use App\Models\Message;
-use App\Models\AuditLog;
 
 class DatabaseSeeder extends Seeder
 {
@@ -81,6 +81,19 @@ class DatabaseSeeder extends Seeder
                 'is_verified' => true,
             ]
         );
+
+        // These seeded students are demo accounts that already have their email confirmed and student status approved.
+        foreach ([$chileshe, $mwamba, $kabwe, $admin] as $seededUser) {
+            $seededUser->forceFill(['email_verified_at' => $seededUser->email_verified_at ?? $seededUser->created_at ?? now()])->save();
+        }
+
+        foreach ([$chileshe, $mwamba, $kabwe] as $seededStudent) {
+            $seededStudent->forceFill([
+                'student_verification_status' => User::STUDENT_VERIFICATION_VERIFIED,
+                'student_verification_reviewed_at' => $seededStudent->created_at ?? now(),
+                'student_verification_reviewed_by' => $admin->id,
+            ])->save();
+        }
 
         // 3. Create Sample Listings
         $listingsData = [
@@ -180,7 +193,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 7. Seed Security Audit Logs
-        $auditLogger = app(\App\Services\AuditLoggerService::class);
+        $auditLogger = app(AuditLoggerService::class);
 
         $auditLogger->recordAction(
             $chileshe,

@@ -31,6 +31,7 @@ class UserFactory extends Factory
             'student_id' => (string) fake()->unique()->numerify('20##########'),
             'role' => 'student',
             'is_verified' => true,
+            'student_verification_status' => User::STUDENT_VERIFICATION_VERIFIED,
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];
@@ -43,6 +44,29 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * A brand new member: email confirmed but no student document submitted yet.
+     */
+    public function pendingStudentVerification(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_verified' => false,
+            'student_verification_status' => User::STUDENT_VERIFICATION_NOT_SUBMITTED,
+        ]);
+    }
+
+    /**
+     * A member whose student document is waiting for an administrator.
+     */
+    public function studentVerificationSubmitted(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_verified' => false,
+            'student_verification_status' => User::STUDENT_VERIFICATION_PENDING,
+            'student_verification_submitted_at' => now(),
         ]);
     }
 }

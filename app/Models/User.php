@@ -26,6 +26,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'is_verified',
+        'student_verification_status',
+        'student_verification_submitted_at',
+        'student_verification_reviewed_at',
+        'student_verification_reviewed_by',
+        'student_verification_rejection_reason',
     ];
 
     protected $hidden = [
@@ -73,30 +78,71 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(AuditLog::class, 'actor_id');
     }
 
-    /**
-     * Whether the user still has to confirm their email to earn the verified badge.
-     * Members verified before email confirmation existed keep their badge.
-     */
-    public function isAwaitingEmailVerification(): bool
+    public function verificationDocuments(): HasMany
     {
-        return ! $this->hasVerifiedEmail() && ! $this->is_verified;
+        return $this->hasMany(StudentVerificationDocument::class)->latest();
     }
 
     /**
-     * Whether the email domain is accepted for the "Official Student" badge.
-     * With no STUDENT_EMAIL_DOMAINS configured, every domain is accepted.
+     * Student identity verification states. Deliberately separate from
+     * `email_verified_at` (proves only that the member owns the email address)
+     * and mirrored onto `is_verified` (the public "Verified Student" badge),
+     * which becomes true only via VERIFIED and false for every other state.
      */
-    public function hasStudentEmailDomain(): bool
-    {
-        $allowed = config('unimarket.student_email_domains', []);
+    public const STUDENT_VERIFICATION_NOT_SUBMITTED = 'not_submitted';
 
-        if ($allowed === []) {
-            return true;
+    public const STUDENT_VERIFICATION_PENDING = 'pending';
+
+    public const STUDENT_VERIFICATION_VERIFIED = 'verified';
+
+    public const STUDENT_VERIFICATION_REJECTED = 'rejected';
+
+    public const STUDENT_VERIFICATION_RESUBMISSION_REQUIRED = 'resubmission_required';
+
+    /**
+     * Whether the user still has to confirm their email before they can submit
+     * a student document at all.
+     */
+    public function isAwaitingEmailVerification(): bool
+    {
+        return ! $this->hasVerifiedEmail();
+    }
+
+    public function isStudentVerified(): bool
+    {
+        return $this->student_verification_status === self::STUDENT_VERIFICATION_VERIFIED;
+    }
+
+    /**
+     * A document may be submitted (or resubmitted) once the email is confirmed and
+     * there isn't already one awaiting review or already approved.
+     */
+    public function canSubmitStudentVerification(): bool
+    {
+        return $this->hasVerifiedEmail() && in_array($this->student_verification_status, [
+            self::STUDENT_VERIFICATION_NOT_SUBMITTED,
+            self::STUDENT_VERIFICATION_REJECTED,
+            self::STUDENT_VERIFICATION_RESUBMISSION_REQUIRED,
+        ], true);
+    }
+
+    /**
+     * One combined label covering both verification dimensions, matching the
+     * account-status list students and admins see throughout the platform.
+     */
+    public function verificationStatusLabel(): string
+    {
+        if (! $this->hasVerifiedEmail()) {
+            return 'Email Unverified';
         }
 
-        $domain = strtolower(substr(strrchr((string) $this->email, '@') ?: '', 1));
-
-        return collect($allowed)->contains(fn (string $suffix): bool => $domain === $suffix || str_ends_with($domain, '.'.$suffix));
+        return match ($this->student_verification_status) {
+            self::STUDENT_VERIFICATION_VERIFIED => 'Verified Student',
+            self::STUDENT_VERIFICATION_PENDING => 'Email Verified - Student Verification Pending',
+            self::STUDENT_VERIFICATION_REJECTED => 'Verification Rejected',
+            self::STUDENT_VERIFICATION_RESUBMISSION_REQUIRED => 'Resubmission Required',
+            default => 'Email Verified - Student Verification Pending',
+        };
     }
 
     public function isStudent(): bool
@@ -125,6 +171,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_verified' => 'boolean',
+            'student_verification_submitted_at' => 'datetime',
+            'student_verification_reviewed_at' => 'datetime',
         ];
     }
 }

@@ -6,11 +6,13 @@ use App\Models\Appeal;
 use App\Models\AuditLog;
 use App\Models\Listing;
 use App\Models\Message;
+use App\Models\StudentVerificationDocument;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Policies\AppealPolicy;
 use App\Policies\AuditLogPolicy;
 use App\Policies\ListingPolicy;
+use App\Policies\StudentVerificationDocumentPolicy;
 use App\Policies\TransactionPolicy;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -37,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AuditLog::class, AuditLogPolicy::class);
         Gate::policy(Listing::class, ListingPolicy::class);
         Gate::policy(Transaction::class, TransactionPolicy::class);
+        Gate::policy(StudentVerificationDocument::class, StudentVerificationDocumentPolicy::class);
 
         Gate::define('access-governance', fn (User $user) => $user->isGovernanceCommittee() || $user->isAdmin());
         Gate::define('manage-appeals', fn (User $user) => $user->isGovernanceCommittee() || $user->isAdmin());

@@ -22,7 +22,8 @@ UniMarket is a full-stack campus student marketplace built with **Laravel 13**, 
 
 ### 1. Authentication & Student Verification
 - Minimalist centered auth cards for sign-up, login, forgot-password and reset-password. Login is throttled and never reveals whether an email has an account.
-- **Email verification**: new members receive a signed link. Opening it earns the **"Official Student"** badge shown across listings, chat and the account page. Set `STUDENT_EMAIL_DOMAINS` (e.g. `student.zut.zm`) to require a university address for the badge; leave it empty to accept any provider, in which case the badge only proves the member controls that email.
+- **Email verification**: new members receive a signed link that proves they own the email address they registered with. It does **not** by itself grant the "Verified Student" badge.
+- **Student verification (admin-reviewed)**: once their email is confirmed, a member uploads a student ID document from `/account/student-verification`. An administrator compares it against the student ID entered at registration and approves, rejects, or asks for resubmission. Only approval sets the **"Verified Student"** badge shown across listings, chat and profiles. Documents are stored on the private disk and are never publicly reachable; only the owner and admins/governance staff can view them.
 - **My account** page: update name and phone, change password (current password required), see verification status.
 - Emails are sent with the configured mailer. Locally `MAIL_MAILER=log` writes verification and reset links to `storage/logs/laravel.log`; use a real mailer in production.
 

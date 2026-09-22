@@ -12,7 +12,7 @@ beforeEach(fn () => $this->withoutVite());
 
 function unverifiedMember(array $attributes = []): User
 {
-    return User::factory()->unverified()->create(array_merge(['is_verified' => false], $attributes));
+    return User::factory()->unverified()->pendingStudentVerification()->create($attributes);
 }
 
 function verificationUrl(User $user, ?string $hash = null): string
@@ -38,20 +38,25 @@ it('registers members without the verified badge and emails them a verification 
     $user = User::where('email', 'chileshe@example.com')->firstOrFail();
 
     expect($user->is_verified)->toBeFalse()
-        ->and($user->email_verified_at)->toBeNull();
+        ->and($user->email_verified_at)->toBeNull()
+        ->and($user->student_verification_status)->toBe(User::STUDENT_VERIFICATION_NOT_SUBMITTED);
 
     Notification::assertSentTo($user, VerifyEmailNotification::class);
 });
 
-it('grants the Official Student badge when the emailed link is opened', function () {
+it('confirms email ownership but does not grant the Verified Student badge', function () {
     $user = unverifiedMember();
 
     $this->actingAs($user)->get(verificationUrl($user))
-        ->assertRedirect(route('listings.index'))
-        ->assertSessionHas('success', 'Email verified! Your Official Student badge is now active.');
+        ->assertRedirect(route('verification.student.form'))
+        ->assertSessionHas('success', 'Email verified! Next, submit your student ID document so an administrator can verify your student account.');
 
-    expect($user->fresh()->hasVerifiedEmail())->toBeTrue()
-        ->and($user->fresh()->is_verified)->toBeTrue();
+    $fresh = $user->fresh();
+
+    expect($fresh->hasVerifiedEmail())->toBeTrue()
+        ->and($fresh->is_verified)->toBeFalse()
+        ->and($fresh->student_verification_status)->toBe(User::STUDENT_VERIFICATION_NOT_SUBMITTED)
+        ->and($fresh->canSubmitStudentVerification())->toBeTrue();
 });
 
 it('rejects tampered, unsigned or someone else\'s verification links', function () {
@@ -62,7 +67,7 @@ it('rejects tampered, unsigned or someone else\'s verification links', function 
     $this->actingAs($user)->get(verificationUrl($other))->assertForbidden();
     $this->actingAs($user)->get(route('verification.verify', ['id' => $user->id, 'hash' => sha1($user->email)]))->assertForbidden();
 
-    expect($user->fresh()->is_verified)->toBeFalse()->and($other->fresh()->is_verified)->toBeFalse();
+    expect($user->fresh()->hasVerifiedEmail())->toBeFalse()->and($other->fresh()->hasVerifiedEmail())->toBeFalse();
 });
 
 it('sends guests who open a verification link to log in first', function () {
@@ -71,47 +76,36 @@ it('sends guests who open a verification link to log in first', function () {
     $this->get(verificationUrl($user))->assertRedirect(route('login'));
 });
 
-describe('university email domains', function () {
-    it('gives a verified email the badge only when its domain is allowed', function (string $email, bool $expectsBadge) {
-        config(['unimarket.student_email_domains' => ['student.zut.zm']]);
-        $user = unverifiedMember(['email' => $email]);
-
-        $this->actingAs($user)->get(verificationUrl($user))->assertRedirect();
-
-        expect($user->fresh()->hasVerifiedEmail())->toBeTrue()
-            ->and($user->fresh()->is_verified)->toBe($expectsBadge);
-    })->with([
-        'exact domain' => ['chileshe@student.zut.zm', true],
-        'subdomain' => ['chileshe@mail.student.zut.zm', true],
-        'uppercase' => ['Chileshe@STUDENT.ZUT.ZM', true],
-        'other provider' => ['chileshe@gmail.com', false],
-        'lookalike suffix' => ['chileshe@evilstudent.zut.zm', false],
-        'domain inside another' => ['chileshe@student.zut.zm.attacker.com', false],
-    ]);
-
-    it('accepts any provider when no domains are configured', function () {
-        config(['unimarket.student_email_domains' => []]);
-        $user = unverifiedMember(['email' => 'anyone@gmail.com']);
-
-        $this->actingAs($user)->get(verificationUrl($user));
-
-        expect($user->fresh()->is_verified)->toBeTrue();
-    });
-});
-
 describe('the verification prompt', function () {
-    it('nudges unverified members, but not verified ones', function () {
+    it('nudges unverified members to confirm their email first', function () {
         $this->actingAs(unverifiedMember())->get(route('listings.index'))
-            ->assertSee('Confirm your email address to earn the Official Student badge.');
+            ->assertSee('Confirm your email address before you can request your Verified Student badge.');
 
         $this->actingAs(User::factory()->create())->get(route('listings.index'))
             ->assertDontSee('Confirm your email address');
     });
 
-    it('does not nag members who were verified before email confirmation existed', function () {
-        $legacy = User::factory()->unverified()->create(['is_verified' => true]);
+    it('nudges members with a confirmed email but no student document to submit one', function () {
+        $user = User::factory()->pendingStudentVerification()->create();
 
-        $this->actingAs($legacy)->get(route('listings.index'))->assertDontSee('Confirm your email address');
+        $this->actingAs($user)->get(route('listings.index'))
+            ->assertSee('Submit your student ID document to earn the Verified Student badge.')
+            ->assertDontSee('Confirm your email address');
+    });
+
+    it('tells members with a pending submission that it is under review, without nagging them to resubmit', function () {
+        $user = User::factory()->studentVerificationSubmitted()->create();
+
+        $this->actingAs($user)->get(route('listings.index'))
+            ->assertSee('Your student verification document is under review.')
+            ->assertDontSee('Submit your student ID document');
+    });
+
+    it('shows no verification banner to a fully verified student', function () {
+        $this->actingAs(User::factory()->create())->get(route('listings.index'))
+            ->assertDontSee('Confirm your email address')
+            ->assertDontSee('Submit your student ID document')
+            ->assertDontSee('under review');
     });
 
     it('lets a member resend the link, with a limit', function () {
