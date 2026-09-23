@@ -30,7 +30,7 @@
                         type="button"
                         wire:click="open('{{ $notification->id }}')"
                         x-on:click="open = false"
-                        @class(['flex w-full items-start gap-2 px-4 py-3 text-left hover:bg-slate-50', 'bg-brand-50/60' => is_null($notification->read_at)])
+                        @class(['flex w-full items-start gap-2 px-4 py-3 text-left hover:bg-slate-50', 'bg-brand-50/60 dark:bg-brand-500/10' => is_null($notification->read_at)])
                     >
                         <span @class(['mt-1.5 h-2 w-2 flex-shrink-0 rounded-full', 'bg-brand-700' => is_null($notification->read_at), 'bg-transparent' => ! is_null($notification->read_at)])></span>
                         <span class="min-w-0 flex-1">

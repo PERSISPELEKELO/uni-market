@@ -12,18 +12,34 @@
                 <x-alert type="error">{{ $message }}</x-alert>
             @enderror
 
-            <div>
-                <label for="name" class="form-label">Full name</label>
-                <input
-                    id="name"
-                    type="text"
-                    wire:model="name"
-                    autocomplete="name"
-                    placeholder="Chileshe Mwansa"
-                    class="form-input"
-                    @error('name') aria-invalid="true" aria-describedby="name-error" @enderror
-                />
-                <x-form-error name="name" />
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                    <label for="first_name" class="form-label">First name</label>
+                    <input
+                        id="first_name"
+                        type="text"
+                        wire:model="first_name"
+                        autocomplete="given-name"
+                        placeholder="Chileshe"
+                        class="form-input"
+                        @error('first_name') aria-invalid="true" aria-describedby="first_name-error" @enderror
+                    />
+                    <x-form-error name="first_name" />
+                </div>
+
+                <div>
+                    <label for="last_name" class="form-label">Last name</label>
+                    <input
+                        id="last_name"
+                        type="text"
+                        wire:model="last_name"
+                        autocomplete="family-name"
+                        placeholder="Mwansa"
+                        class="form-input"
+                        @error('last_name') aria-invalid="true" aria-describedby="last_name-error" @enderror
+                    />
+                    <x-form-error name="last_name" />
+                </div>
             </div>
 
             <div>
@@ -36,6 +52,7 @@
                     inputmode="email"
                     autocapitalize="none"
                     spellcheck="false"
+                    oninput="this.value = this.value.toLowerCase()"
                     placeholder="you@example.com"
                     class="form-input"
                     @error('email') aria-invalid="true" aria-describedby="email-error" @enderror
@@ -50,10 +67,14 @@
                     type="text"
                     wire:model="student_id"
                     autocomplete="off"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    maxlength="10"
                     placeholder="2024198273"
                     class="form-input"
                     @error('student_id') aria-invalid="true" aria-describedby="student_id-error" @enderror
                 />
+                <p class="form-hint">Numbers only, up to 10 digits.</p>
                 <x-form-error name="student_id" />
             </div>
 

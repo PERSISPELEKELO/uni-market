@@ -20,7 +20,7 @@ class ForgotPassword extends Component
         $this->email = Str::lower(trim($this->email));
 
         $this->validate(
-            ['email' => ['required', 'string', 'email', 'max:255']],
+            ['email' => ['required', 'string', 'email:rfc,strict,filter', 'max:255']],
             [
                 'email.required' => 'Please enter your email address.',
                 'email.email' => 'Please enter a valid email address.',

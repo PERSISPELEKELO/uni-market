@@ -119,8 +119,8 @@
                     $refs.photoInput.files = $event.dataTransfer.files;
                     $refs.photoInput.dispatchEvent(new Event('change', { bubbles: true }));
                 "
-                class="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition-colors hover:border-brand-400 hover:bg-brand-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-700"
-                x-bind:class="{ 'border-brand-600 bg-brand-50': isDropping }"
+                class="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition-colors hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/10 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-700"
+                x-bind:class="{ 'border-brand-600 bg-brand-50 dark:bg-brand-500/10': isDropping }"
             >
                 <x-app-icon name="upload" class="h-8 w-8 text-brand-700" />
                 <span class="text-sm font-semibold text-ink">Tap to add photos, or drag and drop them here</span>

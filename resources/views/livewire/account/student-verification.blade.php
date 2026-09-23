@@ -48,8 +48,8 @@
                     x-on:dragover.prevent="isDropping = true"
                     x-on:dragleave.prevent="isDropping = false"
                     x-on:drop.prevent="isDropping = false; $refs.docInput.files = $event.dataTransfer.files; $refs.docInput.dispatchEvent(new Event('change', { bubbles: true }));"
-                    class="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition-colors hover:border-brand-400 hover:bg-brand-50"
-                    x-bind:class="{ 'border-brand-600 bg-brand-50': isDropping }"
+                    class="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center transition-colors hover:border-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/10"
+                    x-bind:class="{ 'border-brand-600 bg-brand-50 dark:bg-brand-500/10': isDropping }"
                 >
                     <x-app-icon name="upload" class="h-8 w-8 text-brand-700" />
                     <span class="text-sm font-semibold text-ink">Tap to choose a file, or drag and drop it here</span>

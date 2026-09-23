@@ -16,7 +16,9 @@ class Register extends Component
 {
     private const MAX_ATTEMPTS = 10;
 
-    public string $name = '';
+    public string $first_name = '';
+
+    public string $last_name = '';
 
     public string $email = '';
 
@@ -34,12 +36,37 @@ class Register extends Component
     protected function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'min:2', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'student_id' => ['required', 'digits_between:10,20', 'unique:users,student_id'],
+            'first_name' => ['required', 'string', 'max:100', $this->meaningfulNameRule()],
+            'last_name' => ['required', 'string', 'max:100', $this->meaningfulNameRule()],
+            'email' => ['required', 'string', 'email:rfc,strict,filter', 'max:255', 'unique:users,email'],
+            'student_id' => ['required', 'digits_between:1,10', 'unique:users,student_id'],
             'phone_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9 ()\-]{7,20}$/', 'unique:users,phone_number'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
         ];
+    }
+
+    /**
+     * Rejects obviously invalid or random input while still allowing short, genuine names.
+     * Letters (including accented/unicode), spaces, hyphens and apostrophes only, and not
+     * just the same character repeated (e.g. "aaaaaa").
+     */
+    private function meaningfulNameRule(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail): void {
+            $trimmed = trim((string) $value);
+
+            if (! preg_match("/^\p{L}+(?:['\-\s]\p{L}+)*$/u", $trimmed)) {
+                $fail('Please enter a valid name using letters only.');
+
+                return;
+            }
+
+            $lettersOnly = preg_replace("/['\-\s]/u", '', $trimmed);
+
+            if (preg_match('/^(.)\1*$/u', $lettersOnly)) {
+                $fail('Please enter your real name.');
+            }
+        };
     }
 
     /**
@@ -48,13 +75,13 @@ class Register extends Component
     protected function messages(): array
     {
         return [
-            'name.required' => 'Please enter your full name.',
-            'name.min' => 'Please enter your full name.',
+            'first_name.required' => 'Please enter your first name.',
+            'last_name.required' => 'Please enter your last name.',
             'email.required' => 'Please enter your email address.',
             'email.email' => 'Please enter a valid email address.',
             'email.unique' => 'An account with this email already exists. Try logging in instead.',
             'student_id.required' => 'Please enter your student ID number.',
-            'student_id.digits_between' => 'Your student ID must contain only numbers, at least 10 digits long.',
+            'student_id.digits_between' => 'Your student ID must contain only numbers, up to 10 digits long.',
             'student_id.unique' => 'This student ID is already registered.',
             'phone_number.regex' => 'Please enter a valid phone number, for example +260971234567.',
             'phone_number.unique' => 'This phone number is already registered.',
@@ -70,7 +97,8 @@ class Register extends Component
     {
         $this->resetErrorBag();
 
-        $this->name = trim($this->name);
+        $this->first_name = trim($this->first_name);
+        $this->last_name = trim($this->last_name);
         $this->email = Str::lower(trim($this->email));
         $this->student_id = trim($this->student_id);
         $this->phone_number = filled(trim((string) $this->phone_number)) ? trim((string) $this->phone_number) : null;
@@ -91,7 +119,7 @@ class Register extends Component
 
         try {
             $user = User::create([
-                'name' => $this->name,
+                'name' => trim("{$this->first_name} {$this->last_name}"),
                 'email' => $this->email,
                 'student_id' => $this->student_id,
                 'phone_number' => $this->phone_number,

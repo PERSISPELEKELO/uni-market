@@ -24,6 +24,7 @@
                         inputmode="email"
                         autocapitalize="none"
                         spellcheck="false"
+                        oninput="this.value = this.value.toLowerCase()"
                         placeholder="you@example.com"
                         class="form-input"
                         @error('email') aria-invalid="true" aria-describedby="email-error" @enderror

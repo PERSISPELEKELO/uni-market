@@ -27,7 +27,8 @@ it('registers members without the verified badge and emails them a verification 
     Notification::fake();
 
     Livewire::test(Register::class)
-        ->set('name', 'Chileshe Mwansa')
+        ->set('first_name', 'Chileshe')
+        ->set('last_name', 'Mwansa')
         ->set('email', 'chileshe@example.com')
         ->set('student_id', '2024198273')
         ->set('password', 'Sunshine123')

@@ -5,11 +5,11 @@
                 <x-star-icon class="h-4 w-4" /> You rated {{ $ratedUser->name }} {{ $existing->stars }} out of 5
             </p>
             @if ($existing->comment)
-                <p class="mt-1 whitespace-pre-line break-words text-slate-700">&ldquo;{{ $existing->comment }}&rdquo;</p>
+                <p class="mt-1 whitespace-pre-line break-words text-gray-700">&ldquo;{{ $existing->comment }}&rdquo;</p>
             @endif
         </div>
     @elseif ($canRate)
-        <div class="rounded-xl border border-brand-200 bg-brand-50 p-4 sm:p-5" x-data="{ hover: 0 }">
+        <div class="rounded-xl border border-brand-200 bg-brand-50 p-4 sm:p-5 dark:border-brand-500/30 dark:bg-brand-500/10" x-data="{ hover: 0 }">
             <h3 class="text-sm font-semibold text-ink">Rate your experience with {{ $ratedUser->name }}</h3>
             <p class="mt-0.5 text-xs text-slate-600">Your transaction is complete. Let other students know how it went.</p>
 

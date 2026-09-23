@@ -24,7 +24,7 @@ class Login extends Component
     protected function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email', 'max:255'],
+            'email' => ['required', 'string', 'email:rfc,strict,filter', 'max:255'],
             'password' => ['required', 'string'],
         ];
     }

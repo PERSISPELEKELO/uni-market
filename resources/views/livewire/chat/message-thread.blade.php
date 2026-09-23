@@ -117,7 +117,7 @@
             </div>
 
             @if ($ratableTransaction)
-                <div class="border-b border-slate-200 bg-brand-50/60 p-3 sm:p-4">
+                <div class="border-b border-slate-200 bg-brand-50/60 p-3 sm:p-4 dark:bg-brand-500/10">
                     <p class="text-sm text-ink">
                         <span class="font-semibold">Your transaction with {{ $activeUser->name }} has been completed.</span>
                         Would you like to rate your experience?
@@ -168,10 +168,9 @@
                         />
                         <x-form-error name="newMessage" />
                     </div>
-                    <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="sendMessage">
-                        <span class="hidden sm:inline">Send</span>
+                    <button type="submit" class="btn btn-primary min-w-11 px-3" wire:loading.attr="disabled" wire:target="sendMessage" aria-label="Send message" title="Send">
                         <x-app-icon name="send" class="h-5 w-5" />
-                        <span class="sr-only sm:hidden">Send message</span>
+                        <span class="sr-only">Send message</span>
                     </button>
                 </div>
             </form>

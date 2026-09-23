@@ -33,7 +33,7 @@ class ResetPassword extends Component
         $this->email = Str::lower(trim($this->email));
 
         $this->validate([
-            'email' => ['required', 'string', 'email', 'max:255'],
+            'email' => ['required', 'string', 'email:rfc,strict,filter', 'max:255'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
         ], [
             'email.required' => 'Please enter your email address.',

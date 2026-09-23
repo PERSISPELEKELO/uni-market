@@ -4,7 +4,20 @@
     $isOwner = $listing->isOwnedBy(auth()->user());
 @endphp
 
-<div>
+<div
+    x-data="{
+        lightboxOpen: false,
+        lightboxIndex: {{ $activeImageIndex }},
+        images: @js($images),
+        open(index) { this.lightboxIndex = index; this.lightboxOpen = true; },
+        close() { this.lightboxOpen = false; },
+        prev() { this.lightboxIndex = (this.lightboxIndex - 1 + this.images.length) % this.images.length; },
+        next() { this.lightboxIndex = (this.lightboxIndex + 1) % this.images.length; },
+    }"
+    x-on:keydown.escape.window="close()"
+    x-on:keydown.arrow-left.window="lightboxOpen && prev()"
+    x-on:keydown.arrow-right.window="lightboxOpen && next()"
+>
     <a href="{{ route('listings.index') }}" class="mb-4 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800 dark:hover:text-brand-300">
         <x-app-icon name="arrow-left" class="h-4 w-4" /> Back to marketplace
     </a>
@@ -12,11 +25,21 @@
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
 
         <div class="space-y-3 lg:col-span-7">
-            <x-listing-image :src="$currentImage" :alt="$listing->title" class="card aspect-[4/3] w-full">
-                @if ($listing->status !== 'active')
-                    <span class="absolute right-3 top-3"><x-status-badge :status="$listing->status" class="bg-white shadow-sm" /></span>
-                @endif
-            </x-listing-image>
+            @if ($currentImage)
+                <button type="button" class="block w-full cursor-zoom-in text-left" x-on:click="open({{ $activeImageIndex }})" aria-label="View photo full screen">
+                    <x-listing-image :src="$currentImage" :alt="$listing->title" class="card aspect-[4/3] w-full">
+                        @if ($listing->status !== 'active')
+                            <span class="absolute right-3 top-3"><x-status-badge :status="$listing->status" class="bg-white shadow-sm" /></span>
+                        @endif
+                    </x-listing-image>
+                </button>
+            @else
+                <x-listing-image :src="$currentImage" :alt="$listing->title" class="card aspect-[4/3] w-full">
+                    @if ($listing->status !== 'active')
+                        <span class="absolute right-3 top-3"><x-status-badge :status="$listing->status" class="bg-white shadow-sm" /></span>
+                    @endif
+                </x-listing-image>
+            @endif
 
             @if (count($images) > 1)
                 <ul class="flex gap-3 overflow-x-auto pb-1" aria-label="Photo thumbnails">
@@ -159,7 +182,7 @@
                 <x-app-icon name="shield" class="mt-0.5 h-5 w-5 flex-shrink-0 text-accent-700" />
                 <div>
                     <p class="font-semibold text-accent-800">Protected campus handover</p>
-                    <p class="mt-0.5 text-slate-700">
+                    <p class="mt-0.5 text-gray-700">
                         Reserve the item, meet on campus and share your handover code only once you have the item in hand.
                         You then get a 48-hour inspection window to confirm or dispute.
                     </p>
@@ -167,5 +190,66 @@
             </div>
 
         </div>
+    </div>
+
+    <div
+        x-show="lightboxOpen"
+        x-cloak
+        x-transition.opacity
+        x-on:click="close()"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-2 sm:p-6"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Photo viewer"
+    >
+        <button
+            type="button"
+            x-on:click.stop="close()"
+            class="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            aria-label="Close photo viewer"
+            title="Close"
+        >
+            <x-app-icon name="x" class="h-6 w-6" />
+        </button>
+
+        <template x-if="images.length > 1">
+            <button
+                type="button"
+                x-on:click.stop="prev()"
+                class="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:left-4"
+                aria-label="Previous photo"
+                title="Previous"
+            >
+                <x-app-icon name="arrow-left" class="h-6 w-6" />
+            </button>
+        </template>
+
+        <img
+            x-show="lightboxOpen"
+            x-on:click.stop=""
+            x-bind:src="images[lightboxIndex]"
+            alt="{{ $listing->title }}"
+            class="max-h-full max-w-full select-none object-contain"
+            draggable="false"
+        />
+
+        <template x-if="images.length > 1">
+            <button
+                type="button"
+                x-on:click.stop="next()"
+                class="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:right-4"
+                aria-label="Next photo"
+                title="Next"
+            >
+                <x-app-icon name="arrow-right" class="h-6 w-6" />
+            </button>
+        </template>
+
+        <template x-if="images.length > 1">
+            <span
+                class="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white"
+                x-text="(lightboxIndex + 1) + ' / ' + images.length"
+            ></span>
+        </template>
     </div>
 </div>

@@ -107,7 +107,7 @@
                     @if ($isPendingMeeting && $isBuyer)
                         <div class="rounded-xl border border-info-200 bg-info-50 p-4">
                             <p class="text-sm font-semibold text-info-800">Your handover code</p>
-                            <p class="mt-0.5 text-sm text-slate-700">Give this code to the seller only when you meet in person and receive the item.</p>
+                            <p class="mt-0.5 text-sm text-gray-700">Give this code to the seller only when you meet in person and receive the item.</p>
                             <p class="mt-3 select-all rounded-lg border-2 border-dashed border-info-700 bg-white px-4 py-3 text-center font-mono text-3xl font-bold tracking-[0.3em] text-ink dark:bg-slate-800" aria-label="Handover code {{ $otpPlain }}">{{ $otpPlain }}</p>
                         </div>
                     @elseif ($isPendingMeeting && $isSeller)
@@ -150,7 +150,7 @@
                                 <span class="text-sm font-semibold text-warn-800">Dispute report</span>
                                 <span class="badge badge-warning">{{ ucfirst($dispute->status) }}</span>
                             </div>
-                            <p class="break-words text-sm text-slate-800"><strong>Reason:</strong> {{ $dispute->reason }}</p>
+                            <p class="break-words text-sm text-gray-800"><strong>Reason:</strong> {{ $dispute->reason }}</p>
 
                             <div class="rounded-lg border border-warn-200 bg-white p-3 text-sm dark:bg-slate-800">
                                 <p class="font-semibold text-ink">AI dispute analysis</p>
@@ -174,9 +174,9 @@
                     <div class="flex flex-col gap-4 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
                         <p class="text-sm text-slate-700">
                             @if ($isCompleted)
-                                <span class="inline-flex items-center gap-1.5 font-semibold text-accent-800"><x-app-icon name="check-circle" class="h-5 w-5" /> This transaction is complete.</span>
+                                <span class="inline-flex items-center gap-1.5 font-semibold text-accent-800 dark:text-accent-300"><x-app-icon name="check-circle" class="h-5 w-5" /> This transaction is complete.</span>
                             @elseif ($isDisputed)
-                                <span class="font-semibold text-warn-800">This dispute is waiting for moderator review.</span>
+                                <span class="font-semibold text-warn-800 dark:text-warn-300">This dispute is waiting for moderator review.</span>
                             @elseif ($isPendingMeeting && $isBuyer)
                                 Arrange a time and place with the seller in <a href="{{ route('chat.thread', ['receiver' => $activeTransaction->seller_id, 'listing' => $activeTransaction->listing_id]) }}" class="font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2">Messages</a>.
                             @elseif ($isPendingMeeting && $isSeller)

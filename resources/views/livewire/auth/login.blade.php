@@ -22,6 +22,7 @@
                     inputmode="email"
                     autocapitalize="none"
                     spellcheck="false"
+                    oninput="this.value = this.value.toLowerCase()"
                     placeholder="you@example.com"
                     class="form-input"
                     @error('email') aria-invalid="true" aria-describedby="email-error" @enderror
@@ -30,12 +31,10 @@
             </div>
 
             <div>
-                <div class="flex items-baseline justify-between gap-2">
-                    <label for="password" class="form-label">Password</label>
-                    <a href="{{ route('password.request') }}" class="mb-1.5 text-sm font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2 hover:text-brand-900 dark:hover:text-brand-200">Forgot password?</a>
-                </div>
+                <label for="password" class="form-label">Password</label>
                 <x-password-input id="password" wire:model="password" autocomplete="current-password" placeholder="Your password" />
                 <x-form-error name="password" />
+                <a href="{{ route('password.request') }}" class="mt-1.5 inline-block text-sm font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2 hover:text-brand-900 dark:hover:text-brand-200">Forgot password?</a>
             </div>
 
             <label class="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-slate-800">
