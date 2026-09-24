@@ -9,7 +9,7 @@
         x-bind:class="pane === 'list' ? 'flex' : 'hidden'"
         aria-labelledby="conversations-heading"
     >
-        <div class="border-b border-slate-200 bg-white p-4 dark:bg-slate-900">
+        <div class="border-b border-slate-200 bg-white p-4 dark:bg-slate-200">
             <h1 id="conversations-heading" class="text-lg font-bold tracking-tight text-ink">Messages</h1>
             <p class="text-xs text-slate-600">Chat with buyers and sellers on campus</p>
 
@@ -37,7 +37,7 @@
                             type="button"
                             wire:click="selectConversation({{ $result->id }})"
                             x-on:click="pane = 'thread'"
-                            class="flex min-h-16 w-full items-center gap-3 p-4 text-left transition-colors hover:bg-white dark:hover:bg-slate-800"
+                            class="flex min-h-16 w-full items-center gap-3 p-4 text-left transition-colors hover:bg-white dark:hover:bg-slate-300"
                         >
                             <x-avatar :user="$result" class="h-10 w-10 flex-shrink-0 text-sm" />
                             <span class="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{{ $result->name }}</span>
@@ -59,7 +59,7 @@
                             wire:click="selectConversation({{ $partnerId }}, {{ $item->latest_message->listing_id ?? 'null' }})"
                             x-on:click="pane = 'thread'"
                             aria-current="{{ $activeUserId === $partnerId ? 'true' : 'false' }}"
-                            @class(['flex min-h-16 w-full items-start gap-3 p-4 text-left transition-colors hover:bg-white dark:hover:bg-slate-800', 'bg-white border-l-4 border-brand-700 dark:bg-slate-900' => $activeUserId === $partnerId])
+                            @class(['flex min-h-16 w-full items-start gap-3 p-4 text-left transition-colors hover:bg-white dark:hover:bg-slate-300', 'bg-white border-l-4 border-brand-700 dark:bg-slate-200' => $activeUserId === $partnerId])
                         >
                             <x-avatar :user="$item->user" class="h-10 w-10 flex-shrink-0 text-sm" />
 
@@ -87,7 +87,7 @@
         @endif
     </section>
 
-    <section class="min-w-0 flex-1 flex-col bg-white md:flex dark:bg-slate-900" x-bind:class="pane === 'thread' ? 'flex' : 'hidden'" aria-label="Conversation">
+    <section class="min-w-0 flex-1 flex-col bg-white md:flex dark:bg-slate-200" x-bind:class="pane === 'thread' ? 'flex' : 'hidden'" aria-label="Conversation">
         @if ($activeUser)
             <div class="flex flex-wrap items-center gap-3 border-b border-slate-200 p-3 sm:p-4">
                 <button type="button" x-on:click="pane = 'list'" class="btn btn-secondary btn-sm min-h-11 min-w-11 px-2 md:hidden">
@@ -140,7 +140,7 @@
                 @forelse ($activeMessages as $msg)
                     @php $isMe = $msg->sender_id === auth()->id(); @endphp
                     <div wire:key="message-{{ $msg->id }}" @class(['flex flex-col', 'items-end' => $isMe, 'items-start' => ! $isMe])>
-                        <div @class(['max-w-[85%] break-words rounded-2xl px-4 py-2.5 text-sm sm:max-w-[75%]', 'rounded-br-md bg-brand-700 text-white' => $isMe, 'rounded-bl-md border border-slate-200 bg-white text-ink dark:bg-slate-800' => ! $isMe])>
+                        <div @class(['max-w-[85%] break-words rounded-2xl px-4 py-2.5 text-sm sm:max-w-[75%]', 'rounded-br-md bg-brand-700 text-white' => $isMe, 'rounded-bl-md border border-slate-200 bg-white text-ink dark:bg-slate-300' => ! $isMe])>
                             <p class="whitespace-pre-line leading-relaxed">{{ $msg->message }}</p>
                         </div>
                         <span class="mt-1 px-1 text-xs text-slate-600">
@@ -152,7 +152,7 @@
                 @endforelse
             </div>
 
-            <form wire:submit="sendMessage" novalidate class="border-t border-slate-200 bg-white p-3 sm:p-4 dark:bg-slate-900">
+            <form wire:submit="sendMessage" novalidate class="border-t border-slate-200 bg-white p-3 sm:p-4 dark:bg-slate-200">
                 <div class="flex items-start gap-2">
                     <div class="min-w-0 flex-1">
                         <label for="newMessage" class="sr-only">Your message</label>

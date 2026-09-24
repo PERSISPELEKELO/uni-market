@@ -64,7 +64,7 @@
         <legend class="form-label">Condition <span class="text-danger-700 dark:text-danger-400" aria-hidden="true">*</span></legend>
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
             @foreach (\App\Models\Listing::CONDITIONS as $value => $label)
-                <label class="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-700 has-[:checked]:text-white has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-700 dark:bg-slate-900">
+                <label class="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-center text-sm font-medium text-slate-800 transition-colors hover:bg-slate-50 has-[:checked]:border-brand-700 has-[:checked]:bg-brand-700 has-[:checked]:text-white has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-700 dark:bg-slate-200">
                     <input type="radio" wire:model="form.condition" value="{{ $value }}" class="sr-only" />
                     <span>{{ $label }}</span>
                 </label>

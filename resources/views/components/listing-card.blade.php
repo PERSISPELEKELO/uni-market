@@ -3,7 +3,7 @@
 <article {{ $attributes->class(['card group flex flex-col overflow-hidden transition-shadow hover:shadow-md']) }}>
     <a href="{{ route('listings.show', $listing) }}" class="block focus-visible:outline-offset-[-2px]" aria-label="{{ $listing->title }}, K{{ number_format($listing->price, 2) }}">
         <x-listing-image :src="$listing->cover_image_url" :alt="$listing->title" class="aspect-[4/3] w-full">
-            <span class="badge badge-neutral absolute left-3 top-3 bg-white/95 shadow-sm dark:bg-slate-900/95">
+            <span class="badge badge-neutral absolute left-3 top-3 bg-white/95 shadow-sm dark:bg-slate-200/95">
                 {{ $listing->condition_label }}
             </span>
         </x-listing-image>
@@ -26,7 +26,7 @@
         @endif
     </div>
 
-    <div class="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs sm:px-5">
+    <div class="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs dark:bg-transparent sm:px-5">
         <div class="flex min-w-0 items-center gap-1.5">
             <x-avatar :user="$listing->seller" class="h-5 w-5 flex-shrink-0 text-[10px]" />
             <span class="truncate font-medium text-slate-800">{{ $listing->seller->name }}</span>

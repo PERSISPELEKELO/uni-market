@@ -142,7 +142,7 @@
 @layer components {
     /* Cards */
     .card {
-        @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:bg-slate-900;
+        @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:bg-slate-200;
     }
 
     /* Buttons - every tap target is at least 44px tall on touch screens */
@@ -158,7 +158,7 @@
 
     .btn-secondary {
         @apply border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 focus-visible:outline-brand-700
-            dark:bg-slate-900;
+            dark:bg-slate-200;
     }
 
     .btn-success {
@@ -167,7 +167,7 @@
 
     .btn-warning {
         @apply border border-warn-600 bg-white text-warn-800 hover:bg-warn-50 focus-visible:outline-warn-600
-            dark:bg-slate-900 dark:text-warn-300 dark:hover:bg-slate-800;
+            dark:bg-slate-200 dark:text-warn-300 dark:hover:bg-slate-300;
     }
 
     .btn-danger {
@@ -176,7 +176,7 @@
 
     .btn-danger-outline {
         @apply border border-danger-200 bg-white text-danger-700 hover:bg-danger-50 focus-visible:outline-danger-700
-            dark:bg-slate-900 dark:text-danger-400 dark:hover:bg-slate-800;
+            dark:bg-slate-200 dark:text-danger-400 dark:hover:bg-slate-300;
     }
 
     .btn-sm {
@@ -199,7 +199,7 @@
     .form-input {
         @apply block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-base text-ink
             placeholder:text-slate-500 focus:border-brand-600 focus:outline-2 focus:outline-offset-0
-            focus:outline-brand-600 sm:text-sm dark:bg-slate-900;
+            focus:outline-brand-600 sm:text-sm dark:bg-slate-200;
     }
 
     .form-input[aria-invalid='true'] {
@@ -264,7 +264,7 @@
     .chip {
         @apply inline-flex min-h-10 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border
             border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition-colors
-            hover:bg-slate-50 dark:bg-slate-900;
+            hover:bg-slate-50 dark:bg-slate-200;
     }
 
     .chip-active {

@@ -108,7 +108,7 @@
                         <div class="rounded-xl border border-info-200 bg-info-50 p-4">
                             <p class="text-sm font-semibold text-info-800">Your handover code</p>
                             <p class="mt-0.5 text-sm text-gray-700">Give this code to the seller only when you meet in person and receive the item.</p>
-                            <p class="mt-3 select-all rounded-lg border-2 border-dashed border-info-700 bg-white px-4 py-3 text-center font-mono text-3xl font-bold tracking-[0.3em] text-ink dark:bg-slate-800" aria-label="Handover code {{ $otpPlain }}">{{ $otpPlain }}</p>
+                            <p class="mt-3 select-all rounded-lg border-2 border-dashed border-info-700 bg-white px-4 py-3 text-center font-mono text-3xl font-bold tracking-[0.3em] text-ink dark:bg-slate-300" aria-label="Handover code {{ $otpPlain }}">{{ $otpPlain }}</p>
                         </div>
                     @elseif ($isPendingMeeting && $isSeller)
                         <form wire:submit="verifyHandoverOtp" novalidate class="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -152,7 +152,7 @@
                             </div>
                             <p class="break-words text-sm text-gray-800"><strong>Reason:</strong> {{ $dispute->reason }}</p>
 
-                            <div class="rounded-lg border border-warn-200 bg-white p-3 text-sm dark:bg-slate-800">
+                            <div class="rounded-lg border border-warn-200 bg-white p-3 text-sm dark:bg-slate-300">
                                 <p class="font-semibold text-ink">AI dispute analysis</p>
                                 @if (! is_null($dispute->ai_sentiment_score))
                                     <p class="mt-1 text-slate-700">
@@ -216,7 +216,7 @@
             x-data
             x-on:keydown.escape.window="$wire.closeDisputeModal()"
         >
-            <div class="max-h-[92vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl sm:p-6 dark:bg-slate-900" role="dialog" aria-modal="true" aria-labelledby="dispute-title">
+            <div class="max-h-[92vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl sm:p-6 dark:bg-slate-200" role="dialog" aria-modal="true" aria-labelledby="dispute-title">
                 <div class="flex items-start justify-between gap-4">
                     <h3 id="dispute-title" class="text-lg font-bold text-ink">Raise a dispute</h3>
                     <button type="button" wire:click="closeDisputeModal" class="-m-2 rounded-lg p-2 text-slate-600 hover:bg-slate-100">
