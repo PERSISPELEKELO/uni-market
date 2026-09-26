@@ -4,7 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\DisputeResource\Pages;
 use App\Models\Dispute;
-use App\Models\AuditLog;
+use App\Services\AuditLoggerService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -17,7 +17,9 @@ class DisputeResource extends Resource
     protected static ?string $model = Dispute::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-scale';
+
     protected static ?string $navigationGroup = 'Moderation & Disputes';
+
     protected static ?string $navigationLabel = 'Escrow Disputes';
 
     public static function form(Form $form): Form
@@ -106,7 +108,7 @@ class DisputeResource extends Resource
 
                 Tables\Columns\TextColumn::make('ai_confidence_score')
                     ->label('Confidence')
-                    ->formatStateUsing(fn ($state) => $state !== null ? number_format($state * 100) . '%' : 'N/A')
+                    ->formatStateUsing(fn ($state) => $state !== null ? number_format($state * 100).'%' : 'N/A')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('created_at')
@@ -127,12 +129,12 @@ class DisputeResource extends Resource
                 Tables\Actions\Action::make('resolve_buyer')
                     ->label('Refund Buyer')
                     ->color('success')
-                    ->icon('heroicon-o-arrow-left-on-inside-card')
+                    ->icon('heroicon-o-receipt-refund')
                     ->action(function (Dispute $record) {
                         $record->update(['status' => 'resolved_buyer']);
                         $record->transaction->update(['status' => 'refunded']);
 
-                        app(\App\Services\AuditLoggerService::class)->recordAction(
+                        app(AuditLoggerService::class)->recordAction(
                             Auth::user(),
                             'DISPUTE_RESOLVED_BUYER',
                             'Dispute',
@@ -149,7 +151,7 @@ class DisputeResource extends Resource
                         $record->transaction->update(['status' => 'completed']);
                         $record->transaction->listing->update(['status' => 'sold']);
 
-                        app(\App\Services\AuditLoggerService::class)->recordAction(
+                        app(AuditLoggerService::class)->recordAction(
                             Auth::user(),
                             'DISPUTE_RESOLVED_SELLER',
                             'Dispute',
