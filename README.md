@@ -219,7 +219,19 @@ The tests use an in-memory SQLite database, so PHP needs `pdo_sqlite` and `sqlit
 
 ### AI dispute analysis
 
-Disputes are analysed by the Python NLP microservice configured with `AI_MODERATION_URL` (default `http://127.0.0.1:8000`, endpoint `POST /api/analyze-dispute`). The analysis (sentiment -1 to 1, confidence 0 to 1, suggested resolution, summary) is advisory: if the service is off, slow (`AI_MODERATION_TIMEOUT`) or returns invalid data, the dispute is still recorded and left for a human moderator. Set `AI_MODERATION_ENABLED=false` to turn it off.
+Disputes are analysed by a separate Python NLP microservice, configured with `AI_MODERATION_URL` (default `http://127.0.0.1:8001`, endpoint `POST /api/analyze-dispute`). The analysis (sentiment -1 to 1, confidence 0 to 1, suggested resolution, summary) is advisory: if the service is off, slow (`AI_MODERATION_TIMEOUT`) or returns invalid data, the dispute is still recorded and left for a human moderator. Set `AI_MODERATION_ENABLED=false` to turn it off.
+
+That Python service is its own project and is not part of this repository - run it separately, on **port 8001**, alongside the Laravel app on its own port:
+
+```bash
+# Terminal 1 - the Laravel app (port 8000)
+php artisan serve
+
+# Terminal 2 - the Python AI service, from its own project directory (port 8001)
+uvicorn main:app --port 8001
+```
+
+Deliberately not port 8000 for the AI service: that's also `php artisan serve`'s default port, and a dispute raised while both defaults collide would have the Laravel app calling itself instead of the AI service. If you run the AI service on a different port or host, update `AI_MODERATION_URL` in `.env` to match.
 
 ### API
 

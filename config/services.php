@@ -32,10 +32,14 @@ return [
     | Python NLP microservice that scores dispute reports (sentiment, confidence,
     | suggested resolution). When disabled or unreachable, disputes are still
     | recorded and simply wait for a human moderator.
+    |
+    | Default port is 8001, not 8000 - `php artisan serve` also defaults to
+    | 8000, and a dispute raised while both defaults are in effect would have
+    | the Laravel app call itself instead of the AI service.
     */
     'dispute_ai' => [
         'enabled' => (bool) env('AI_MODERATION_ENABLED', true),
-        'url' => rtrim((string) env('AI_MODERATION_URL', 'http://127.0.0.1:8000'), '/'),
+        'url' => rtrim((string) env('AI_MODERATION_URL', 'http://127.0.0.1:8001'), '/'),
         'timeout' => (int) env('AI_MODERATION_TIMEOUT', 3),
     ],
 

@@ -14,7 +14,13 @@ class Bell extends Component
      */
     public function open(string $notificationId)
     {
-        $notification = Auth::user()->notifications()->whereKey($notificationId)->first();
+        $user = Auth::user();
+
+        if (! $user) {
+            return null;
+        }
+
+        $notification = $user->notifications()->whereKey($notificationId)->first();
 
         if (! $notification) {
             return null;
@@ -27,16 +33,23 @@ class Bell extends Component
 
     public function markAllAsRead(): void
     {
-        Auth::user()->unreadNotifications->markAsRead();
+        Auth::user()?->unreadNotifications->markAsRead();
     }
 
+    /**
+     * The bell only ever renders for a logged-in user (the layout gates it
+     * behind an auth check), but it also polls every 20 seconds - if the
+     * session expires or the user logs out in another tab while this
+     * component is still mounted, that next poll runs with no authenticated
+     * user, so this still needs to fail safe rather than crash.
+     */
     public function render()
     {
         $user = Auth::user();
 
         return view('livewire.notifications.bell', [
-            'notifications' => $user->notifications()->latest()->limit(self::RECENT_LIMIT)->get(),
-            'unreadCount' => $user->unreadNotifications()->count(),
+            'notifications' => $user ? $user->notifications()->latest()->limit(self::RECENT_LIMIT)->get() : collect(),
+            'unreadCount' => $user ? $user->unreadNotifications()->count() : 0,
         ]);
     }
 }

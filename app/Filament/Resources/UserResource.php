@@ -49,7 +49,7 @@ class UserResource extends Resource
                         'admin' => 'Admin',
                     ])
                     ->required()
-                    ->disabled(fn (): bool => Auth::id() === request()->route('record')?->getKey())
+                    ->disabled(fn (?User $record): bool => $record !== null && Auth::id() === $record->id)
                     ->helperText('Only admins can change a role, and never their own.'),
             ]);
     }

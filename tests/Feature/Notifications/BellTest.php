@@ -71,3 +71,21 @@ it('marks every notification read at once', function () {
 
     expect($user->unreadNotifications()->count())->toBe(0);
 });
+
+describe('when the session has expired while the bell is still mounted', function () {
+    it('renders (and re-renders, as a poll would) without a signed-in user instead of crashing', function () {
+        Livewire::test(Bell::class)
+            ->assertSuccessful()
+            ->assertSee('You have no notifications yet.')
+            ->call('$refresh')
+            ->assertSuccessful();
+    });
+
+    it('does not crash when markAllAsRead runs with no signed-in user', function () {
+        Livewire::test(Bell::class)->call('markAllAsRead')->assertSuccessful();
+    });
+
+    it('does not crash when open runs with no signed-in user', function () {
+        Livewire::test(Bell::class)->call('open', 'some-id')->assertSuccessful();
+    });
+});
