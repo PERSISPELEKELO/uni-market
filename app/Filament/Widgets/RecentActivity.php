@@ -27,6 +27,7 @@ class RecentActivity extends BaseWidget
         'USER_LOGIN' => 'logged in',
         'USER_SUSPENDED' => 'suspended an account',
         'USER_REINSTATED' => 'reinstated an account',
+        'USER_DELETED' => 'deleted an account',
         'PASSWORD_CHANGED' => 'changed their password',
         'PASSWORD_RESET' => 'reset their password',
         'LISTING_CREATED' => 'created a new listing',

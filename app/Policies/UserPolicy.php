@@ -26,4 +26,9 @@ class UserPolicy
     {
         return $this->manage($actor) && $actor->id !== $target->id;
     }
+
+    public function delete(User $actor, User $target): bool
+    {
+        return $this->manage($actor) && $actor->id !== $target->id;
+    }
 }

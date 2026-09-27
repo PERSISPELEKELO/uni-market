@@ -1,7 +1,14 @@
 <?php
 
 use App\Livewire\Auth\Login;
+use App\Models\Appeal;
 use App\Models\AuditLog;
+use App\Models\Dispute;
+use App\Models\Listing;
+use App\Models\Message;
+use App\Models\Rating;
+use App\Models\StudentVerificationDocument;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Services\UserModerationService;
 
@@ -98,4 +105,66 @@ it('denies a suspended admin access to the admin panel', function () {
     $admin = User::factory()->create(['role' => 'admin', 'suspended_at' => now()]);
 
     expect($admin->canAccessPanel(filament()->getPanel('admin')))->toBeFalse();
+});
+
+describe('deleting an account', function () {
+    it('permanently deletes an account with no marketplace history, recording who and what before it goes', function () {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $target = User::factory()->create(['role' => 'student', 'name' => 'Clean Account', 'email' => 'clean@example.com']);
+        $targetId = $target->id;
+
+        $this->service->delete($target, $admin);
+
+        expect(User::find($targetId))->toBeNull();
+
+        $log = AuditLog::where('action', 'USER_DELETED')->where('target_id', $targetId)->first();
+        expect($log)->not->toBeNull()
+            ->and($log->payload['name'])->toBe('Clean Account')
+            ->and($log->payload['email'])->toBe('clean@example.com');
+    });
+
+    it('refuses to delete your own account', function () {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        expect(fn () => $this->service->delete($admin, $admin))
+            ->toThrow(InvalidArgumentException::class, 'cannot delete your own account');
+
+        expect(User::find($admin->id))->not->toBeNull();
+    });
+
+    it('refuses to let a non-admin delete another admin', function () {
+        $governance = User::factory()->create(['role' => 'governance_committee']);
+        $otherAdmin = User::factory()->create(['role' => 'admin']);
+
+        expect(fn () => $this->service->delete($otherAdmin, $governance))
+            ->toThrow(InvalidArgumentException::class, 'Only an admin');
+
+        expect(User::find($otherAdmin->id))->not->toBeNull();
+    });
+
+    it('refuses to delete an account with any real marketplace history', function (callable $giveHistory) {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $target = User::factory()->create(['role' => 'student']);
+
+        $giveHistory($target);
+
+        expect(fn () => $this->service->delete($target, $admin))
+            ->toThrow(InvalidArgumentException::class, 'marketplace history');
+
+        expect(User::find($target->id))->not->toBeNull();
+    })->with([
+        'has a listing' => [fn (User $target) => Listing::factory()->create(['user_id' => $target->id])],
+        'bought something' => [fn (User $target) => Transaction::factory()->create(['buyer_id' => $target->id])],
+        'sold something' => [fn (User $target) => Transaction::factory()->create(['seller_id' => $target->id])],
+        'raised a dispute' => [function (User $target) {
+            $tx = Transaction::factory()->create(['buyer_id' => $target->id]);
+            Dispute::create(['transaction_id' => $tx->id, 'raised_by' => $target->id, 'reason' => 'test', 'status' => 'open']);
+        }],
+        'filed an appeal' => [fn (User $target) => Appeal::factory()->create(['user_id' => $target->id])],
+        'sent a message' => [fn (User $target) => Message::factory()->create(['sender_id' => $target->id])],
+        'received a message' => [fn (User $target) => Message::factory()->create(['receiver_id' => $target->id])],
+        'gave a rating' => [fn (User $target) => Rating::factory()->create(['rater_id' => $target->id])],
+        'received a rating' => [fn (User $target) => Rating::factory()->create(['rated_id' => $target->id])],
+        'submitted a verification document' => [fn (User $target) => StudentVerificationDocument::factory()->create(['user_id' => $target->id])],
+    ]);
 });

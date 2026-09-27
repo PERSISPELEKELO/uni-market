@@ -16,9 +16,11 @@ use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 
 /**
- * Account management only - no create/delete here. Accounts are created by
- * students registering themselves, and per policy are never permanently
- * deleted, only suspended.
+ * Account management only - no "create" here, since accounts only ever
+ * come from students registering themselves. Deletion is real but
+ * deliberately narrow: an account with any marketplace history at all
+ * (listings, transactions, messages, ratings, disputes, appeals) can only
+ * be suspended, never deleted - see UserModerationService::delete().
  */
 class UserResource extends Resource
 {
@@ -162,6 +164,24 @@ class UserResource extends Resource
                             FilamentNotification::make()->title('Account reinstated')->success()->send();
                         } catch (InvalidArgumentException $exception) {
                             FilamentNotification::make()->title('Could not reinstate this account')->body($exception->getMessage())->danger()->send();
+                        }
+                    }),
+
+                Tables\Actions\Action::make('delete_user')
+                    ->label('Delete')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->visible(fn (User $record): bool => Gate::allows('delete', $record))
+                    ->requiresConfirmation()
+                    ->modalHeading('Permanently delete this account?')
+                    ->modalDescription('This cannot be undone. It only succeeds if the account has no listings, transactions, messages, ratings, disputes or appeals - suspend it instead if it has any history.')
+                    ->modalSubmitActionLabel('Delete permanently')
+                    ->action(function (User $record, UserModerationService $service): void {
+                        try {
+                            $service->delete($record, Auth::user());
+                            FilamentNotification::make()->title('Account deleted')->success()->send();
+                        } catch (InvalidArgumentException $exception) {
+                            FilamentNotification::make()->title('Could not delete this account')->body($exception->getMessage())->danger()->send();
                         }
                     }),
             ]);

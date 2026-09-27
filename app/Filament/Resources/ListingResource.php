@@ -15,9 +15,11 @@ use Illuminate\Support\Facades\Gate;
 
 /**
  * Listings are created by sellers through the marketplace, never here.
- * Admin's only real levers are suspending one (hiding it from the
- * marketplace) and restoring it - there is no separate approval queue in
- * this system, so this resource doesn't pretend one exists.
+ * Admin can suspend one (hiding it from the marketplace, reversible),
+ * restore it, or delete it (a soft delete via the model's existing
+ * SoftDeletes trait - not a hard delete, so it can't cascade into or
+ * break anything). There is no separate approval queue in this system,
+ * so this resource doesn't pretend one exists.
  */
 class ListingResource extends Resource
 {
@@ -145,6 +147,29 @@ class ListingResource extends Resource
                         );
 
                         FilamentNotification::make()->title('Listing restored')->success()->send();
+                    }),
+
+                Tables\Actions\Action::make('delete_listing')
+                    ->label('Delete')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->visible(fn (): bool => Gate::allows('manage-marketplace'))
+                    ->requiresConfirmation()
+                    ->modalHeading('Delete this listing?')
+                    ->modalDescription('This removes it from the marketplace immediately. It is a soft delete - the record is kept and can be restored from the database if needed, but there is no restore button in this panel yet.')
+                    ->modalSubmitActionLabel('Delete')
+                    ->action(function (Listing $record): void {
+                        app(AuditLoggerService::class)->log(
+                            'LISTING_DELETED',
+                            'Listing',
+                            $record->id,
+                            ['title' => $record->title, 'seller_id' => $record->user_id],
+                            Auth::user()
+                        );
+
+                        $record->delete();
+
+                        FilamentNotification::make()->title('Listing deleted')->success()->send();
                     }),
             ]);
     }
