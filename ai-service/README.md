@@ -91,6 +91,12 @@ before raising a test dispute.
 
 ## Setup (Windows)
 
+Requires **Python 3.14**. `requirements.txt` is pinned to versions that
+have prebuilt Windows wheels for 3.14 - installing an older pin (e.g.
+scikit-learn 1.5.x) on 3.14 makes `pip` try to compile it from source,
+which fails without a C compiler installed. If you're on an older Python
+(3.11/3.12/3.13), the same pins should still resolve fine.
+
 ```bash
 cd ai-service
 python -m venv .venv
@@ -104,10 +110,17 @@ pip install -r requirements.txt
 python train.py
 ```
 
-This reads `data/disputes.csv`, trains the TF-IDF + Logistic Regression
-pipeline, prints accuracy and a per-category precision/recall/F1 report
-on a held-out 20% test split, saves a confusion matrix image to
-`models/confusion_matrix.png`, and saves the trained pipeline to
+This reads `data/disputes.csv` and prints two separate evaluations before
+saving anything:
+
+1. **5-fold cross-validation** over the entire synthetic set (accuracy
+   and macro-F1, per fold and averaged) - a more robust estimate of how
+   the approach generalises than trusting a single split.
+2. **A single held-out 20% test split**: accuracy, a per-category
+   precision/recall/F1 report, and a confusion matrix saved to
+   `models/confusion_matrix.png`.
+
+It then saves the pipeline (fit on that split's training portion) to
 `models/model.joblib`. A trained model is already committed in this repo
 so `app.py` runs immediately after `pip install` without this step, but
 re-run it any time `data/disputes.csv` changes.
@@ -118,6 +131,22 @@ phrase banks):
 ```bash
 python data\generate_dataset.py
 ```
+
+## Evaluate against real dispute text
+
+```bash
+python evaluate_real.py
+```
+
+A *separate* evaluation from training - it loads the already-saved
+`models/model.joblib` and only ever calls `.predict()` on it, against
+`data/real_test.csv` (columns: `text`, `label`). That file is real,
+collected student dispute text and is never used for training or tuning
+anywhere in this project - see `train.py`, which only ever touches
+`data/disputes.csv`. Prints accuracy and a per-category precision/recall/
+F1 report, and saves a confusion matrix to
+`models/confusion_matrix_real.png` (kept separate from the synthetic
+one). `data/real_test.csv` is not included in this repo.
 
 ## Run the service
 

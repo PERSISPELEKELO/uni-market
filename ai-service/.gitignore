@@ -2,3 +2,9 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Real, collected student dispute text - unlike data/disputes.csv (synthetic,
+# committed), this is real complaint text and should not end up in a public
+# repo. evaluate_real.py reads it locally; it is never trained on.
+data/real_test.csv
+models/confusion_matrix_real.png
