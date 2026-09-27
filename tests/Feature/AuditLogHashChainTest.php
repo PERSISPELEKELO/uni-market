@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\AuditLoggerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,5 +74,69 @@ class AuditLogHashChainTest extends TestCase
         $this->artisan('audit:verify')
             ->expectsOutputToContain('SUCCESS: Audit log chain is intact and valid.')
             ->assertExitCode(0);
+    }
+
+    public function test_chain_stays_verifiable_after_an_actors_account_is_permanently_deleted(): void
+    {
+        $actor = User::factory()->create(['role' => 'student']);
+
+        $this->auditLogger->recordAction($actor, 'USER_REGISTERED', 'User', (string) $actor->id, []);
+        $this->auditLogger->recordAction($actor, 'USER_LOGIN', 'User', (string) $actor->id, []);
+
+        $actor->delete();
+
+        $result = $this->auditLogger->verifyIntegrity();
+
+        $this->assertTrue(
+            $result['is_valid'],
+            'The chain should stay verifiable once the actor is gone, because actor_id_snapshot - unlike '
+            .'the actor_id foreign key - is never touched by ON DELETE SET NULL.'
+        );
+    }
+
+    public function test_a_legacy_row_with_no_snapshot_correctly_stays_broken_if_its_actor_is_deleted(): void
+    {
+        $actor = User::factory()->create(['role' => 'student']);
+        $log = $this->auditLogger->recordAction($actor, 'USER_REGISTERED', 'User', (string) $actor->id, []);
+
+        // Simulates a row written before actor_id_snapshot existed.
+        $log->forceFill(['actor_id_snapshot' => null, 'actor_name_snapshot' => null])->save();
+
+        $actor->delete();
+
+        $result = $this->auditLogger->verifyIntegrity();
+
+        $this->assertFalse(
+            $result['is_valid'],
+            'A pre-snapshot row has no immutable record of who the actor was, so once that actor is '
+            .'deleted there is no way to recompute the original hash - this is the expected, correct '
+            .'behaviour of a hash chain, not a bug: it is detecting that something about the record '
+            .'genuinely changed.'
+        );
+    }
+
+    public function test_actor_display_name_shows_the_live_name_while_the_account_still_exists(): void
+    {
+        $actor = User::factory()->create(['name' => 'Chileshe Mwansa']);
+        $log = $this->auditLogger->recordAction($actor, 'USER_LOGIN', 'User', (string) $actor->id, []);
+
+        $this->assertSame('Chileshe Mwansa', $log->actorDisplayName());
+    }
+
+    public function test_actor_display_name_falls_back_to_the_snapshot_once_the_account_is_deleted(): void
+    {
+        $actor = User::factory()->create(['name' => 'Chileshe Mwansa']);
+        $log = $this->auditLogger->recordAction($actor, 'USER_LOGIN', 'User', (string) $actor->id, []);
+
+        $actor->delete();
+
+        $this->assertSame('Chileshe Mwansa (deleted)', $log->fresh()->actorDisplayName());
+    }
+
+    public function test_actor_display_name_says_system_for_a_genuine_system_action(): void
+    {
+        $log = $this->auditLogger->recordAction(null, 'SYSTEM_SWEEP', 'System', '0', []);
+
+        $this->assertSame('System', $log->actorDisplayName());
     }
 }

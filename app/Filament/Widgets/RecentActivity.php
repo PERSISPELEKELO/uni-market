@@ -59,9 +59,9 @@ class RecentActivity extends BaseWidget
             ->query(AuditLog::query()->latest('timestamp'))
             ->paginated([10, 25, 50])
             ->columns([
-                Tables\Columns\TextColumn::make('actor.name')
+                Tables\Columns\TextColumn::make('actor_name_snapshot')
                     ->label('Who')
-                    ->default('System')
+                    ->state(fn (AuditLog $record): string => $record->actorDisplayName())
                     ->weight('semibold'),
 
                 Tables\Columns\TextColumn::make('action')

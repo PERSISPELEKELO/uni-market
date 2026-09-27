@@ -15,7 +15,9 @@ class AuditLogResource extends Resource
     protected static ?string $model = AuditLog::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
+
     protected static ?string $navigationGroup = 'Security & Compliance';
+
     protected static ?string $navigationLabel = 'Audit Logs';
 
     public static function canCreate(): bool
@@ -53,8 +55,9 @@ class AuditLogResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('actor.name')
+                Tables\Columns\TextColumn::make('actor_name_snapshot')
                     ->label('Actor')
+                    ->state(fn (AuditLog $record): string => $record->actorDisplayName())
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('actor_role')

@@ -51,6 +51,8 @@ class AuditLoggerService
                 'uuid' => $uuid,
                 'timestamp' => $timestamp,
                 'actor_id' => $actor?->id,
+                'actor_id_snapshot' => $actor?->id,
+                'actor_name_snapshot' => $actor?->name,
                 'actor_role' => $actorRole,
                 'action' => $action,
                 'target_type' => $targetType,
@@ -105,7 +107,14 @@ class AuditLoggerService
                 ? $log->timestamp->toIso8601String()
                 : (string) $log->timestamp;
 
-            $actorIdStr = $log->actor_id ? (string) $log->actor_id : 'SYSTEM';
+            // actor_id_snapshot is immutable (no foreign key, never touched by a later
+            // ON DELETE SET NULL on actor_id), so it's the correct value to re-hash
+            // from. Rows written before that column existed have no snapshot at all
+            // and fall back to the live actor_id, which recomputes correctly unless
+            // that particular actor has since been deleted - a hash chain is meant
+            // to detect exactly that kind of change to the record, tampering or not.
+            $actorIdForHash = $log->actor_id_snapshot ?? $log->actor_id;
+            $actorIdStr = $actorIdForHash ? (string) $actorIdForHash : 'SYSTEM';
 
             $payloadArray = is_array($log->payload)
                 ? $log->payload
@@ -143,6 +152,7 @@ class AuditLoggerService
     public function verifyChainIntegrity(): array
     {
         $res = $this->verifyIntegrity();
+
         return [
             'status' => $res['is_valid'] ? 'valid' : 'corrupted',
             'checked_count' => AuditLog::count(),
@@ -162,6 +172,7 @@ class AuditLoggerService
                 $value = self::sortKeys($value);
             }
         }
+
         return $payload;
     }
 
@@ -180,7 +191,7 @@ class AuditLoggerService
     ): string {
         $jsonPayload = json_encode(self::sortKeys($payload), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        $rawString = $previousHash . '|' . $timestamp . '|' . $actorId . '|' . $action . '|' . $targetType . '|' . $targetId . '|' . $jsonPayload;
+        $rawString = $previousHash.'|'.$timestamp.'|'.$actorId.'|'.$action.'|'.$targetType.'|'.$targetId.'|'.$jsonPayload;
 
         return hash('sha256', $rawString);
     }
