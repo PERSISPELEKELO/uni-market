@@ -68,6 +68,14 @@ class Login extends Component
             return null;
         }
 
+        if (Auth::user()->isSuspended()) {
+            Auth::logout();
+            $this->password = '';
+            $this->addError('credentials', 'This account has been suspended. Contact support if you believe this is a mistake.');
+
+            return null;
+        }
+
         RateLimiter::clear($throttleKey);
         session()->regenerate();
 

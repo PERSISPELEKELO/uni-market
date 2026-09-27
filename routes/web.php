@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\DataPortabilityController;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Middleware\EnsureUserIsNotSuspended;
 use App\Livewire\Account\Profile;
 use App\Livewire\Account\StudentVerification;
 use App\Livewire\Auth\ForgotPassword;
@@ -38,7 +39,7 @@ Route::middleware(['guest'])->group(function () {
 });
 
 // Authenticated Student Actions
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', EnsureUserIsNotSuspended::class])->group(function () {
     // Account, email verification and student identity verification
     Route::get('/account', Profile::class)->name('account');
     Route::get('/email/verify', VerifyEmail::class)->name('verification.notice');

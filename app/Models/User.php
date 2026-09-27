@@ -8,8 +8,10 @@ use Filament\Panel;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -39,6 +41,9 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'student_verification_reviewed_at',
         'student_verification_reviewed_by',
         'student_verification_rejection_reason',
+        'suspended_at',
+        'suspended_by',
+        'suspension_reason',
     ];
 
     protected $hidden = [
@@ -231,11 +236,31 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 
     /**
      * Only admin and governance-committee accounts may sign in to the admin panel.
-     * Without this, Filament allows any authenticated user in by default.
+     * Without this, Filament allows any authenticated user in by default. A
+     * suspended staff account loses panel access too.
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->isAdmin() || $this->isGovernanceCommittee();
+        return ($this->isAdmin() || $this->isGovernanceCommittee()) && ! $this->isSuspended();
+    }
+
+    public function isSuspended(): bool
+    {
+        return $this->suspended_at !== null;
+    }
+
+    public function suspendedBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'suspended_by');
+    }
+
+    /**
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    public function scopeSuspended(Builder $query): Builder
+    {
+        return $query->whereNotNull('suspended_at');
     }
 
     /**
@@ -251,6 +276,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
             'is_verified' => 'boolean',
             'student_verification_submitted_at' => 'datetime',
             'student_verification_reviewed_at' => 'datetime',
+            'suspended_at' => 'datetime',
         ];
     }
 }

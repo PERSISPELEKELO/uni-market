@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\DisputeResource\Pages;
 use App\Models\Dispute;
+use App\Models\Message;
 use App\Services\AuditLoggerService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -11,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class DisputeResource extends Resource
 {
@@ -18,15 +20,32 @@ class DisputeResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-scale';
 
-    protected static ?string $navigationGroup = 'Moderation & Disputes';
+    protected static ?string $navigationGroup = 'AI Dispute Assistance';
 
-    protected static ?string $navigationLabel = 'Escrow Disputes';
+    protected static ?string $navigationLabel = 'Review Disputes';
+
+    public static function canViewAny(): bool
+    {
+        return Gate::allows('access-governance');
+    }
+
+    /**
+     * The escrow rules every buyer and seller agree to when they use the
+     * handover flow - shown verbatim so the admin can judge a dispute
+     * against the actual policy, not a rule they have to remember.
+     */
+    private const ESCROW_POLICY = 'The buyer reserves the item, the two parties meet on campus, and the buyer shares '
+        .'their handover code only once they have the item in hand. From that point, the buyer has a 48-hour '
+        .'inspection window to confirm the item as described or raise a dispute. Sellers never see the handover '
+        .'code in advance.';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Dispute Details & AI Assessment')
+                Forms\Components\Section::make('1. Dispute')
+                    ->description('What was reported, by whom, about which transaction.')
+                    ->columns(2)
                     ->schema([
                         Forms\Components\Select::make('transaction_id')
                             ->relationship('transaction', 'id')
@@ -34,14 +53,111 @@ class DisputeResource extends Resource
                             ->required(),
 
                         Forms\Components\Select::make('raised_by')
+                            ->label('Raised by')
                             ->relationship('reporter', 'name')
                             ->disabled()
                             ->required(),
 
                         Forms\Components\Textarea::make('reason')
+                            ->label("Buyer's complaint")
                             ->disabled()
                             ->columnSpanFull(),
+                    ]),
 
+                Forms\Components\Section::make('2. Evidence')
+                    ->description('What this system actually has on record for this case - nothing else is assumed.')
+                    ->schema([
+                        Forms\Components\Placeholder::make('case_context')
+                            ->label('Listing & transaction')
+                            ->content(function (?Dispute $record) {
+                                if (! $record?->transaction) {
+                                    return 'Not available.';
+                                }
+
+                                $tx = $record->transaction;
+                                $listing = $tx->listing;
+
+                                return sprintf(
+                                    '"%s" — K%s. Buyer: %s. Seller: %s. Transaction status: %s. Started %s.',
+                                    $listing?->title ?? 'Listing removed',
+                                    number_format((float) $tx->amount, 2),
+                                    $tx->buyer?->name ?? 'Unknown',
+                                    $tx->seller?->name ?? 'Unknown',
+                                    ucfirst(strtolower(str_replace('_', ' ', (string) $tx->status))),
+                                    $tx->created_at?->format('M j, Y g:i A') ?? 'Unknown'
+                                );
+                            })
+                            ->columnSpanFull(),
+
+                        Forms\Components\Placeholder::make('messages')
+                            ->label('Messages between buyer and seller about this transaction')
+                            ->content(function (?Dispute $record) {
+                                if (! $record?->transaction_id) {
+                                    return 'Not available.';
+                                }
+
+                                $messages = Message::where('transaction_id', $record->transaction_id)
+                                    ->with('sender')
+                                    ->orderBy('created_at')
+                                    ->get();
+
+                                if ($messages->isEmpty()) {
+                                    return 'No messages were exchanged about this transaction.';
+                                }
+
+                                return $messages
+                                    ->map(fn (Message $message): string => sprintf(
+                                        '[%s] %s: %s',
+                                        $message->created_at->format('M j, g:i A'),
+                                        $message->sender?->name ?? 'Unknown',
+                                        $message->message
+                                    ))
+                                    ->implode("\n");
+                            })
+                            ->columnSpanFull(),
+
+                        Forms\Components\Placeholder::make('missing_evidence')
+                            ->label('Not captured by this system')
+                            ->content('A separate written seller response and photo evidence are not collected as distinct fields today - review the message thread above for the seller\'s side of the conversation.')
+                            ->columnSpanFull(),
+
+                        Forms\Components\Placeholder::make('policy')
+                            ->label('Relevant policy')
+                            ->content(self::ESCROW_POLICY)
+                            ->columnSpanFull(),
+                    ]),
+
+                Forms\Components\Section::make('3. AI Analysis')
+                    ->description('Advisory only, from the sentiment-analysis microservice. Empty if the service was unavailable when this dispute was raised - the case is still yours to decide either way.')
+                    ->columns(2)
+                    ->schema([
+                        Forms\Components\TextInput::make('ai_sentiment_score')
+                            ->label('Sentiment (-1 to +1)')
+                            ->disabled()
+                            ->placeholder('Not available'),
+
+                        Forms\Components\TextInput::make('ai_confidence_score')
+                            ->label('Confidence')
+                            ->formatStateUsing(fn ($state) => $state !== null ? number_format($state * 100).'%' : null)
+                            ->disabled()
+                            ->placeholder('Not available'),
+
+                        Forms\Components\TextInput::make('ai_suggested_resolution')
+                            ->label('Suggested next action')
+                            ->disabled()
+                            ->placeholder('Not available')
+                            ->columnSpanFull(),
+
+                        Forms\Components\Textarea::make('ai_analysis_summary')
+                            ->label('Summary')
+                            ->disabled()
+                            ->placeholder('Not available')
+                            ->columnSpanFull(),
+                    ]),
+
+                Forms\Components\Section::make('4. Admin Decision')
+                    ->description('The AI never decides a case automatically - a person always makes and records the final call.')
+                    ->schema([
                         Forms\Components\Select::make('status')
                             ->options([
                                 'open' => 'Open',
@@ -50,26 +166,6 @@ class DisputeResource extends Resource
                                 'resolved_seller' => 'Resolved (Release to Seller)',
                             ])
                             ->required(),
-
-                        Forms\Components\Fieldset::make('Python AI Sentiment Engine Output')
-                            ->schema([
-                                Forms\Components\TextInput::make('ai_sentiment_score')
-                                    ->numeric()
-                                    ->prefix('Score (-1 to +1)')
-                                    ->disabled(),
-
-                                Forms\Components\TextInput::make('ai_confidence_score')
-                                    ->numeric()
-                                    ->prefix('Confidence %')
-                                    ->disabled(),
-
-                                Forms\Components\TextInput::make('ai_suggested_resolution')
-                                    ->disabled(),
-
-                                Forms\Components\Textarea::make('ai_analysis_summary')
-                                    ->columnSpanFull()
-                                    ->disabled(),
-                            ]),
                     ]),
             ]);
     }

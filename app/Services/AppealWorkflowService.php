@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AppealStatus;
 use App\Models\Appeal;
 use App\Models\User;
 use DomainException;
@@ -57,8 +58,10 @@ class AppealWorkflowService
      */
     public function startReview(Appeal $appeal, User $actor): Appeal
     {
-        if ($appeal->status !== Appeal::STATUS_PENDING) {
-            throw new DomainException("Cannot start review for an appeal with status '{$appeal->status}'. Expected 'PENDING'.");
+        if (! $appeal->isPending()) {
+            $status = $appeal->status instanceof AppealStatus ? $appeal->status->value : $appeal->status;
+
+            throw new DomainException("Cannot start review for an appeal with status '{$status}'. Expected 'PENDING'.");
         }
 
         $appeal->update([
@@ -88,11 +91,13 @@ class AppealWorkflowService
         ?string $governanceNotes,
         User $actor
     ): Appeal {
-        if ($appeal->status !== Appeal::STATUS_UNDER_REVIEW) {
-            throw new DomainException("Cannot decide an appeal with status '{$appeal->status}'. Expected 'UNDER_REVIEW'.");
+        if (! $appeal->isUnderReview()) {
+            $status = $appeal->status instanceof AppealStatus ? $appeal->status->value : $appeal->status;
+
+            throw new DomainException("Cannot decide an appeal with status '{$status}'. Expected 'UNDER_REVIEW'.");
         }
 
-        if (!in_array($outcome, [Appeal::STATUS_UPHELD, Appeal::STATUS_OVERTURNED], true)) {
+        if (! in_array($outcome, [Appeal::STATUS_UPHELD, Appeal::STATUS_OVERTURNED], true)) {
             throw new InvalidArgumentException("Invalid resolution outcome '{$outcome}'. Must be UPHELD or OVERTURNED.");
         }
 

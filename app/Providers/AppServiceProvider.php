@@ -14,6 +14,7 @@ use App\Policies\AuditLogPolicy;
 use App\Policies\ListingPolicy;
 use App\Policies\StudentVerificationDocumentPolicy;
 use App\Policies\TransactionPolicy;
+use App\Policies\UserPolicy;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View as ViewFacade;
@@ -40,10 +41,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Listing::class, ListingPolicy::class);
         Gate::policy(Transaction::class, TransactionPolicy::class);
         Gate::policy(StudentVerificationDocument::class, StudentVerificationDocumentPolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
 
         Gate::define('access-governance', fn (User $user) => $user->isGovernanceCommittee() || $user->isAdmin());
         Gate::define('manage-appeals', fn (User $user) => $user->isGovernanceCommittee() || $user->isAdmin());
         Gate::define('verify-audit-chain', fn (User $user) => $user->isGovernanceCommittee() || $user->isAdmin());
+        Gate::define('manage-marketplace', fn (User $user) => $user->isAdmin());
 
         Password::defaults(fn () => Password::min(8)->letters()->numbers());
 
