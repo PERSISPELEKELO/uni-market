@@ -12,8 +12,9 @@ use Livewire\Component;
 /**
  * Self-contained: renders nothing when the signed-in user cannot rate this
  * transaction, a star-and-comment form when they can, or a short recap once
- * they have. Safe to embed unconditionally (e.g. on the tracker page and in
- * a chat thread) without the parent needing to pre-check eligibility.
+ * they have. Deliberately embedded only on the transaction tracker page, not
+ * inside chat/messaging - a conversation alone must never surface a rating
+ * prompt, only a genuinely completed transaction does.
  */
 class RateTransaction extends Component
 {

@@ -45,6 +45,16 @@ class CategoryResource extends Resource
                     ->maxLength(255)
                     ->unique(ignoreRecord: true)
                     ->helperText('Used in URLs. Only lowercase letters, numbers and hyphens.'),
+
+                Forms\Components\Select::make('transaction_mode')
+                    ->label('Transaction workflow')
+                    ->options([
+                        Category::MODE_DIRECT => 'Direct purchase (no inspection/escrow)',
+                        Category::MODE_INSPECTION => 'Inspection / escrow (existing handover + inspection window)',
+                    ])
+                    ->default(Category::MODE_INSPECTION)
+                    ->required()
+                    ->helperText('Determines the workflow for every new transaction on listings in this category. Existing transactions keep the mode that applied when they were created.'),
             ]);
     }
 
@@ -59,6 +69,13 @@ class CategoryResource extends Resource
 
                 Tables\Columns\TextColumn::make('slug')
                     ->searchable(),
+
+                Tables\Columns\TextColumn::make('transaction_mode')
+                    ->label('Transaction Mode')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => ucfirst(strtolower($state)))
+                    ->color(fn (string $state): string => $state === Category::MODE_DIRECT ? 'success' : 'warning')
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('listings_count')
                     ->label('Listings')

@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Rating;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Notifications\NewRatingReceived;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -62,6 +63,7 @@ class RatingService
             'rated_id' => $ratedUserId,
             'stars' => $stars,
             'comment' => filled($comment) ? trim($comment) : null,
+            'status' => Rating::STATUS_VISIBLE,
         ]));
 
         $this->auditLogger->recordAction(
@@ -71,6 +73,8 @@ class RatingService
             (string) $rating->id,
             ['transaction_id' => $transaction->id, 'rated_id' => $ratedUserId, 'stars' => $stars]
         );
+
+        $rating->rated->notify(new NewRatingReceived($rating));
 
         return $rating;
     }

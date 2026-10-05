@@ -19,13 +19,18 @@
                     @endif
                 </div>
 
-                <div class="mt-1 flex items-center justify-center gap-1.5 sm:justify-start">
-                    @if ($averageRating !== null)
-                        <x-star-icon class="h-4 w-4 text-warn-500" />
-                        <span class="text-sm font-semibold text-ink">{{ number_format($averageRating, 1) }}</span>
-                        <span class="text-sm text-slate-600">({{ $ratingsCount }} {{ \Illuminate\Support\Str::plural('rating', $ratingsCount) }})</span>
-                    @else
-                        <span class="text-sm text-slate-600">No ratings yet</span>
+                <div class="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:justify-start">
+                    <div class="flex items-center gap-1.5">
+                        @if ($averageRating !== null)
+                            <x-star-icon class="h-4 w-4 text-warn-500" />
+                            <span class="text-sm font-semibold text-ink">{{ number_format($averageRating, 1) }}</span>
+                            <span class="text-sm text-slate-600">({{ $ratingsCount }} {{ \Illuminate\Support\Str::plural('rating', $ratingsCount) }})</span>
+                        @else
+                            <span class="text-sm text-slate-600">No ratings yet</span>
+                        @endif
+                    </div>
+                    @if ($completedTransactionsCount > 0)
+                        <span class="text-sm text-slate-600">{{ $completedTransactionsCount }} completed {{ \Illuminate\Support\Str::plural('transaction', $completedTransactionsCount) }}</span>
                     @endif
                 </div>
 
@@ -52,6 +57,16 @@
                     <button type="button" wire:click="message" class="btn btn-primary btn-sm mt-4">
                         <x-app-icon name="chat" class="h-4 w-4" /> {{ auth()->check() ? 'Message' : 'Log in to message' }}
                     </button>
+                @else
+                    <div class="mt-4">
+                        <a href="{{ route('reputation.export') }}" class="btn btn-secondary btn-sm">
+                            <x-app-icon name="download" class="h-4 w-4" /> Export reputation &amp; history
+                        </a>
+                        <p class="mt-1.5 text-xs text-slate-500">
+                            Your export is digitally signed so its authenticity can be verified later at
+                            <a href="{{ route('reputation.verify') }}" class="underline underline-offset-2 hover:text-brand-800 dark:hover:text-brand-300">Verify a reputation record</a>.
+                        </p>
+                    </div>
                 @endif
             </div>
         </div>
@@ -97,7 +112,16 @@
                                 @if ($rating->comment)
                                     <p class="mt-0.5 whitespace-pre-line break-words text-sm text-slate-700">{{ $rating->comment }}</p>
                                 @endif
-                                <p class="mt-0.5 text-xs text-slate-500">{{ $rating->created_at->diffForHumans() }}</p>
+                                <div class="mt-1 flex flex-wrap items-center justify-between gap-2">
+                                    <p class="flex items-center gap-1 text-xs text-slate-500">
+                                        {{ $rating->created_at->diffForHumans() }}
+                                        <span aria-hidden="true">&middot;</span>
+                                        <x-app-icon name="check-circle" class="h-3 w-3 text-accent-600" /> Verified transaction
+                                    </p>
+                                    @if (auth()->check() && auth()->id() !== $rating->rater_id)
+                                        @livewire('ratings.report-review', ['rating' => $rating], key('report-'.$rating->id))
+                                    @endif
+                                </div>
                             </div>
                         </li>
                     @endforeach

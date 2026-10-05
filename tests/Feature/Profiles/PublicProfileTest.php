@@ -103,6 +103,40 @@ describe('rating display', function () {
 
         $this->get(route('profiles.show', $seller))->assertDontSee('Secret Listing Title 12345');
     });
+
+    it('marks every review as coming from a verified transaction', function () {
+        $seller = User::factory()->create();
+        $transaction = Transaction::factory()->create(['seller_id' => $seller->id, 'status' => 'COMPLETED']);
+        Rating::create(['transaction_id' => $transaction->id, 'rater_id' => $transaction->buyer_id, 'rated_id' => $seller->id, 'stars' => 4]);
+
+        $this->get(route('profiles.show', $seller))->assertSee('Verified transaction');
+    });
+
+    it('shows the number of completed transactions', function () {
+        $seller = User::factory()->create();
+        Transaction::factory()->create(['seller_id' => $seller->id, 'status' => 'COMPLETED']);
+        Transaction::factory()->create(['seller_id' => $seller->id, 'status' => 'COMPLETED']);
+        Transaction::factory()->create(['seller_id' => $seller->id, 'status' => 'PENDING_MEETING']);
+
+        $this->get(route('profiles.show', $seller))->assertSee('2 completed transactions');
+    });
+
+    it('excludes a hidden review from the average, count and review list', function () {
+        $seller = User::factory()->create();
+        $transaction = Transaction::factory()->create(['seller_id' => $seller->id, 'status' => 'COMPLETED']);
+        Rating::create([
+            'transaction_id' => $transaction->id,
+            'rater_id' => $transaction->buyer_id,
+            'rated_id' => $seller->id,
+            'stars' => 1,
+            'comment' => 'This review was hidden for testing.',
+            'status' => Rating::STATUS_HIDDEN,
+        ]);
+
+        $this->get(route('profiles.show', $seller))
+            ->assertSee('No ratings yet')
+            ->assertDontSee('This review was hidden for testing.');
+    });
 });
 
 describe('messaging from a profile', function () {

@@ -21,6 +21,7 @@ use App\Livewire\Marketplace\ListingIndex;
 use App\Livewire\Marketplace\ListingShow;
 use App\Livewire\Marketplace\MyListings;
 use App\Livewire\Profiles\PublicProfile;
+use App\Livewire\Ratings\VerifyReputation;
 use App\Livewire\Transactions\Tracker;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', ListingIndex::class)->name('listings.index');
 Route::get('/listings/{listing}', ListingShow::class)->name('listings.show');
 Route::get('/students/{user}', PublicProfile::class)->name('profiles.show');
+
+// Public reputation-record verification: no account needed, so a credential
+// stays checkable by anyone (e.g. an employer) after the student graduates.
+Route::get('/reputation/verify', VerifyReputation::class)->name('reputation.verify');
 
 // Auth Routes (Guest Only)
 Route::middleware(['guest'])->group(function () {
@@ -74,9 +79,8 @@ Route::middleware(['auth', EnsureUserIsNotSuspended::class])->group(function () 
     Route::post('/appeals/{appeal}/review', [AppealController::class, 'startReview'])->name('appeals.review');
     Route::post('/appeals/{appeal}/decide', [AppealController::class, 'decide'])->name('appeals.decide');
 
-    // Data Portability Exporter
+    // Signed reputation export - the student's own data only (see DataPortabilityController::export).
     Route::get('/reputation/export', [DataPortabilityController::class, 'export'])->name('reputation.export');
-    Route::post('/reputation/verify', [DataPortabilityController::class, 'verify'])->name('reputation.verify');
 
     // Logout
     Route::post('/logout', function () {

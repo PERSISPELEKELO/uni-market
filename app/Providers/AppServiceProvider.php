@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\StudentVerificationDocument;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Observers\TransactionObserver;
 use App\Policies\AppealPolicy;
 use App\Policies\AuditLogPolicy;
 use App\Policies\ListingPolicy;
@@ -49,6 +50,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-marketplace', fn (User $user) => $user->isAdmin());
 
         Password::defaults(fn () => Password::min(8)->letters()->numbers());
+
+        Transaction::observe(TransactionObserver::class);
 
         ViewFacade::composer('layouts.app', function (View $view): void {
             $view->with('unreadMessageCount', $this->unreadMessageCount());

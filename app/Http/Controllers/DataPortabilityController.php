@@ -15,35 +15,46 @@ class DataPortabilityController extends Controller
     ) {}
 
     /**
-     * Export asymmetrically signed reputation and activity data for the authenticated user.
+     * Download the authenticated student's own signed reputation export.
+     * The student is always taken from the session - never from any
+     * client-supplied id - so nobody can request another user's data.
      */
     public function export(Request $request): JsonResponse
     {
-        $exportPackage = $this->exporterService->exportUserData($request->user());
+        $document = $this->exporterService->exportUserData($request->user());
 
-        return response()->json($exportPackage, 200, [
+        return response()->json($document, 200, [
             'Content-Type' => 'application/json',
-            'Content-Disposition' => 'attachment; filename="reputation-export-user-' . $request->user()->id . '.json"',
+            'Content-Disposition' => 'attachment; filename="reputation_export_'.now()->format('Y-m-d').'.json"',
         ]);
     }
 
     /**
-     * Verify an asymmetrically signed reputation data export payload.
+     * Programmatic (JSON API) verification of an uploaded export file.
+     * Public/unauthenticated on purpose: verifying a credential must not
+     * require an account, since the whole point is it stays checkable by
+     * anyone (e.g. an employer) after the student has graduated.
      */
     public function verify(Request $request): JsonResponse
     {
         $request->validate([
-            'data' => ['required', 'array'],
-            'signature' => ['required', 'string'],
-            'public_key' => ['required', 'string'],
+            'file' => ['required', 'file', 'max:2048'],
         ]);
 
-        $isValid = $this->exporterService->verifyExportSignature($request->all());
+        $document = json_decode($request->file('file')->get(), true);
+
+        if (! is_array($document)) {
+            return response()->json([
+                'valid' => false,
+                'reason' => 'That file is not valid JSON.',
+            ], 422);
+        }
+
+        $result = $this->exporterService->verifyExport($document);
 
         return response()->json([
-            'status' => 'success',
-            'is_valid' => $isValid,
-            'message' => $isValid ? 'Asymmetric signature is authentic and verified.' : 'Signature verification failed. Data may be tampered or invalid.',
+            'valid' => $result['valid'],
+            'reason' => $result['reason'],
         ]);
     }
 }

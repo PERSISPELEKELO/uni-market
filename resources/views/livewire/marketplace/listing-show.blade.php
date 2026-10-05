@@ -66,13 +66,31 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="badge badge-brand">{{ $listing->category->name }}</span>
                     <x-status-badge :status="$listing->status" />
+                    @if ($listing->isHotDeal())
+                        <span class="badge border-none bg-danger-600 text-white">🔥 Hot Deal</span>
+                    @endif
                     <span class="text-xs text-slate-600">Listed {{ $listing->created_at->diffForHumans() }}</span>
                 </div>
 
                 <h1 class="break-words text-2xl font-bold leading-snug tracking-tight text-ink">{{ $listing->title }}</h1>
 
+                @if ($listing->isHotDeal())
+                    <div class="flex flex-wrap items-baseline gap-3">
+                        <span class="text-lg text-slate-500 line-through">K{{ number_format($listing->previous_price, 2) }}</span>
+                        <span class="text-3xl font-bold text-danger-700 dark:text-danger-400">K{{ number_format($listing->price, 2) }}</span>
+                    </div>
+                    <p class="text-sm font-semibold text-danger-700 dark:text-danger-400">
+                        Save K{{ number_format($listing->discountAmount(), 2) }}
+                        @if ($listing->discountPercentage() !== null)
+                            ({{ $listing->discountPercentage() }}% off)
+                        @endif
+                    </p>
+                @endif
+
                 <div class="flex flex-wrap items-baseline gap-3">
-                    <span class="text-3xl font-bold text-ink">K{{ number_format($listing->price, 2) }}</span>
+                    @unless ($listing->isHotDeal())
+                        <span class="text-3xl font-bold text-ink">K{{ number_format($listing->price, 2) }}</span>
+                    @endunless
                     <span class="badge badge-neutral">Condition: {{ $listing->condition_label }}</span>
                     @if ($reservationCount > 0)
                         <span class="badge badge-info">
@@ -178,16 +196,29 @@
                 </div>
             @endif
 
-            <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 p-4 text-sm">
-                <x-app-icon name="shield" class="mt-0.5 h-5 w-5 flex-shrink-0 text-accent-700" />
-                <div>
-                    <p class="font-semibold text-accent-800">Protected campus handover</p>
-                    <p class="mt-0.5 text-gray-700">
-                        Reserve the item, meet on campus and share your handover code only once you have the item in hand.
-                        You then get a 48-hour inspection window to confirm or dispute.
-                    </p>
+            @if ($listing->category->isDirect())
+                <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 p-4 text-sm dark:border-accent-500/30 dark:bg-accent-500/10">
+                    <x-app-icon name="bag" class="mt-0.5 h-5 w-5 flex-shrink-0 text-accent-700" />
+                    <div>
+                        <p class="font-semibold text-accent-800 dark:text-accent-300">Direct purchase</p>
+                        <p class="mt-0.5 text-gray-700">
+                            This item does not require inspection or escrow. Once the seller selects you as buyer, you can
+                            complete the purchase right away.
+                        </p>
+                    </div>
                 </div>
-            </div>
+            @else
+                <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 p-4 text-sm">
+                    <x-app-icon name="shield" class="mt-0.5 h-5 w-5 flex-shrink-0 text-accent-700" />
+                    <div>
+                        <p class="font-semibold text-accent-800">Inspection protected purchase</p>
+                        <p class="mt-0.5 text-gray-700">
+                            Reserve the item, meet on campus and share your handover code only once you have the item in hand.
+                            You then get a 48-hour inspection window to confirm or dispute.
+                        </p>
+                    </div>
+                </div>
+            @endif
 
         </div>
     </div>

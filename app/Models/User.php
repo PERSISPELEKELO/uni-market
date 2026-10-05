@@ -78,14 +78,14 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 
     public function averageRating(): ?float
     {
-        $average = $this->ratingsReceived()->avg('stars');
+        $average = $this->ratingsReceived()->visible()->avg('stars');
 
         return $average !== null ? round((float) $average, 1) : null;
     }
 
     public function ratingsCount(): int
     {
-        return $this->ratingsReceived()->count();
+        return $this->ratingsReceived()->visible()->count();
     }
 
     /**
@@ -94,6 +94,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     public function ratingBreakdown(): array
     {
         $counts = $this->ratingsReceived()
+            ->visible()
             ->selectRaw('stars, count(*) as total')
             ->groupBy('stars')
             ->pluck('total', 'stars');
@@ -104,6 +105,15 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         }
 
         return $breakdown;
+    }
+
+    /**
+     * Completed transactions this user took part in, as either buyer or seller -
+     * shown on the public profile alongside reputation (spec: "37 completed transactions").
+     */
+    public function completedTransactionsCount(): int
+    {
+        return Transaction::forParticipant($this->id)->where('status', 'COMPLETED')->count();
     }
 
     public function sales(): HasMany

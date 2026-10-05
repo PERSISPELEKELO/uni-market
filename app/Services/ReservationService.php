@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Category;
 use App\Models\Listing;
 use App\Models\Reservation;
 use App\Models\Transaction;
@@ -98,12 +99,17 @@ class ReservationService
                 return null;
             }
 
+            // Snapshotted from the category now, server-side, never from the
+            // frontend - see Transaction::isDirectMode() and its docblock.
+            $transactionMode = $listing->category->transaction_mode ?? Category::MODE_INSPECTION;
+
             $transaction = Transaction::create([
                 'listing_id' => $listing->id,
                 'buyer_id' => $lockedReservation->buyer_id,
                 'seller_id' => $seller->id,
                 'amount' => $listing->price,
                 'status' => 'initiated',
+                'transaction_mode' => $transactionMode,
             ]);
 
             $listing->update(['status' => Listing::STATUS_PENDING]);

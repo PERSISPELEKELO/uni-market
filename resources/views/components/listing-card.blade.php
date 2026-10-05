@@ -6,6 +6,11 @@
             <span class="badge badge-neutral absolute left-3 top-3 bg-white/95 shadow-sm dark:bg-slate-200/95">
                 {{ $listing->condition_label }}
             </span>
+            @if ($listing->isHotDeal())
+                <span class="badge absolute right-3 top-3 border-none bg-danger-600 text-white shadow-sm">
+                    🔥 Hot Deal
+                </span>
+            @endif
         </x-listing-image>
     </a>
 
@@ -16,7 +21,20 @@
             <a href="{{ route('listings.show', $listing) }}" class="line-clamp-2 break-words hover:text-brand-800 dark:hover:text-brand-300">{{ $listing->title }}</a>
         </h3>
 
-        <p class="mt-3 text-lg font-bold text-ink">K{{ number_format($listing->price, 2) }}</p>
+        @if ($listing->isHotDeal())
+            <div class="mt-3 flex flex-wrap items-baseline gap-2">
+                <span class="text-sm text-slate-500 line-through">K{{ number_format($listing->previous_price, 2) }}</span>
+                <span class="text-lg font-bold text-danger-700 dark:text-danger-400">K{{ number_format($listing->price, 2) }}</span>
+            </div>
+            <p class="mt-0.5 text-xs font-semibold text-danger-700 dark:text-danger-400">
+                Save K{{ number_format($listing->discountAmount(), 2) }}
+                @if ($listing->discountPercentage() !== null)
+                    ({{ $listing->discountPercentage() }}% off)
+                @endif
+            </p>
+        @else
+            <p class="mt-3 text-lg font-bold text-ink">K{{ number_format($listing->price, 2) }}</p>
+        @endif
 
         @if (($listing->active_reservations_count ?? 0) > 0)
             <p class="mt-1.5 flex items-center gap-1 text-xs font-medium text-info-700 dark:text-info-400">

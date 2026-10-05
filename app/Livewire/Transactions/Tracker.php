@@ -93,6 +93,26 @@ class Tracker extends Component
         }
     }
 
+    /**
+     * DIRECT-category categories (e.g. Food & Beverages) skip straight to
+     * completion - see InspectionService::completeDirectPurchase().
+     */
+    public function completeDirectPurchase(): void
+    {
+        $transaction = $this->selectedTransaction();
+
+        if (! $transaction || ! $this->passesPolicy('completeDirect', $transaction)) {
+            return;
+        }
+
+        try {
+            app(InspectionService::class)->completeDirectPurchase($transaction, Auth::user());
+            $this->notify('success', 'Purchase completed.');
+        } catch (\DomainException|\InvalidArgumentException $exception) {
+            $this->notify('error', $exception->getMessage());
+        }
+    }
+
     public function openDisputeModal(): void
     {
         $transaction = $this->selectedTransaction();
@@ -189,6 +209,10 @@ class Tracker extends Component
 
     private function needsHandoverCode(Transaction $transaction): bool
     {
+        if ($transaction->isDirectMode()) {
+            return false;
+        }
+
         $isPending = in_array(strtoupper((string) $transaction->status), ['PENDING_MEETING', 'INITIATED', 'RESERVED', 'PENDING'], true);
 
         return $isPending && ! $transaction->handover_otp_plain && ! $transaction->handover_code_plain;

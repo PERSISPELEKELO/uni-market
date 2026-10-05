@@ -40,6 +40,8 @@ class Listing extends Model
         'title',
         'description',
         'price',
+        'previous_price',
+        'price_dropped_at',
         'condition',
         'status',
         'images',
@@ -48,6 +50,8 @@ class Listing extends Model
     protected $casts = [
         'images' => 'array',
         'price' => 'decimal:2',
+        'previous_price' => 'decimal:2',
+        'price_dropped_at' => 'datetime',
     ];
 
     public function seller(): BelongsTo
@@ -86,6 +90,38 @@ class Listing extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_ACTIVE);
+    }
+
+    /**
+     * Listings with a genuine, currently-active price reduction. Real
+     * database data only - see isHotDeal()/ListingForm::update().
+     */
+    public function scopeHotDeals(Builder $query): Builder
+    {
+        return $query->whereNotNull('previous_price')->whereColumn('previous_price', '>', 'price');
+    }
+
+    /**
+     * A listing is only ever a Hot Deal because of a real, immediately-prior
+     * price that was genuinely higher - never a flag anyone can set by hand.
+     */
+    public function isHotDeal(): bool
+    {
+        return $this->previous_price !== null && (float) $this->previous_price > (float) $this->price;
+    }
+
+    public function discountAmount(): ?float
+    {
+        return $this->isHotDeal() ? round((float) $this->previous_price - (float) $this->price, 2) : null;
+    }
+
+    public function discountPercentage(): ?int
+    {
+        if (! $this->isHotDeal() || (float) $this->previous_price <= 0) {
+            return null;
+        }
+
+        return (int) round((((float) $this->previous_price - (float) $this->price) / (float) $this->previous_price) * 100);
     }
 
     /**

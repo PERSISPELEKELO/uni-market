@@ -39,6 +39,7 @@ class RecentActivity extends BaseWidget
         'TRANSACTION_INITIATED' => 'started a transaction',
         'TRANSACTION_HANDOVER_CONFIRMED' => 'confirmed a handover',
         'TRANSACTION_BUYER_ACCEPTED' => 'accepted an item',
+        'TRANSACTION_DIRECT_COMPLETED' => 'completed a direct purchase',
         'DISPUTE_RAISED' => 'opened a dispute',
         'POST_PURCHASE_DISPUTE_RAISED' => 'opened a post-purchase dispute',
         'DISPUTE_RESOLVED_BUYER' => 'resolved a dispute in favour of the buyer',
@@ -51,6 +52,8 @@ class RecentActivity extends BaseWidget
         'STUDENT_VERIFICATION_APPROVED' => 'approved a student verification',
         'STUDENT_VERIFICATION_REJECTED' => 'rejected a student verification',
         'RATING_SUBMITTED' => 'submitted a rating',
+        'RATING_HIDDEN' => 'hid a review',
+        'RATING_RESTORED' => 'restored a review',
     ];
 
     public function table(Table $table): Table

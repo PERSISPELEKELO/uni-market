@@ -4,7 +4,9 @@ use App\Models\Dispute;
 use App\Models\Rating;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Notifications\NewRatingReceived;
 use App\Services\RatingService;
+use Illuminate\Support\Facades\Notification;
 
 function completedTransaction(array $overrides = []): Transaction
 {
@@ -146,4 +148,23 @@ it('reports no average for a user with no ratings yet', function () {
     $user = User::factory()->create();
 
     expect($user->averageRating())->toBeNull()->and($user->ratingsCount())->toBe(0);
+});
+
+it('notifies the rated user when a new rating is submitted', function () {
+    Notification::fake();
+    $transaction = completedTransaction();
+
+    $rating = app(RatingService::class)->rate($transaction, $transaction->buyer, 5, 'Excellent.');
+
+    Notification::assertSentTo($rating->rated, NewRatingReceived::class);
+});
+
+it('counts completed transactions for both buyer and seller sides', function () {
+    $user = User::factory()->create();
+
+    completedTransaction(['buyer_id' => $user->id]);
+    completedTransaction(['seller_id' => $user->id]);
+    completedTransaction(['buyer_id' => $user->id, 'status' => 'PENDING_MEETING']);
+
+    expect($user->completedTransactionsCount())->toBe(2);
 });

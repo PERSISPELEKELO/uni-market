@@ -126,4 +126,50 @@ class InspectionService
             ]
         );
     }
+
+    /**
+     * Complete a DIRECT-category transaction (e.g. Food & Beverages) straight
+     * from its initial state, with no handover code or inspection window.
+     *
+     * The transaction_mode check is against this transaction's own
+     * server-set snapshot column, never the frontend and never a live
+     * category lookup - so a request cannot be crafted to run this against
+     * an INSPECTION-mode transaction to skip its escrow protection.
+     */
+    public function completeDirectPurchase(Transaction $transaction, User $buyer): void
+    {
+        if ($buyer->id !== $transaction->buyer_id) {
+            throw new InvalidArgumentException('Only the buyer can complete this purchase.');
+        }
+
+        if (! $transaction->isDirectMode()) {
+            throw new InvalidArgumentException('This transaction requires the inspection/escrow process and cannot be completed directly.');
+        }
+
+        $status = strtoupper($transaction->status);
+        if (in_array($status, ['COMPLETED', 'DISPUTED'], true)) {
+            throw new DomainException("Cannot complete a transaction with status '{$transaction->status}'.");
+        }
+
+        $completedAt = now();
+
+        $transaction->update([
+            'status' => 'COMPLETED',
+            'completed_at' => $completedAt,
+        ]);
+
+        if ($transaction->listing) {
+            $transaction->listing->update(['status' => 'sold']);
+        }
+
+        $this->auditLogger->recordAction(
+            $buyer,
+            'TRANSACTION_DIRECT_COMPLETED',
+            'Transaction',
+            (string) $transaction->id,
+            [
+                'completed_at' => $completedAt->toIso8601String(),
+            ]
+        );
+    }
 }

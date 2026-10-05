@@ -77,7 +77,7 @@ UniMarket is a full-stack campus student marketplace built with **Laravel 13**, 
 ### 9. Appeals, Governance & Data Portability
 - Users can appeal a moderation decision (`/appeals`); a `governance_committee` role reviews and decides appeals independently of the primary admin, with the outcome (`UPHELD` / `OVERTURNED`) recorded.
 - Public, unauthenticated transparency endpoints under `/api/v1/governance/*` and `/api/v1/transparency/metrics` publish aggregate moderation/audit statistics — no personal data.
-- Authenticated users can export their own reputation and activity data as a cryptographically signed JSON package (`/reputation/export`) and independently verify a given export's signature (`/reputation/verify`).
+- Authenticated students can export their own real reputation and completed-transaction history — the same average rating, rating count, breakdown and completed-transaction count shown on their profile, plus the underlying ratings/reviews and transactions — as a JSON file (`/reputation/export`), signed server-side with RSA PKCS#1 v1.5 (SHA-256). The signing key pair is generated once and kept only in `storage/app/private/keys` (never sent to the browser). Anyone — no account needed, so the file stays checkable after graduation — can verify a previously exported file's authenticity at `/reputation/verify`, which always checks against the server's own stored public key rather than anything embedded in the uploaded file itself. See `App\Services\ReputationExporterService`.
 
 ---
 

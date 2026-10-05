@@ -20,17 +20,32 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // 1. Create Campus Categories
+        //
+        // This is the full canonical list (see the 2026_09_28_153539 migration,
+        // which fixes this same list in any database that already has the old
+        // 5-category set or leftover CategoryFactory placeholder names).
+        // updateOrCreate keeps this idempotent and self-correcting on reseed.
         $categories = [
-            ['name' => 'Textbooks & Study', 'slug' => 'textbooks-study'],
-            ['name' => 'Electronics & Laptops', 'slug' => 'electronics-laptops'],
-            ['name' => 'Dorm Gear & Appliances', 'slug' => 'dorm-gear-appliances'],
-            ['name' => 'Apparel & Fashion', 'slug' => 'apparel-fashion'],
-            ['name' => 'Bikes & Campus Transport', 'slug' => 'bikes-campus-transport'],
+            ['name' => 'Electronics & Laptops', 'slug' => 'electronics-laptops', 'transaction_mode' => 'INSPECTION'],
+            ['name' => 'Phones & Accessories', 'slug' => 'phones-accessories', 'transaction_mode' => 'INSPECTION'],
+            ['name' => 'Books & Textbooks', 'slug' => 'books-textbooks', 'transaction_mode' => 'DIRECT'],
+            ['name' => 'Clothing & Fashion', 'slug' => 'clothing-fashion', 'transaction_mode' => 'DIRECT'],
+            ['name' => 'Shoes & Footwear', 'slug' => 'shoes-footwear', 'transaction_mode' => 'DIRECT'],
+            ['name' => 'Dormitory & Appliances', 'slug' => 'dormitory-appliances', 'transaction_mode' => 'INSPECTION'],
+            ['name' => 'Furniture', 'slug' => 'furniture', 'transaction_mode' => 'INSPECTION'],
+            ['name' => 'Bicycles & Campus Transport', 'slug' => 'bicycles-campus-transport', 'transaction_mode' => 'INSPECTION'],
+            ['name' => 'Food & Beverages', 'slug' => 'food-beverages', 'transaction_mode' => 'DIRECT'],
+            ['name' => 'Beauty & Personal Care', 'slug' => 'beauty-personal-care', 'transaction_mode' => 'DIRECT'],
+            ['name' => 'Sports & Fitness', 'slug' => 'sports-fitness', 'transaction_mode' => 'DIRECT'],
+            ['name' => 'Stationery & School Supplies', 'slug' => 'stationery-school-supplies', 'transaction_mode' => 'DIRECT'],
+            ['name' => 'Services', 'slug' => 'services', 'transaction_mode' => 'DIRECT'],
+            ['name' => 'Accommodation', 'slug' => 'accommodation', 'transaction_mode' => 'INSPECTION'],
+            ['name' => 'Other', 'slug' => 'other', 'transaction_mode' => 'INSPECTION'],
         ];
 
         $categoryModels = [];
         foreach ($categories as $cat) {
-            $categoryModels[$cat['slug']] = Category::firstOrCreate(['slug' => $cat['slug']], $cat);
+            $categoryModels[$cat['slug']] = Category::updateOrCreate(['slug' => $cat['slug']], $cat);
         }
 
         // 2. Create Student & Admin Users
@@ -99,7 +114,7 @@ class DatabaseSeeder extends Seeder
         $listingsData = [
             [
                 'user_id' => $chileshe->id,
-                'category_id' => $categoryModels['textbooks-study']->id,
+                'category_id' => $categoryModels['books-textbooks']->id,
                 'title' => 'Calculus Early Transcendentals 9th Edition',
                 'description' => 'Clean condition Stewart Calculus textbook used for MAT1100. Minimal highlighting on chapter 3, bindings intact.',
                 'price' => 450.00,
@@ -119,7 +134,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'user_id' => $kabwe->id,
-                'category_id' => $categoryModels['dorm-gear-appliances']->id,
+                'category_id' => $categoryModels['dormitory-appliances']->id,
                 'title' => 'Mini Dorm Refrigerator 45L',
                 'description' => 'Compact energy-efficient mini fridge. Fits under standard student room desk. Works perfectly and chilled ice tray included.',
                 'price' => 1200.00,
@@ -129,7 +144,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'user_id' => $chileshe->id,
-                'category_id' => $categoryModels['bikes-campus-transport']->id,
+                'category_id' => $categoryModels['bicycles-campus-transport']->id,
                 'title' => 'Giant Mountain Bike 21-Speed',
                 'description' => 'Lightweight aluminum frame bike with front shock suspension. Perfect for navigating campus grounds quickly.',
                 'price' => 1800.00,

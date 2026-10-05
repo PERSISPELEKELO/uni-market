@@ -5,6 +5,7 @@ namespace App\Filament\Resources\AppealResource\Pages;
 use App\Enums\AppealStatus;
 use App\Filament\Resources\AppealResource;
 use App\Models\Appeal;
+use App\Models\Rating;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
@@ -46,6 +47,30 @@ class ViewAppeal extends ViewRecord
                     ->schema([
                         TextEntry::make('governance_notes')->label('Notes')->columnSpanFull(),
                     ]),
+
+                Section::make('Reported review')
+                    ->visible(fn (Appeal $record): bool => $record->target_type === 'Rating' && Rating::find($record->target_id) !== null)
+                    ->schema([
+                        TextEntry::make('reported_rating.rater.name')
+                            ->label('Left by')
+                            ->state(fn (Appeal $record) => Rating::find($record->target_id)?->rater?->name),
+                        TextEntry::make('reported_rating.rated.name')
+                            ->label('About')
+                            ->state(fn (Appeal $record) => Rating::find($record->target_id)?->rated?->name),
+                        TextEntry::make('reported_rating.stars')
+                            ->label('Stars')
+                            ->state(fn (Appeal $record) => Rating::find($record->target_id)?->stars.' / 5'),
+                        TextEntry::make('reported_rating.status')
+                            ->label('Review status')
+                            ->badge()
+                            ->state(fn (Appeal $record) => ucfirst((string) Rating::find($record->target_id)?->status)),
+                        TextEntry::make('reported_rating.comment')
+                            ->label('Review text')
+                            ->placeholder('No written review')
+                            ->state(fn (Appeal $record) => Rating::find($record->target_id)?->comment)
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2),
             ]);
     }
 }

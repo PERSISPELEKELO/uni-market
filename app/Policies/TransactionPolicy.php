@@ -43,6 +43,24 @@ class TransactionPolicy
     }
 
     /**
+     * The buyer completes a DIRECT-category transaction with no inspection step.
+     */
+    public function completeDirect(User $user, Transaction $transaction): Response
+    {
+        if (! $transaction->isBuyer($user)) {
+            return Response::deny('Only the buyer can complete this purchase.');
+        }
+
+        if (! $transaction->isDirectMode()) {
+            return Response::deny('This transaction requires the inspection/escrow process.');
+        }
+
+        return in_array(strtoupper((string) $transaction->status), ['COMPLETED', 'DISPUTED'], true)
+            ? Response::deny("Cannot complete a transaction with status '{$transaction->status}'.")
+            : Response::allow();
+    }
+
+    /**
      * The buyer can raise a dispute, during the inspection window only.
      */
     public function dispute(User $user, Transaction $transaction): Response

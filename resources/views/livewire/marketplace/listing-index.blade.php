@@ -36,10 +36,29 @@
         </div>
     </section>
 
+    @if ($hotDeals->isNotEmpty())
+        <section class="mt-6 sm:mt-8" aria-labelledby="hot-deals-heading">
+            <div class="mb-3 flex items-center justify-between">
+                <h2 id="hot-deals-heading" class="text-base font-bold text-ink">🔥 Hot Deals</h2>
+                <button type="button" wire:click="toggleHotDeals" class="text-sm font-medium text-brand-800 hover:underline dark:text-brand-300">
+                    See all
+                </button>
+            </div>
+            <div class="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+                @foreach ($hotDeals as $deal)
+                    <x-listing-card :listing="$deal" wire:key="hot-deal-{{ $deal->id }}" class="w-64 flex-shrink-0 sm:w-72" />
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     <section class="mt-6 sm:mt-8" aria-label="Filter listings">
         <div class="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Categories">
             <button type="button" wire:click="selectCategory(null)" @class(['chip', 'chip-active' => is_null($selectedCategory)]) aria-pressed="{{ is_null($selectedCategory) ? 'true' : 'false' }}">
                 All items
+            </button>
+            <button type="button" wire:click="toggleHotDeals" @class(['chip', 'chip-active' => $hotDealsOnly]) aria-pressed="{{ $hotDealsOnly ? 'true' : 'false' }}">
+                🔥 Hot Deals
             </button>
             @foreach ($categories as $category)
                 <button type="button" wire:key="category-{{ $category->id }}" wire:click="selectCategory({{ $category->id }})" @class(['chip', 'chip-active' => $selectedCategory === $category->id]) aria-pressed="{{ $selectedCategory === $category->id ? 'true' : 'false' }}">

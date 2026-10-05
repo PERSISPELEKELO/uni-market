@@ -25,11 +25,12 @@ describe('a governance-committee member', function () {
         $this->actingAs($governance)->get('/admin/transactions')->assertForbidden();
     });
 
-    it('can open disputes, appeals, student verification and audit logs', function () {
+    it('can open disputes, appeals, ratings, student verification and audit logs', function () {
         $governance = User::factory()->create(['role' => 'governance_committee']);
 
         $this->actingAs($governance)->get('/admin/disputes')->assertOk();
         $this->actingAs($governance)->get('/admin/appeals')->assertOk();
+        $this->actingAs($governance)->get('/admin/ratings')->assertOk();
         $this->actingAs($governance)->get('/admin/student-verification-documents')->assertOk();
         $this->actingAs($governance)->get('/admin/audit-logs')->assertOk();
     });
@@ -39,7 +40,7 @@ describe('an admin', function () {
     it('can open every admin page', function () {
         $admin = User::factory()->create(['role' => 'admin']);
 
-        foreach (['/admin', '/admin/users', '/admin/listings', '/admin/categories', '/admin/transactions', '/admin/disputes', '/admin/appeals', '/admin/student-verification-documents', '/admin/audit-logs', '/admin/settings'] as $path) {
+        foreach (['/admin', '/admin/users', '/admin/listings', '/admin/categories', '/admin/transactions', '/admin/disputes', '/admin/appeals', '/admin/ratings', '/admin/student-verification-documents', '/admin/audit-logs', '/admin/settings'] as $path) {
             $this->actingAs($admin)->get($path)->assertOk();
         }
     });

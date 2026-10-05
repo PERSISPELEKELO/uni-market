@@ -50,13 +50,7 @@
             @if ($activeTransaction)
                 @php
                     $normalizedStatus = strtoupper($activeTransaction->status);
-                    $step = match ($normalizedStatus) {
-                        'INITIATED', 'RESERVED' => 1,
-                        'PENDING_MEETING', 'PENDING' => 2,
-                        'ITEM_INSPECTION', 'HANDED_OVER' => 3,
-                        'COMPLETED', 'DISPUTED' => 4,
-                        default => 2,
-                    };
+                    $isDirectMode = $activeTransaction->isDirectMode();
                     $isDisputed = $normalizedStatus === 'DISPUTED';
                     $isCompleted = $normalizedStatus === 'COMPLETED';
                     $isInspection = $activeTransaction->isInInspection();
@@ -65,12 +59,34 @@
                     $isSeller = $activeTransaction->isSeller(auth()->user());
                     $inspectionExpiry = $activeTransaction->inspection_expires_at ?? $activeTransaction->inspection_ends_at;
                     $otpPlain = $activeTransaction->handover_otp_plain ?? $activeTransaction->handover_code_plain;
-                    $steps = [
-                        1 => ['Reserved', 'Item held for you'],
-                        2 => ['Meet-up', 'Campus handover'],
-                        3 => ['Inspection', 'Buyer checks item'],
-                        4 => [$isDisputed ? 'Disputed' : 'Completed', $isDisputed ? 'Under review' : 'Sale finished'],
-                    ];
+
+                    if ($isDirectMode) {
+                        // Direct Purchase has no meet-up or inspection stage at all.
+                        $step = match ($normalizedStatus) {
+                            'COMPLETED', 'DISPUTED' => 2,
+                            default => 1,
+                        };
+                        $steps = [
+                            1 => ['Purchased', 'Direct purchase'],
+                            2 => [$isDisputed ? 'Disputed' : 'Completed', $isDisputed ? 'Under review' : 'Sale finished'],
+                        ];
+                    } else {
+                        $step = match ($normalizedStatus) {
+                            'INITIATED', 'RESERVED' => 1,
+                            'PENDING_MEETING', 'PENDING' => 2,
+                            'ITEM_INSPECTION', 'HANDED_OVER' => 3,
+                            'COMPLETED', 'DISPUTED' => 4,
+                            default => 2,
+                        };
+                        $steps = [
+                            1 => ['Reserved', 'Item held for you'],
+                            2 => ['Meet-up', 'Campus handover'],
+                            3 => ['Inspection', 'Buyer checks item'],
+                            4 => [$isDisputed ? 'Disputed' : 'Completed', $isDisputed ? 'Under review' : 'Sale finished'],
+                        ];
+                    }
+
+                    $lastStep = array_key_last($steps);
                 @endphp
 
                 <div class="card space-y-6 p-4 sm:p-6">
@@ -87,11 +103,11 @@
                         </div>
                     </div>
 
-                    <ol class="grid grid-cols-4 gap-1 text-center sm:gap-2" aria-label="Transaction progress">
+                    <ol class="grid gap-1 text-center sm:gap-2" style="grid-template-columns: repeat({{ count($steps) }}, minmax(0, 1fr));" aria-label="Transaction progress">
                         @foreach ($steps as $number => [$label, $hint])
                             @php
                                 $reached = $step >= $number;
-                                $isLast = $number === 4;
+                                $isLast = $number === $lastStep;
                                 $circle = $isLast && $isDisputed ? 'bg-warn-600 text-white' : ($isLast && $isCompleted ? 'bg-accent-700 text-white' : ($reached ? 'bg-brand-700 text-white' : 'bg-slate-200 text-slate-700'));
                             @endphp
                             <li class="flex flex-col items-center" @if ($step === $number) aria-current="step" @endif>
@@ -104,7 +120,25 @@
                         @endforeach
                     </ol>
 
-                    @if ($isPendingMeeting && $isBuyer)
+                    @if ($isDirectMode && $isPendingMeeting && $isBuyer)
+                        <div class="rounded-xl border border-accent-200 bg-accent-50 p-4 dark:border-accent-500/30 dark:bg-accent-500/10">
+                            <p class="text-sm font-semibold text-accent-800 dark:text-accent-300">Direct purchase</p>
+                            <p class="mt-0.5 text-sm text-slate-700">
+                                {{ $activeTransaction->listing->title ?? 'This item' }} does not require inspection or escrow. Once you have
+                                the item, complete the purchase below.
+                            </p>
+                            <button type="button" wire:click="completeDirectPurchase" wire:loading.attr="disabled" wire:target="completeDirectPurchase" class="btn btn-success mt-3">
+                                <x-app-icon name="check-circle" class="h-5 w-5" /> Complete purchase
+                            </button>
+                        </div>
+                    @elseif ($isDirectMode && $isPendingMeeting && $isSeller)
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <p class="text-sm font-semibold text-ink">Direct purchase</p>
+                            <p class="mt-0.5 text-sm text-slate-600">
+                                This item does not require inspection or escrow. Waiting for the buyer to complete the purchase.
+                            </p>
+                        </div>
+                    @elseif ($isPendingMeeting && $isBuyer)
                         <div class="rounded-xl border border-info-200 bg-info-50 p-4">
                             <p class="text-sm font-semibold text-info-800">Your handover code</p>
                             <p class="mt-0.5 text-sm text-gray-700">Give this code to the seller only when you meet in person and receive the item.</p>
@@ -177,9 +211,9 @@
                                 <span class="inline-flex items-center gap-1.5 font-semibold text-accent-800 dark:text-accent-300"><x-app-icon name="check-circle" class="h-5 w-5" /> This transaction is complete.</span>
                             @elseif ($isDisputed)
                                 <span class="font-semibold text-warn-800 dark:text-warn-300">This dispute is waiting for moderator review.</span>
-                            @elseif ($isPendingMeeting && $isBuyer)
+                            @elseif (! $isDirectMode && $isPendingMeeting && $isBuyer)
                                 Arrange a time and place with the seller in <a href="{{ route('chat.thread', ['receiver' => $activeTransaction->seller_id, 'listing' => $activeTransaction->listing_id]) }}" class="font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2">Messages</a>.
-                            @elseif ($isPendingMeeting && $isSeller)
+                            @elseif (! $isDirectMode && $isPendingMeeting && $isSeller)
                                 Arrange a meet-up in <a href="{{ route('chat.thread', ['receiver' => $activeTransaction->buyer_id, 'listing' => $activeTransaction->listing_id]) }}" class="font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2">Messages</a>, then enter the buyer's code above.
                             @elseif ($isInspection && $isSeller)
                                 Waiting for the buyer to finish inspecting the item.

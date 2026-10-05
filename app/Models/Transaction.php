@@ -20,6 +20,7 @@ class Transaction extends Model
         'seller_id',
         'amount',
         'status',
+        'transaction_mode',
         'handover_code_hash',
         'handover_code_plain',
         'handover_otp_hash',
@@ -69,6 +70,21 @@ class Transaction extends Model
     public function isInInspection(): bool
     {
         return in_array(strtoupper((string) $this->status), ['ITEM_INSPECTION', 'HANDED_OVER'], true);
+    }
+
+    /**
+     * A snapshot taken at creation time from the listing's category - never
+     * a live lookup, so changing a category's mode later cannot change how
+     * an in-progress or already-completed transaction behaves.
+     */
+    public function isDirectMode(): bool
+    {
+        return strtoupper((string) $this->transaction_mode) === Category::MODE_DIRECT;
+    }
+
+    public function isInspectionMode(): bool
+    {
+        return ! $this->isDirectMode();
     }
 
     public function listing(): BelongsTo

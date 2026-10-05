@@ -134,8 +134,15 @@ class ListingForm extends Form
         $originalImages = $listing->images ?? [];
         $paths = array_merge($this->existing_images, $this->storeNewImages());
 
+        // The real, current price from the database - never the frontend -
+        // is the only thing a price drop is ever measured against.
+        $previousPrice = (float) $listing->price;
+        $newPrice = (float) $this->price;
+
         try {
-            DB::transaction(fn () => $listing->update($this->listingAttributes($paths)));
+            DB::transaction(fn () => $listing->update(
+                $this->listingAttributes($paths) + $this->priceDropAttributes($previousPrice, $newPrice)
+            ));
         } catch (\Throwable $exception) {
             Storage::disk('public')->delete(array_diff($paths, $originalImages));
 
@@ -145,6 +152,28 @@ class ListingForm extends Form
         Storage::disk('public')->delete(array_diff($originalImages, $paths));
 
         return $listing;
+    }
+
+    /**
+     * A genuine reduction snapshots the immediately-previous price (never an
+     * older one) and timestamps it, making the listing a Hot Deal. An
+     * increase clears any current Hot Deal - it is never still "discounted"
+     * from an older, no-longer-relevant price. An unchanged price touches
+     * neither column, leaving any existing Hot Deal state exactly as it was.
+     *
+     * @return array<string, mixed>
+     */
+    private function priceDropAttributes(float $previousPrice, float $newPrice): array
+    {
+        if ($newPrice < $previousPrice) {
+            return ['previous_price' => $previousPrice, 'price_dropped_at' => now()];
+        }
+
+        if ($newPrice > $previousPrice) {
+            return ['previous_price' => null, 'price_dropped_at' => null];
+        }
+
+        return [];
     }
 
     /**

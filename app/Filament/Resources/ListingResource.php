@@ -10,6 +10,7 @@ use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
@@ -54,8 +55,28 @@ class ListingResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('price')
+                    ->label('Current Price')
                     ->money('ZMW')
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('previous_price')
+                    ->label('Previous Price')
+                    ->money('ZMW')
+                    ->placeholder('—')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('hot_deal')
+                    ->label('Price Drop')
+                    ->state(fn (Listing $record): string => $record->isHotDeal()
+                        ? 'Save K'.number_format($record->discountAmount(), 2).' ('.$record->discountPercentage().'%)'
+                        : 'No')
+                    ->badge()
+                    ->color(fn (Listing $record): string => $record->isHotDeal() ? 'danger' : 'gray'),
+
+                Tables\Columns\IconColumn::make('is_hot_deal')
+                    ->label('Hot Deal')
+                    ->state(fn (Listing $record): bool => $record->isHotDeal())
+                    ->boolean(),
 
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
@@ -92,6 +113,10 @@ class ListingResource extends Resource
                 Tables\Filters\SelectFilter::make('category_id')
                     ->relationship('category', 'name')
                     ->label('Category'),
+
+                Tables\Filters\Filter::make('hot_deal')
+                    ->label('Hot Deal')
+                    ->query(fn (Builder $query): Builder => $query->hotDeals()),
             ])
             ->actions([
                 Tables\Actions\Action::make('view_on_marketplace')

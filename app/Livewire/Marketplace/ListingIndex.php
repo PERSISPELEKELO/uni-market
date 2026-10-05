@@ -21,11 +21,14 @@ class ListingIndex extends Component
 
     public string $sortBy = 'latest';
 
+    public bool $hotDealsOnly = false;
+
     protected $queryString = [
         'search' => ['except' => ''],
         'selectedCategory' => ['except' => null, 'as' => 'category'],
         'conditionFilter' => ['except' => '', 'as' => 'condition'],
         'sortBy' => ['except' => 'latest'],
+        'hotDealsOnly' => ['except' => false, 'as' => 'deals'],
     ];
 
     public function updatingSearch(): void
@@ -44,6 +47,12 @@ class ListingIndex extends Component
         $this->resetPage();
     }
 
+    public function toggleHotDeals(): void
+    {
+        $this->hotDealsOnly = ! $this->hotDealsOnly;
+        $this->resetPage();
+    }
+
     public function setCondition(string $condition): void
     {
         $this->conditionFilter = ($this->conditionFilter === $condition) ? '' : $condition;
@@ -52,7 +61,7 @@ class ListingIndex extends Component
 
     public function clearFilters(): void
     {
-        $this->reset('search', 'selectedCategory', 'conditionFilter', 'sortBy');
+        $this->reset('search', 'selectedCategory', 'conditionFilter', 'sortBy', 'hotDealsOnly');
         $this->resetPage();
     }
 
@@ -68,6 +77,7 @@ class ListingIndex extends Component
             ->search($this->search)
             ->when($this->selectedCategory, fn ($query, $categoryId) => $query->where('category_id', $categoryId))
             ->when($condition !== '', fn ($query) => $query->where('condition', $condition))
+            ->when($this->hotDealsOnly, fn ($query) => $query->hotDeals())
             ->when($sortBy === 'price_asc', fn ($query) => $query->orderBy('price'))
             ->when($sortBy === 'price_desc', fn ($query) => $query->orderByDesc('price'))
             ->when($sortBy === 'latest', fn ($query) => $query->latest())
@@ -77,10 +87,15 @@ class ListingIndex extends Component
             ->orderBy('name')
             ->get();
 
+        $hasActiveFilters = $this->search !== '' || $this->selectedCategory !== null || $condition !== '' || $sortBy !== 'latest' || $this->hotDealsOnly;
+
         return view('livewire.marketplace.listing-index', [
             'listings' => $listings,
             'categories' => $categories,
-            'hasActiveFilters' => $this->search !== '' || $this->selectedCategory !== null || $condition !== '' || $sortBy !== 'latest',
+            'hasActiveFilters' => $hasActiveFilters,
+            // Only teased on the unfiltered homepage - once someone is filtering
+            // or has opted into "hotDealsOnly", the main grid already shows them.
+            'hotDeals' => $hasActiveFilters ? collect() : Listing::active()->hotDeals()->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])->latest('price_dropped_at')->limit(8)->get(),
         ])->layout('layouts.app', ['title' => 'Campus Marketplace - UniMarket']);
     }
 }
