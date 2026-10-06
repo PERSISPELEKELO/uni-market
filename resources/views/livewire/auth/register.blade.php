@@ -93,6 +93,43 @@
                 <x-form-error name="phone_number" />
             </div>
 
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                    <label for="year_of_study" class="form-label">Year of study</label>
+                    <select
+                        id="year_of_study"
+                        wire:model="year_of_study"
+                        class="form-input"
+                        @error('year_of_study') aria-invalid="true" aria-describedby="year_of_study-error" @enderror
+                    >
+                        <option value="">Choose a year</option>
+                        @for ($year = 1; $year <= 6; $year++)
+                            <option value="{{ $year }}">Year {{ $year }}</option>
+                        @endfor
+                    </select>
+                    <x-form-error name="year_of_study" />
+                </div>
+
+                <div>
+                    <label for="school" class="form-label">School</label>
+                    <select
+                        id="school"
+                        wire:model="school"
+                        class="form-input"
+                        @error('school') aria-invalid="true" aria-describedby="school-error" @enderror
+                    >
+                        <option value="">Choose your school</option>
+                        @foreach ($schools as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <x-form-error name="school" />
+                </div>
+            </div>
+            <p class="form-hint -mt-2">
+                Used only to show anonymous trends, such as what first-year students buy. Never shown with your name.
+            </p>
+
             <div>
                 <label for="password" class="form-label">Password</label>
                 <x-password-input id="password" wire:model="password" autocomplete="new-password" placeholder="At least 8 characters" />

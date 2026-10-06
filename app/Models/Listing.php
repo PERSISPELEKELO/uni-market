@@ -74,6 +74,11 @@ class Listing extends Model
         return $this->hasMany(Reservation::class);
     }
 
+    public function views(): HasMany
+    {
+        return $this->hasMany(ListingView::class);
+    }
+
     public function activeReservations(): HasMany
     {
         return $this->reservations()->active()->with('buyer')->latest();

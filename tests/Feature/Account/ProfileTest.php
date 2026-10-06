@@ -98,6 +98,30 @@ describe('updating details', function () {
             ->call('updateProfile')
             ->assertHasErrors(['bio' => 'max']);
     });
+
+    it('lets a member set their year of study and school', function () {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test(Profile::class)
+            ->set('year_of_study', 3)
+            ->set('school', 'engineering')
+            ->call('updateProfile')
+            ->assertHasNoErrors();
+
+        expect($user->fresh()->year_of_study)->toBe(3)->and($user->fresh()->school)->toBe('engineering');
+    });
+
+    it('leaves year of study and school optional, and rejects an invalid school', function () {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test(Profile::class)->call('updateProfile')->assertHasNoErrors();
+        expect($user->fresh()->year_of_study)->toBeNull();
+
+        Livewire::actingAs($user)->test(Profile::class)
+            ->set('school', 'made-up-school')
+            ->call('updateProfile')
+            ->assertHasErrors(['school' => 'in']);
+    });
 });
 
 describe('profile photo', function () {

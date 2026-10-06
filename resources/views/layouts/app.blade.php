@@ -205,6 +205,32 @@
                 </x-alert>
             </div>
         @endif
+
+        @if (! auth()->user()->hasCompletedZutProfile() && ! request()->routeIs('account'))
+            <div
+                x-data="{ dismissed: false }"
+                x-init="try { dismissed = localStorage.getItem('uniMarketZutBannerDismissed') === '1'; } catch (e) {}"
+                x-show="! dismissed"
+                class="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6 lg:px-8"
+            >
+                <x-alert type="info">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span>
+                            Add your year of study and school to your account - it only takes a moment, and helps show anonymous trends to students like you.
+                            <a href="{{ route('account') }}" class="font-semibold underline underline-offset-2">Complete my profile</a>
+                        </span>
+                        <button
+                            type="button"
+                            x-on:click="dismissed = true; try { localStorage.setItem('uniMarketZutBannerDismissed', '1'); } catch (e) {}"
+                            class="-m-1 flex-shrink-0 rounded p-1 hover:bg-black/5"
+                        >
+                            <span class="sr-only">Dismiss</span>
+                            <x-app-icon name="x" class="h-4 w-4" />
+                        </button>
+                    </div>
+                </x-alert>
+            </div>
+        @endif
     @endauth
 
     @foreach (['success' => 'success', 'error' => 'error', 'warning' => 'warning', 'status' => 'info'] as $flashKey => $flashType)

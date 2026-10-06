@@ -58,6 +58,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'student',
                 'is_verified' => true,
+                'year_of_study' => 3,
+                'school' => 'ict',
             ]
         );
 
@@ -70,6 +72,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'student',
                 'is_verified' => true,
+                'year_of_study' => 2,
+                'school' => 'business',
             ]
         );
 
@@ -82,6 +86,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'student',
                 'is_verified' => true,
+                'year_of_study' => 4,
+                'school' => 'engineering',
             ]
         );
 
@@ -176,16 +182,15 @@ class DatabaseSeeder extends Seeder
             'status' => 'completed',
         ]);
 
-        // 5. Create Dispute with Python AI Analysis Scores
+        // 5. Create a Dispute - no AI fields seeded here. A fabricated AI
+        // score would be misleading: real analysis only ever comes from the
+        // actual Python microservice at the moment a real dispute is raised
+        // (see DisputeAnalysisService). These stay null until that happens.
         $dispute = Dispute::create([
             'transaction_id' => $tx1->id,
             'raised_by' => $chileshe->id,
             'reason' => 'The mini fridge cooling fan has an unmentioned loud buzzing noise when plugged in, and small cosmetic dent on rear left corner.',
             'status' => 'open',
-            'ai_sentiment_score' => -0.72,
-            'ai_confidence_score' => 0.91,
-            'ai_suggested_resolution' => 'PARTIAL_REFUND_OR_RETURN',
-            'ai_analysis_summary' => 'NLP sentiment analysis identified high dissatisfaction regarding undisclosed mechanical noise. Recommendation: Approve partial refund of K200 or allow buyer return.',
         ]);
 
         // 6. Create Messages Thread
@@ -231,7 +236,7 @@ class DatabaseSeeder extends Seeder
             'DISPUTE_RAISED',
             'Dispute',
             (string) $dispute->id,
-            ['reason' => $dispute->reason, 'ai_sentiment_score' => -0.72]
+            ['reason' => $dispute->reason]
         );
     }
 }

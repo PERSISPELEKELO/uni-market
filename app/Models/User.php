@@ -33,6 +33,8 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'bio',
         'programme',
         'business_type',
+        'year_of_study',
+        'school',
         'password',
         'role',
         'is_verified',
@@ -262,6 +264,21 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     public function suspendedBy(): BelongsTo
     {
         return $this->belongsTo(self::class, 'suspended_by');
+    }
+
+    /**
+     * Whether this account has both fields the Insights services need to
+     * include it in year/school breakdowns. Never shown publicly - see
+     * PublicProfile - only used to decide what BI can say about this user.
+     */
+    public function hasCompletedZutProfile(): bool
+    {
+        return $this->year_of_study !== null && $this->school !== null;
+    }
+
+    public function schoolLabel(): ?string
+    {
+        return $this->school ? config('zut.schools.'.$this->school) : null;
     }
 
     /**

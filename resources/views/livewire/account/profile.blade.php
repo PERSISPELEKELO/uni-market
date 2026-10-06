@@ -111,6 +111,30 @@
             </div>
         </div>
 
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+                <label for="year_of_study" class="form-label">Year of study <span class="font-normal text-slate-600">(optional)</span></label>
+                <select id="year_of_study" wire:model="year_of_study" class="form-input" @error('year_of_study') aria-invalid="true" aria-describedby="year_of_study-error" @enderror>
+                    <option value="">Not set</option>
+                    @for ($year = 1; $year <= 6; $year++)
+                        <option value="{{ $year }}">Year {{ $year }}</option>
+                    @endfor
+                </select>
+                <x-form-error name="year_of_study" />
+            </div>
+            <div>
+                <label for="school" class="form-label">School <span class="font-normal text-slate-600">(optional)</span></label>
+                <select id="school" wire:model="school" class="form-input" @error('school') aria-invalid="true" aria-describedby="school-error" @enderror>
+                    <option value="">Not set</option>
+                    @foreach ($schools as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+                <x-form-error name="school" />
+            </div>
+        </div>
+        <p class="form-hint -mt-2">Used only to show anonymous trends. Never shown with your name on your public profile.</p>
+
         <div>
             <label for="bio" class="form-label">Bio <span class="font-normal text-slate-600">(optional)</span></label>
             <textarea id="bio" wire:model="bio" rows="3" maxlength="1000" placeholder="Tell other students a bit about yourself." class="form-input" @error('bio') aria-invalid="true" aria-describedby="bio-error" @enderror></textarea>

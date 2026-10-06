@@ -31,12 +31,16 @@ it('never exposes private account information', function () {
         'email' => 'private@example.com',
         'student_id' => '2024198273',
         'phone_number' => '+260971234567',
+        'year_of_study' => 3,
+        'school' => 'ict',
     ]);
 
     $this->get(route('profiles.show', $user))
         ->assertDontSee('private@example.com')
         ->assertDontSee('2024198273')
-        ->assertDontSee('+260971234567');
+        ->assertDontSee('+260971234567')
+        ->assertDontSee('Year 3')
+        ->assertDontSee('School of ICT');
 });
 
 it('omits optional sections that have not been filled in', function () {

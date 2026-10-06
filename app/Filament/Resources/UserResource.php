@@ -51,6 +51,16 @@ class UserResource extends Resource
                     ->required()
                     ->disabled(fn (?User $record): bool => $record !== null && Auth::id() === $record->id)
                     ->helperText('Only admins can change a role, and never their own.'),
+
+                Forms\Components\Select::make('year_of_study')
+                    ->label('Year of study')
+                    ->options(array_combine(range(1, 6), array_map(fn ($year) => "Year {$year}", range(1, 6))))
+                    ->placeholder('Not set'),
+
+                Forms\Components\Select::make('school')
+                    ->label('School')
+                    ->options(config('zut.schools'))
+                    ->placeholder('Not set'),
             ]);
     }
 
@@ -84,6 +94,16 @@ class UserResource extends Resource
                 Tables\Columns\IconColumn::make('is_verified')
                     ->label('Verified')
                     ->boolean(),
+
+                Tables\Columns\TextColumn::make('year_of_study')
+                    ->label('Year')
+                    ->placeholder('—')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('school')
+                    ->label('School')
+                    ->formatStateUsing(fn (?string $state): string => $state ? config('zut.schools.'.$state, $state) : '—')
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
@@ -121,6 +141,13 @@ class UserResource extends Resource
 
                 Tables\Filters\TernaryFilter::make('is_verified')
                     ->label('Verified student'),
+
+                Tables\Filters\SelectFilter::make('year_of_study')
+                    ->label('Year of study')
+                    ->options(array_combine(range(1, 6), array_map(fn ($year) => "Year {$year}", range(1, 6)))),
+
+                Tables\Filters\SelectFilter::make('school')
+                    ->options(config('zut.schools')),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

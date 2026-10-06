@@ -3,6 +3,7 @@
 namespace App\Livewire\Marketplace;
 
 use App\Models\Listing;
+use App\Models\ListingView;
 use App\Models\Reservation;
 use App\Services\ReservationService;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,44 @@ class ListingShow extends Component
         abort_unless(Gate::allows('view', $listing), 404);
 
         $this->listing = $listing->load(['seller', 'category']);
+
+        $this->recordView();
+    }
+
+    /**
+     * At most one row per viewer (or, for a guest, per session) per listing
+     * per 24 hours - never the seller viewing their own listing. Feeds
+     * SellerInsightsService's per-listing view counts and "trending" on the
+     * marketplace home.
+     */
+    private function recordView(): void
+    {
+        if ($this->listing->isOwnedBy(Auth::user())) {
+            return;
+        }
+
+        $viewerId = Auth::id();
+        $sessionHash = hash('sha256', session()->getId());
+
+        $alreadyCounted = ListingView::where('listing_id', $this->listing->id)
+            ->where('viewed_at', '>=', now()->subHours(24))
+            ->when(
+                $viewerId,
+                fn ($query) => $query->where('viewer_id', $viewerId),
+                fn ($query) => $query->where('session_hash', $sessionHash)
+            )
+            ->exists();
+
+        if ($alreadyCounted) {
+            return;
+        }
+
+        ListingView::create([
+            'listing_id' => $this->listing->id,
+            'viewer_id' => $viewerId,
+            'session_hash' => $sessionHash,
+            'viewed_at' => now(),
+        ]);
     }
 
     public function setActiveImage(int $index): void

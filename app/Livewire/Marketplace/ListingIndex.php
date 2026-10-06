@@ -4,6 +4,9 @@ namespace App\Livewire\Marketplace;
 
 use App\Models\Category;
 use App\Models\Listing;
+use App\Models\SearchLog;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -34,6 +37,34 @@ class ListingIndex extends Component
     public function updatingSearch(): void
     {
         $this->resetPage();
+    }
+
+    /**
+     * Logged at most every 60 seconds per session, and only for a genuine
+     * (3+ character) term - feeds MarketInsightsService's "top searches
+     * with few or no results" (unmet demand).
+     */
+    public function updatedSearch(string $value): void
+    {
+        $term = strtolower(trim($value));
+
+        if (mb_strlen($term) < 3) {
+            return;
+        }
+
+        $throttleKey = 'search-log|'.session()->getId();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 20)) {
+            return;
+        }
+
+        RateLimiter::hit($throttleKey, 60);
+
+        SearchLog::create([
+            'term' => mb_substr($term, 0, 100),
+            'results_count' => Listing::query()->active()->search($term)->count(),
+            'user_id' => Auth::id(),
+        ]);
     }
 
     public function updatingSortBy(): void

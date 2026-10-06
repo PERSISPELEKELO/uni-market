@@ -15,6 +15,8 @@ function validRegistration(array $overrides = []): array
         'email' => 'chileshe@example.com',
         'student_id' => '2024198273',
         'phone_number' => '+260971234567',
+        'year_of_study' => 2,
+        'school' => 'ict',
         'password' => 'Sunshine123',
         'password_confirmation' => 'Sunshine123',
     ], $overrides);
@@ -50,6 +52,8 @@ it('registers a student, combines first and last name, hashes the password and s
     expect($user->name)->toBe('Chileshe Mwansa')
         ->and($user->role)->toBe('student')
         ->and($user->is_verified)->toBeFalse()
+        ->and($user->year_of_study)->toBe(2)
+        ->and($user->school)->toBe('ict')
         ->and($user->password)->not->toBe('Sunshine123')
         ->and(Hash::check('Sunshine123', $user->password))->toBeTrue();
 
@@ -59,12 +63,35 @@ it('registers a student, combines first and last name, hashes the password and s
 it('does not allow required fields to be empty', function () {
     Livewire::test(Register::class)
         ->call('register')
-        ->assertHasErrors(['first_name' => 'required', 'last_name' => 'required', 'email' => 'required', 'student_id' => 'required', 'password' => 'required'])
+        ->assertHasErrors(['first_name' => 'required', 'last_name' => 'required', 'email' => 'required', 'student_id' => 'required', 'year_of_study' => 'required', 'school' => 'required', 'password' => 'required'])
         ->assertSee('Please enter your first name.')
         ->assertSee('Please enter your last name.')
         ->assertSee('Please enter your email address.')
         ->assertSee('Please enter your student ID number.')
+        ->assertSee('Please select your year of study.')
+        ->assertSee('Please select your school.')
         ->assertSee('Please choose a password.');
+
+    expect(User::count())->toBe(0);
+});
+
+it('shows the year of study and school fields, with the privacy explanation', function () {
+    $this->get(route('register'))
+        ->assertSee('Year of study')
+        ->assertSee('School')
+        ->assertSee('Used only to show anonymous trends');
+});
+
+it('rejects a year of study outside 1-6', function (int $year) {
+    fillRegistration(validRegistration(['year_of_study' => $year]))
+        ->assertHasErrors(['year_of_study']);
+
+    expect(User::count())->toBe(0);
+})->with(['zero' => [0], 'too high' => [7]]);
+
+it('rejects a school that is not in the configured list', function () {
+    fillRegistration(validRegistration(['school' => 'not-a-real-school']))
+        ->assertHasErrors(['school' => 'in']);
 
     expect(User::count())->toBe(0);
 });

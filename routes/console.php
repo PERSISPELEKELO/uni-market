@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('transactions:auto-complete')->hourly();
+Schedule::command('insights:prune')->daily();
