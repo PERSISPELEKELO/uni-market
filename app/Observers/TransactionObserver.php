@@ -6,13 +6,15 @@ namespace App\Observers;
 
 use App\Models\Transaction;
 use App\Notifications\TransactionCompletedRateReminder;
+use App\Services\Insights\InsightsCache;
 
 /**
  * Fires the "please rate" reminder to both parties the moment a transaction
  * genuinely transitions into COMPLETED, regardless of which of the two
  * existing code paths did it (buyer-confirmed acceptance or the
  * auto-complete-after-inspection-window command) - kept here once instead of
- * duplicated in both places.
+ * duplicated in both places. Also invalidates every Insights cache, since a
+ * newly completed sale changes almost every BI aggregate.
  */
 class TransactionObserver
 {
@@ -25,6 +27,8 @@ class TransactionObserver
         if (strtoupper((string) $transaction->status) !== 'COMPLETED') {
             return;
         }
+
+        InsightsCache::bump();
 
         $transaction->buyer->notify(new TransactionCompletedRateReminder($transaction, $transaction->seller));
         $transaction->seller->notify(new TransactionCompletedRateReminder($transaction, $transaction->buyer));
