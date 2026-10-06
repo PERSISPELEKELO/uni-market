@@ -32,15 +32,18 @@ UniMarket is a full-stack campus student marketplace built with **Laravel 13**, 
 
 ### 2. Search, Discovery & Marketplace Grid
 - Livewire instant search filter with `300ms` debounce.
-- Horizontal category chip selector pills with real-time active listing counts.
+- Horizontal category chip selector pills (each with a decorative icon) with real-time active listing counts; the condition/sort filter row collapses behind a "More filters" toggle on mobile.
 - Condition filter pills (`New`, `Like New`, `Good`, `Fair`) and price/date sorting.
-- Responsive 3-column desktop / 1-column mobile card grid with eager-loaded relations to prevent N+1 database queries. Each card shows an active-reservation count when a listing has interested buyers.
-- Public profiles (`/students/{user}`) list a student's active listings, average rating, and recent reviews — never their private contact details or verification documents.
+- Curated homepage carousels, each built from a real, non-fabricated signal and hidden entirely when there isn't enough data to show: **Hot Deals** (genuine recent price drops), **Selling fast** (real view counts in the last 7 days), and **Popular with students like you** (signed-in students only, from the same privacy-suppressed category breakdown used in My Activity's Insights tab).
+- Responsive 3-column desktop / 1-column mobile card grid with eager-loaded relations to prevent N+1 database queries, and skeleton-card placeholders while a search or filter change is loading. Each card shows an active-reservation count when a listing has interested buyers.
+- Public profiles (`/students/{user}`) list a student's active listings, average rating, and recent reviews — never their private contact details, verification documents, or year of study/school.
 
 ### 3. Product Listings Management
-- Multi-photo drag-and-drop uploader supporting up to 4 images (JPG/PNG/WebP, 3 MB each) with real-time thumbnail previews and instant validation.
-- Sellers can create, edit and remove their own listings from **My listings**. Access is enforced by `ListingPolicy` (owner only).
-- Detailed single-item page featuring image gallery, seller card, item condition badge, and call-to-action buttons. A seller's student ID is never shown publicly.
+- Multi-photo drag-and-drop uploader supporting up to 4 images (JPG/PNG/WebP, 3 MB each) with real-time thumbnail previews, a live listing preview card, and instant validation.
+- Sellers manage their own listings from the **Selling** tab of **My Activity**. Access is enforced by `ListingPolicy` (owner only).
+- Detailed single-item page featuring image gallery, seller card, item condition badge, a plain-language "How buying this item works" step list, and call-to-action buttons. A seller's student ID is never shown publicly.
+- **Every category is fixed as either `DIRECT` or `INSPECTION`** (see `database/seeders/DatabaseSeeder.php` for the canonical 15-category list). `DIRECT` categories (food, clothing, stationery, ...) complete a purchase immediately once a buyer is selected; `INSPECTION` categories (electronics, furniture, ...) go through the handover-code + inspection-window flow described below. A transaction's mode is captured once, at creation, on `transaction_mode` — changing a category's mode later never changes an existing transaction's behaviour.
+- **Hot Deals**: when a seller genuinely lowers an active listing's price, the listing is flagged as a Hot Deal (previous price, new price, and savings shown) until the price goes back up or the item sells. This is derived server-side from the real previous price (`previous_price`/`price_dropped_at` on `listings`) — the frontend is never trusted for it. Hot Deals get their own carousel on the marketplace home page and an admin-visible flag.
 - Security audit logging on listing publication, edits and removal.
 
 ### 4. Reservations — the Seller Picks a Buyer
@@ -72,12 +75,25 @@ UniMarket is a full-stack campus student marketplace built with **Laravel 13**, 
 - **StudentVerificationDocumentResource**: review queue for pending student ID documents with approve / reject / request-resubmission actions and a full audit trail.
 - **DisputeResource**: inspect open disputes, review the AI sentiment score (-1.0 to +1.0) and confidence metrics, and resolve in favour of buyer or seller.
 - **AuditLogResource**: read-only audit trail for security and compliance monitoring.
+- **Market Insights** (`/admin/market-insights`): a campus-wide BI dashboard — see "Business Intelligence & Student Insights" below.
 - The panel is locked down: only accounts with the `admin` or `governance_committee` role can sign in (`User::canAccessPanel()`) — Filament otherwise allows any authenticated user in by default.
 
 ### 9. Appeals, Governance & Data Portability
 - Users can appeal a moderation decision (`/appeals`); a `governance_committee` role reviews and decides appeals independently of the primary admin, with the outcome (`UPHELD` / `OVERTURNED`) recorded.
 - Public, unauthenticated transparency endpoints under `/api/v1/governance/*` and `/api/v1/transparency/metrics` publish aggregate moderation/audit statistics — no personal data.
 - Authenticated students can export their own real reputation and completed-transaction history — the same average rating, rating count, breakdown and completed-transaction count shown on their profile, plus the underlying ratings/reviews and transactions — as a JSON file (`/reputation/export`), signed server-side with RSA PKCS#1 v1.5 (SHA-256). The signing key pair is generated once and kept only in `storage/app/private/keys` (never sent to the browser). Anyone — no account needed, so the file stays checkable after graduation — can verify a previously exported file's authenticity at `/reputation/verify`, which always checks against the server's own stored public key rather than anything embedded in the uploaded file itself. See `App\Services\ReputationExporterService`.
+- Appeals have a full student-facing flow at **My appeals** (`/my-appeals`): contest a rejected student verification or a suspended listing, see the outcome once a `governance_committee` member decides it. (Appealing an account *suspension* itself isn't covered here, since a suspended account is signed out immediately and can't reach any authenticated page.)
+
+---
+
+## Business Intelligence & Student Insights
+
+UniMarket includes a privacy-first BI layer that turns real marketplace activity into trends for students, sellers and administrators — never anyone's individually identifiable activity.
+
+- **Data collected**: `year_of_study` and `school` are optional profile fields (required at registration, editable from Account, never shown on a public profile — see `config/zut.php` for the school list). `listing_views` and `search_logs` record de-duplicated, rate-limited view and search activity. All of it is pruned after 12 months by the scheduled `insights:prune` command (`routes/console.php`).
+- **Privacy rule, enforced in one place**: any breakdown that would name a group of students (by year, school, etc.) only ever renders once at least `config('insights.min_group_size')` (default 5) *distinct* students are in it — otherwise it's hidden with an honest "not enough data yet" message, never a fabricated number. The viewer is always excluded from their own group's size count, and a buyer or seller only ever sees their own purchase/sales history in detail.
+- **The services** (`app/Services/Insights/`): `BuyerInsightsService` and `SellerInsightsService` (a student's own totals, spending/earnings, "popular with students like you", price-checks), `MarketInsightsService` (campus-wide totals, heatmaps, trust & safety metrics, for admins), and `FrequentlyBoughtTogetherService` (simple category-level market-basket analysis: support/confidence/lift). Heavy aggregates are cached for 10 minutes and invalidated the moment a transaction completes.
+- **Where it shows up**: the **My Activity** hub's Insights tab (a student's own buying/selling trends), the marketplace home page's "Selling fast" and "Popular with students like you" carousels, a "students who bought this category also bought" suggestion on the listing page, and the admin-only **Market Insights** Filament page (totals, weekly value, heatmaps, fastest-selling categories, unmet-demand searches, the listing funnel, peak activity times, trust metrics, and a CSV export of those same already-safe aggregate figures).
 
 ---
 
@@ -204,6 +220,8 @@ Because the site is hosted in Laravel Herd, you don't need to run `php artisan s
 - **Student Seller**: `mwamba@student.zut.zm` / `password123`
 - **Student (third account, for reservation/messaging scenarios)**: `kabwe@student.zut.zm` / `password123`
 - **Admin Moderator**: `admin@zut.zm` / `password123` (Admin Panel: [http://uni-market.test/admin](http://uni-market.test/admin))
+
+For a much larger, realistic dataset to see the Business Intelligence features with (60+ students across every year/school, ~150 listings, months of transactions, views and searches), run the local-only seeder: `php artisan db:seed --class=InsightsDemoSeeder` (refuses to run outside `APP_ENV=local`).
 
 ---
 
