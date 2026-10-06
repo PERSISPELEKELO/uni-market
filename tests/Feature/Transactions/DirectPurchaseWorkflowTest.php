@@ -177,21 +177,21 @@ describe('Test 7 - historical transactions keep the mode that applied when creat
 });
 
 describe('listing detail page messaging', function () {
-    it('shows "Direct purchase" for a DIRECT category and not the escrow copy', function () {
+    it('shows direct-purchase steps for a DIRECT category and not the escrow copy', function () {
         $food = categoryWithMode(Category::MODE_DIRECT);
         $listing = Listing::factory()->create(['category_id' => $food->id, 'status' => 'active']);
 
         $this->get(route('listings.show', $listing))
-            ->assertSee('Direct purchase')
-            ->assertDontSee('Inspection protected purchase');
+            ->assertSee('does not need an inspection window')
+            ->assertDontSee('48-hour inspection window');
     });
 
-    it('shows "Inspection protected purchase" for an INSPECTION category', function () {
+    it('shows inspection-window steps for an INSPECTION category', function () {
         $electronics = categoryWithMode(Category::MODE_INSPECTION);
         $listing = Listing::factory()->create(['category_id' => $electronics->id, 'status' => 'active']);
 
         $this->get(route('listings.show', $listing))
-            ->assertSee('Inspection protected purchase')
-            ->assertDontSee('Direct purchase');
+            ->assertSee('48-hour inspection window')
+            ->assertDontSee('does not need an inspection window');
     });
 });

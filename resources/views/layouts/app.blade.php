@@ -256,6 +256,7 @@
                 <li class="flex items-center gap-1.5"><x-app-icon name="shield" class="h-4 w-4 text-accent-700" /> Verified students</li>
                 <li>Escrow protection</li>
                 <li>Moderated disputes</li>
+                <li><a href="{{ route('how-it-works') }}" class="hover:text-brand-800 dark:hover:text-brand-300">How UniMarket works</a></li>
                 <li><a href="{{ route('reputation.verify') }}" class="hover:text-brand-800 dark:hover:text-brand-300">Verify a reputation record</a></li>
             </ul>
         </div>

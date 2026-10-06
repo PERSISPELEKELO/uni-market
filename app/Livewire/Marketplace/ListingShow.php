@@ -2,10 +2,13 @@
 
 namespace App\Livewire\Marketplace;
 
+use App\Models\Category;
 use App\Models\Listing;
 use App\Models\ListingView;
 use App\Models\Reservation;
+use App\Services\Insights\FrequentlyBoughtTogetherService;
 use App\Services\ReservationService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
@@ -139,6 +142,32 @@ class ListingShow extends Component
             'reservationCount' => $this->listing->reservations()->active()->count(),
             'hasReserved' => $this->listing->hasActiveReservationFrom(Auth::user()),
             'activeReservations' => $activeReservations,
+            'recentViewCount' => $this->listing->views()->where('viewed_at', '>=', now()->subDays(7))->count(),
+            'frequentlyBoughtWith' => $this->frequentlyBoughtWith(),
         ])->layout('layouts.app', ['title' => $this->listing->title.' - UniMarket']);
+    }
+
+    /**
+     * Categories students who bought this item's category also tend to buy
+     * from, as a "browse that category too" nudge - never specific listing
+     * recommendations, since the underlying service only has category-level
+     * signal. Hidden below the usual privacy threshold, same as everywhere
+     * else this service is used.
+     *
+     * @return Collection<int, array{category: Category, confidence: float}>
+     */
+    private function frequentlyBoughtWith(): Collection
+    {
+        $categoryName = $this->listing->category->name;
+
+        return app(FrequentlyBoughtTogetherService::class)
+            ->forCategory($this->listing->category->slug)
+            ->map(function (array $pair) use ($categoryName) {
+                $otherName = $pair['category_a'] === $categoryName ? $pair['category_b'] : $pair['category_a'];
+
+                return ['category' => Category::where('name', $otherName)->first(), 'confidence' => $pair['confidence']];
+            })
+            ->filter(fn (array $row) => $row['category'] !== null)
+            ->values();
     }
 }

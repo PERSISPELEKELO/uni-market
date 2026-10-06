@@ -34,13 +34,19 @@ describe('a governance-committee member', function () {
         $this->actingAs($governance)->get('/admin/student-verification-documents')->assertOk();
         $this->actingAs($governance)->get('/admin/audit-logs')->assertOk();
     });
+
+    it('can open the Market Insights BI dashboard', function () {
+        $governance = User::factory()->create(['role' => 'governance_committee']);
+
+        $this->actingAs($governance)->get('/admin/market-insights')->assertOk();
+    });
 });
 
 describe('an admin', function () {
     it('can open every admin page', function () {
         $admin = User::factory()->create(['role' => 'admin']);
 
-        foreach (['/admin', '/admin/users', '/admin/listings', '/admin/categories', '/admin/transactions', '/admin/disputes', '/admin/appeals', '/admin/ratings', '/admin/student-verification-documents', '/admin/audit-logs', '/admin/settings'] as $path) {
+        foreach (['/admin', '/admin/users', '/admin/listings', '/admin/categories', '/admin/transactions', '/admin/disputes', '/admin/appeals', '/admin/ratings', '/admin/student-verification-documents', '/admin/audit-logs', '/admin/settings', '/admin/market-insights'] as $path) {
             $this->actingAs($admin)->get($path)->assertOk();
         }
     });

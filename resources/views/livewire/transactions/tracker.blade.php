@@ -182,7 +182,7 @@
                         <div class="space-y-3 rounded-xl border border-warn-200 bg-warn-50 p-4">
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <span class="text-sm font-semibold text-warn-800">Dispute report</span>
-                                <span class="badge badge-warning">{{ ucfirst($dispute->status) }}</span>
+                                <x-status-badge :status="$dispute->status" />
                             </div>
                             <p class="break-words text-sm text-gray-800"><strong>Reason:</strong> {{ $dispute->reason }}</p>
 

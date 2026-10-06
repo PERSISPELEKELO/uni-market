@@ -56,79 +56,78 @@
                 </div>
 
                 @if ($insightsView === 'buyer')
-                    @php $totals = $buyerInsights->totals($user); $popular = $buyerInsights->popularWithStudentsLikeYou($user); @endphp
+                    @php
+                        $totals = $buyerInsights->totals($user);
+                        $popular = $buyerInsights->popularWithStudentsLikeYou($user);
+                        $spendingData = collect($buyerInsights->spendingByCategory($user))->map(fn ($row) => ['label' => $row['category'], 'value' => $row['amount']])->all();
+                        $popularData = collect($popular['categories'])->map(fn ($row) => ['label' => $row['name'], 'value' => $row['total']])->all();
+                    @endphp
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div class="card p-4"><p class="text-xs text-slate-600">Items bought</p><p class="mt-1 text-2xl font-bold text-ink">{{ $totals['total_items'] }}</p></div>
-                        <div class="card p-4"><p class="text-xs text-slate-600">Total spent</p><p class="mt-1 text-2xl font-bold text-ink">K{{ number_format($totals['total_spent'], 2) }}</p></div>
-                        <div class="card p-4"><p class="text-xs text-slate-600">Average per item</p><p class="mt-1 text-2xl font-bold text-ink">K{{ number_format($totals['average_spend'], 2) }}</p></div>
+                        <x-stat-card label="Items bought" :value="$totals['total_items']" />
+                        <x-stat-card label="Total spent" value="K{{ number_format($totals['total_spent'], 2) }}" />
+                        <x-stat-card label="Average per item" value="K{{ number_format($totals['average_spend'], 2) }}" />
                     </div>
 
-                    <div class="card space-y-3 p-5">
-                        <h2 class="text-sm font-semibold text-ink">Spending by category</h2>
-                        @forelse ($buyerInsights->spendingByCategory($user) as $row)
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="text-slate-700">{{ $row['category'] }}</span>
-                                <span class="font-semibold text-ink">K{{ number_format($row['amount'], 2) }} ({{ $row['percentage'] }}%)</span>
-                            </div>
-                        @empty
+                    <x-section title="Spending by category" class="card p-5">
+                        @if (empty($spendingData))
                             <x-empty-state icon="bag" title="No purchases yet" description="Once you complete a purchase, your spending breakdown will appear here." />
-                        @endforelse
-                    </div>
+                        @else
+                            <x-chart :data="$spendingData" value-label="Amount (K)" label-heading="Category" prefix="K" />
+                        @endif
+                    </x-section>
 
-                    <div class="card space-y-3 p-5">
-                        <h2 class="text-sm font-semibold text-ink">Popular with {{ $popular['level'] }}</h2>
-                        @forelse ($popular['categories'] as $row)
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="text-slate-700">{{ $row['name'] }}</span>
-                                <span class="font-semibold text-ink">{{ $row['total'] }} {{ \Illuminate\Support\Str::plural('purchase', $row['total']) }}</span>
-                            </div>
-                        @empty
+                    <x-section class="card p-5">
+                        <x-slot:title>
+                            <span class="inline-flex items-center gap-1">
+                                Popular with {{ $popular['level'] }}
+                                <x-info-tip text="To protect students' privacy, this only ever appears once at least {{ config('insights.min_group_size') }} different students are included - never anyone's individual activity." />
+                            </span>
+                        </x-slot:title>
+                        @if (empty($popularData))
                             <x-empty-state icon="info" title="Not enough data yet" description="Once enough students complete purchases, trends will appear here." />
-                        @endforelse
-                    </div>
+                        @else
+                            <x-chart :data="$popularData" value-label="Purchases" label-heading="Category" />
+                        @endif
+                    </x-section>
                 @else
                     @php
                         $totals = $sellerInsights->totals($user);
                         $buyers = $sellerInsights->buyersByYearAndSchool($user);
                         $priceChecks = $sellerInsights->priceCheck($user);
+                        $byYearData = $buyers['suppressed'] ? [] : collect($buyers['by_year'])->map(fn ($row) => ['label' => 'Year '.$row['year'], 'value' => $row['percentage']])->all();
+                        $bySchoolData = $buyers['suppressed'] ? [] : collect($buyers['by_school'])->map(fn ($row) => ['label' => $row['school'], 'value' => $row['percentage']])->all();
                     @endphp
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <div class="card p-4"><p class="text-xs text-slate-600">Items sold</p><p class="mt-1 text-2xl font-bold text-ink">{{ $totals['items_sold'] }}</p></div>
-                        <div class="card p-4"><p class="text-xs text-slate-600">Total earned</p><p class="mt-1 text-2xl font-bold text-ink">K{{ number_format($totals['total_earned'], 2) }}</p></div>
-                        <div class="card p-4"><p class="text-xs text-slate-600">Average rating</p><p class="mt-1 text-2xl font-bold text-ink">{{ $totals['average_rating'] ? number_format($totals['average_rating'], 1).' / 5.0' : '—' }}</p></div>
+                        <x-stat-card label="Items sold" :value="$totals['items_sold']" />
+                        <x-stat-card label="Total earned" value="K{{ number_format($totals['total_earned'], 2) }}" />
+                        <x-stat-card label="Average rating" :value="$totals['average_rating'] ? number_format($totals['average_rating'], 1).' / 5.0' : '—'" />
                     </div>
 
-                    <div class="card space-y-3 p-5">
-                        <h2 class="text-sm font-semibold text-ink">Who buys from me</h2>
+                    <x-section class="card p-5">
+                        <x-slot:title>
+                            <span class="inline-flex items-center gap-1">
+                                Who buys from me
+                                <x-info-tip text="To protect students' privacy, this only ever appears once at least {{ config('insights.min_group_size') }} different students have bought from you." />
+                            </span>
+                        </x-slot:title>
                         @if ($buyers['suppressed'])
                             <x-empty-state icon="info" title="Not enough data yet" description="Once enough different students have bought from you, a breakdown by year and school will appear here." />
                         @else
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div>
-                                    <p class="mb-1 text-xs font-semibold uppercase text-slate-600">By year of study</p>
-                                    @foreach ($buyers['by_year'] as $row)
-                                        <div class="flex items-center justify-between text-sm"><span>Year {{ $row['year'] }}</span><span class="font-semibold">{{ $row['percentage'] }}%</span></div>
-                                    @endforeach
-                                </div>
-                                <div>
-                                    <p class="mb-1 text-xs font-semibold uppercase text-slate-600">By school</p>
-                                    @foreach ($buyers['by_school'] as $row)
-                                        <div class="flex items-center justify-between text-sm"><span>{{ $row['school'] }}</span><span class="font-semibold">{{ $row['percentage'] }}%</span></div>
-                                    @endforeach
-                                </div>
+                                <x-chart :data="$byYearData" value-label="Percent" label-heading="Year of study" suffix="%" />
+                                <x-chart :data="$bySchoolData" value-label="Percent" label-heading="School" suffix="%" />
                             </div>
                         @endif
-                    </div>
+                    </x-section>
 
-                    <div class="card space-y-3 p-5">
-                        <h2 class="text-sm font-semibold text-ink">Price check on your active listings</h2>
+                    <x-section title="Price check on your active listings" description="How your prices compare to similar recent sales." class="card p-5">
                         @forelse ($priceChecks as $row)
-                            <div class="flex items-center justify-between text-sm">
+                            <div class="flex items-center justify-between gap-3 text-sm">
                                 <span class="truncate text-slate-700">{{ $row['listing']->title }}</span>
                                 @if ($row['median'] === null)
-                                    <span class="text-xs text-slate-500">Not enough comparable sales yet</span>
+                                    <span class="flex-shrink-0 text-xs text-slate-500">Not enough comparable sales yet</span>
                                 @else
-                                    <span class="font-semibold {{ $row['difference_percentage'] > 10 ? 'text-warn-700' : 'text-ink' }}">
+                                    <span @class(['flex-shrink-0 font-semibold', 'text-warn-700' => $row['difference_percentage'] > 10, 'text-ink' => $row['difference_percentage'] <= 10])>
                                         {{ $row['difference_percentage'] > 0 ? 'about '.abs($row['difference_percentage']).'% above typical' : 'about '.abs($row['difference_percentage']).'% below typical' }}
                                     </span>
                                 @endif
@@ -136,7 +135,7 @@
                         @empty
                             <x-empty-state icon="bag" title="No active listings" description="List an item to see how your price compares to similar sales." />
                         @endforelse
-                    </div>
+                    </x-section>
                 @endif
             </div>
         @endif

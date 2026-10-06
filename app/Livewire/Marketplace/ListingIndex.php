@@ -5,6 +5,8 @@ namespace App\Livewire\Marketplace;
 use App\Models\Category;
 use App\Models\Listing;
 use App\Models\SearchLog;
+use App\Services\Insights\BuyerInsightsService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
@@ -124,9 +126,31 @@ class ListingIndex extends Component
             'listings' => $listings,
             'categories' => $categories,
             'hasActiveFilters' => $hasActiveFilters,
-            // Only teased on the unfiltered homepage - once someone is filtering
-            // or has opted into "hotDealsOnly", the main grid already shows them.
+            // Carousels are only shown on the unfiltered homepage - once someone
+            // is filtering, the main grid below already shows matching results.
             'hotDeals' => $hasActiveFilters ? collect() : Listing::active()->hotDeals()->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])->latest('price_dropped_at')->limit(8)->get(),
+            'sellingFast' => $hasActiveFilters ? collect() : $this->sellingFast(),
+            'popularWithYou' => ($hasActiveFilters || ! Auth::check()) ? collect() : app(BuyerInsightsService::class)->popularListings(Auth::user()),
         ])->layout('layouts.app', ['title' => 'Campus Marketplace - UniMarket']);
+    }
+
+    /**
+     * Active listings genuinely getting more attention than most right now
+     * (real view counts from the last 7 days, never a fabricated "trending"
+     * label) - hidden entirely rather than shown with zero signal.
+     *
+     * @return Collection<int, Listing>
+     */
+    private function sellingFast(): Collection
+    {
+        return Listing::active()
+            ->withCount(['views' => fn ($query) => $query->where('viewed_at', '>=', now()->subDays(7))])
+            ->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])
+            ->orderByDesc('views_count')
+            ->latest()
+            ->limit(8)
+            ->get()
+            ->filter(fn (Listing $listing) => $listing->views_count > 0)
+            ->values();
     }
 }

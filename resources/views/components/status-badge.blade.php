@@ -11,6 +11,8 @@
         'SOLD' => ['badge-success', 'Sold'],
         'COMPLETED' => ['badge-success', 'Completed'],
         'DISPUTED' => ['badge-warning', 'Disputed'],
+        'RESOLVED_BUYER' => ['badge-success', "Resolved in the buyer's favour"],
+        'RESOLVED_SELLER' => ['badge-success', "Resolved in the seller's favour"],
         'EXPIRED' => ['badge-neutral', 'Expired'],
         'SUSPENDED' => ['badge-danger', 'Suspended'],
         default => ['badge-neutral', ucfirst(strtolower(str_replace('_', ' ', $key)))],

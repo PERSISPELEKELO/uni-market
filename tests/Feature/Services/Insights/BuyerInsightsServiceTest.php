@@ -122,3 +122,45 @@ describe('popular with students like you - privacy suppression', function () {
         expect($result['level'])->not->toBe('students in your year and school');
     });
 });
+
+describe('popular listings', function () {
+    it('returns real active listings from the top category for the group', function () {
+        config(['insights.min_group_size' => 5]);
+        $buyer = User::factory()->create(['year_of_study' => 2, 'school' => 'ict']);
+        $books = Category::factory()->create();
+        $recommended = Listing::factory()->create(['category_id' => $books->id, 'title' => 'Recommended Book']);
+
+        foreach (range(1, 6) as $_) {
+            $peer = User::factory()->create(['year_of_study' => 2, 'school' => 'ict']);
+            completedPurchase($peer, ['listing' => ['category_id' => $books->id]]);
+        }
+
+        $listings = $this->service->popularListings($buyer);
+
+        expect($listings->pluck('id'))->toContain($recommended->id);
+    });
+
+    it('never recommends the buyer their own listing', function () {
+        config(['insights.min_group_size' => 5]);
+        $buyer = User::factory()->create(['year_of_study' => 2, 'school' => 'ict']);
+        $books = Category::factory()->create();
+        $ownListing = Listing::factory()->for($buyer, 'seller')->create(['category_id' => $books->id]);
+
+        foreach (range(1, 6) as $_) {
+            $peer = User::factory()->create(['year_of_study' => 2, 'school' => 'ict']);
+            completedPurchase($peer, ['listing' => ['category_id' => $books->id]]);
+        }
+
+        $listings = $this->service->popularListings($buyer);
+
+        expect($listings->pluck('id'))->not->toContain($ownListing->id);
+    });
+
+    it('is empty when the category breakdown is suppressed', function () {
+        config(['insights.min_group_size' => 5]);
+        $buyer = User::factory()->create(['year_of_study' => 2, 'school' => 'ict']);
+        Listing::factory()->create();
+
+        expect($this->service->popularListings($buyer))->toBeEmpty();
+    });
+});

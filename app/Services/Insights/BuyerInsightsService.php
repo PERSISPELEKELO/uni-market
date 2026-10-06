@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Insights;
 
+use App\Models\Listing;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -155,13 +156,38 @@ class BuyerInsightsService
             ->where('completed_at', '>=', now()->subDays(60))
             ->join('listings', 'listings.id', '=', 'transactions.listing_id')
             ->join('categories', 'categories.id', '=', 'listings.category_id')
-            ->selectRaw('categories.name as name, count(*) as total')
-            ->groupBy('categories.name')
+            ->selectRaw('categories.id as category_id, categories.name as name, count(*) as total')
+            ->groupBy('categories.id', 'categories.name')
             ->orderByDesc('total')
             ->limit(5)
             ->get()
-            ->map(fn ($row) => ['name' => $row->name, 'total' => (int) $row->total])
+            ->map(fn ($row) => ['category_id' => (int) $row->category_id, 'name' => $row->name, 'total' => (int) $row->total])
             ->all();
+    }
+
+    /**
+     * Actual active listings in the top categories bought by students like
+     * this buyer (see popularWithStudentsLikeYou), for a homepage carousel.
+     * Never the buyer's own listings. Empty whenever the category breakdown
+     * itself is suppressed or empty - never a fabricated substitute.
+     *
+     * @return Collection<int, Listing>
+     */
+    public function popularListings(User $buyer, int $limit = 8): Collection
+    {
+        $categoryIds = collect($this->popularWithStudentsLikeYou($buyer)['categories'])->pluck('category_id');
+
+        if ($categoryIds->isEmpty()) {
+            return collect();
+        }
+
+        return Listing::active()
+            ->whereIn('category_id', $categoryIds)
+            ->where('user_id', '!=', $buyer->id)
+            ->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])
+            ->latest()
+            ->limit($limit)
+            ->get();
     }
 
     /**

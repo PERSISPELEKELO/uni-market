@@ -104,6 +104,9 @@
                             {{ $reservationCount }} {{ \Illuminate\Support\Str::plural('reservation', $reservationCount) }}
                         </span>
                     @endif
+                    @if ($recentViewCount > 0 && ! $isOwner)
+                        <span class="text-xs text-slate-500">Viewed {{ $recentViewCount }} {{ \Illuminate\Support\Str::plural('time', $recentViewCount) }} this week</span>
+                    @endif
                 </div>
 
                 <div class="border-t border-slate-100 pt-4">
@@ -202,28 +205,45 @@
                 </div>
             @endif
 
-            @if ($listing->category->isDirect())
-                <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 p-4 text-sm dark:border-accent-500/30 dark:bg-accent-500/10">
-                    <x-app-icon name="bag" class="mt-0.5 h-5 w-5 flex-shrink-0 text-accent-700" />
-                    <div>
-                        <p class="font-semibold text-accent-800 dark:text-accent-300">Direct purchase</p>
-                        <p class="mt-0.5 text-gray-700">
-                            This item does not require inspection or escrow. Once the seller selects you as buyer, you can
-                            complete the purchase right away.
-                        </p>
-                    </div>
-                </div>
-            @else
-                <div class="flex items-start gap-3 rounded-xl border border-accent-200 bg-accent-50 p-4 text-sm">
-                    <x-app-icon name="shield" class="mt-0.5 h-5 w-5 flex-shrink-0 text-accent-700" />
-                    <div>
-                        <p class="font-semibold text-accent-800">Inspection protected purchase</p>
-                        <p class="mt-0.5 text-gray-700">
-                            Reserve the item, meet on campus and share your handover code only once you have the item in hand.
-                            You then get a 48-hour inspection window to confirm or dispute.
-                        </p>
-                    </div>
-                </div>
+            <x-section class="card p-5 sm:p-6">
+                <x-slot:title>
+                    <span class="inline-flex items-center gap-1.5">
+                        <x-app-icon :name="$listing->category->isDirect() ? 'bag' : 'shield'" class="h-4 w-4 text-accent-700" />
+                        How buying this item works
+                    </span>
+                </x-slot:title>
+
+                @if ($listing->category->isDirect())
+                    <x-steps :items="[
+                        ['title' => 'Reserve the item', 'description' => 'Let the seller know you want it using the reserve button below.'],
+                        ['title' => 'Seller selects you', 'description' => 'If more than one student reserves, the seller picks who to sell to.'],
+                        ['title' => 'Complete the purchase', 'description' => 'This category does not need an inspection window - the purchase completes right away.'],
+                    ]" />
+                @else
+                    <x-steps :items="[
+                        ['title' => 'Reserve the item', 'description' => 'Let the seller know you want it using the reserve button below.'],
+                        ['title' => 'Meet and hand over', 'description' => 'Meet on campus. Only share your handover code once you have the item in hand.'],
+                        ['title' => '48-hour inspection window', 'description' => 'Confirm the item is as described, or raise a dispute, within 48 hours.'],
+                    ]" />
+                @endif
+            </x-section>
+
+            @if ($frequentlyBoughtWith->isNotEmpty())
+                <x-section title="Students who bought this category also bought" class="card p-5 sm:p-6">
+                    <ul class="space-y-2">
+                        @foreach ($frequentlyBoughtWith as $row)
+                            <li>
+                                <a href="{{ route('listings.index', ['category' => $row['category']->id]) }}" class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-300/20">
+                                    <span class="flex items-center gap-2 font-medium text-ink">
+                                        <span aria-hidden="true">{{ $row['category']->emoji() }}</span>
+                                        {{ $row['category']->name }}
+                                    </span>
+                                    <span class="flex-shrink-0 text-xs text-slate-600">Browse <x-app-icon name="arrow-right" class="inline h-3 w-3" /></span>
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </x-section>
             @endif
 
         </div>

@@ -31,6 +31,7 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::Indigo,
             ])
             ->navigationGroups([
+                'Business Intelligence',
                 'Marketplace',
                 'Moderation & Disputes',
                 'Reports',

@@ -26,6 +26,32 @@ class Category extends Model
     }
 
     /**
+     * A decorative emoji per category, matched by slug so it survives a
+     * name tweak. Purely visual - category chips always show the name as
+     * text alongside it, never the emoji alone.
+     */
+    public function emoji(): string
+    {
+        return match ($this->slug) {
+            'electronics-laptops' => '💻',
+            'phones-accessories' => '📱',
+            'books-textbooks' => '📚',
+            'clothing-fashion' => '👕',
+            'shoes-footwear' => '👟',
+            'dormitory-appliances' => '🏠',
+            'furniture' => '🛋️',
+            'bicycles-campus-transport' => '🚲',
+            'food-beverages' => '🍔',
+            'beauty-personal-care' => '💄',
+            'sports-fitness' => '⚽',
+            'stationery-school-supplies' => '✏️',
+            'services' => '🛠️',
+            'accommodation' => '🏘️',
+            default => '🏷️',
+        };
+    }
+
+    /**
      * DIRECT: buyer purchases straight to completion, no handover code or
      * inspection window (see InspectionService::completeDirectPurchase).
      */

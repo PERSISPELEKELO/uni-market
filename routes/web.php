@@ -17,6 +17,7 @@ use App\Livewire\Auth\Register;
 use App\Livewire\Auth\ResetPassword;
 use App\Livewire\Auth\VerifyEmail;
 use App\Livewire\Chat\MessageThread;
+use App\Livewire\HowItWorks;
 use App\Livewire\Marketplace\CreateListing;
 use App\Livewire\Marketplace\EditListing;
 use App\Livewire\Marketplace\ListingIndex;
@@ -36,6 +37,8 @@ Route::get('/students/{user}', PublicProfile::class)->name('profiles.show');
 // Public reputation-record verification: no account needed, so a credential
 // stays checkable by anyone (e.g. an employer) after the student graduates.
 Route::get('/reputation/verify', VerifyReputation::class)->name('reputation.verify');
+
+Route::get('/how-it-works', HowItWorks::class)->name('how-it-works');
 
 // Auth Routes (Guest Only)
 Route::middleware(['guest'])->group(function () {

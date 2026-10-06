@@ -38,6 +38,19 @@ function fillListingForm($component, array $data)
 }
 
 describe('creating a listing', function () {
+    it('live-previews the listing as it is filled out', function () {
+        $category = Category::factory()->create(['name' => 'Books & Textbooks']);
+
+        $component = Livewire::actingAs(User::factory()->create())->test(CreateListing::class)
+            ->assertSee('Your listing title');
+
+        fillListingForm($component, validListingData($category))
+            ->assertSee('Calculus 9th Edition textbook')
+            ->assertSee('Books & Textbooks')
+            ->assertSee('K250.00')
+            ->assertSee('Good');
+    });
+
     it('publishes a listing with photos for a signed-in student', function () {
         $seller = User::factory()->create();
         $category = Category::factory()->create();

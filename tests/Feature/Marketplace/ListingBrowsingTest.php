@@ -4,6 +4,7 @@ use App\Livewire\Marketplace\ListingIndex;
 use App\Livewire\Marketplace\ListingShow;
 use App\Models\Category;
 use App\Models\Listing;
+use App\Models\ListingView;
 use App\Models\Reservation;
 use App\Models\Transaction;
 use App\Models\User;
@@ -170,6 +171,38 @@ describe('viewing a listing', function () {
             ->assertSee('This is your listing.')
             ->assertSee('Edit listing')
             ->assertDontSee('Reserve this item');
+    });
+
+    it('never shows the owner their own recent view count', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id]);
+        ListingView::create(['listing_id' => $listing->id, 'session_hash' => hash('sha256', 'x'), 'viewed_at' => now()]);
+
+        $this->actingAs($seller)->get(route('listings.show', $listing))->assertDontSee('this week');
+    });
+
+    it('shows real students-also-bought category suggestions once the group is large enough', function () {
+        config(['insights.min_group_size' => 5]);
+        $books = Category::factory()->create(['name' => 'Books']);
+        $stationery = Category::factory()->create(['name' => 'Stationery']);
+        $listing = Listing::factory()->create(['category_id' => $books->id]);
+
+        foreach (range(1, 6) as $_) {
+            $buyer = User::factory()->create();
+            Transaction::factory()->create(['buyer_id' => $buyer->id, 'listing_id' => Listing::factory()->create(['category_id' => $books->id])->id, 'status' => 'COMPLETED']);
+            Transaction::factory()->create(['buyer_id' => $buyer->id, 'listing_id' => Listing::factory()->create(['category_id' => $stationery->id])->id, 'status' => 'COMPLETED']);
+        }
+
+        $this->get(route('listings.show', $listing))
+            ->assertSee('Students who bought this category also bought')
+            ->assertSee('Stationery');
+    });
+
+    it('hides the suggestion section below the privacy threshold', function () {
+        config(['insights.min_group_size' => 5]);
+        $listing = Listing::factory()->create();
+
+        $this->get(route('listings.show', $listing))->assertDontSee('Students who bought this category also bought');
     });
 });
 
