@@ -73,7 +73,7 @@ class GovernanceTransparencyController extends Controller
             return [
                 'uuid' => $log->uuid,
                 'timestamp' => $log->timestamp?->toIso8601String(),
-                'anonymized_actor_hash' => $log->actor_id ? substr(hash('sha256', 'actor_salt_' . $log->actor_id), 0, 16) : 'SYSTEM',
+                'anonymized_actor_hash' => $log->actor_id ? substr(hash('sha256', 'actor_salt_'.$log->actor_id), 0, 16) : 'SYSTEM',
                 'actor_role' => $log->actor_role,
                 'action' => $log->action,
                 'target_type' => $log->target_type,

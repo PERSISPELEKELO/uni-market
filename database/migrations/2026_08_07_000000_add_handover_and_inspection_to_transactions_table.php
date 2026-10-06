@@ -6,8 +6,10 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
-    public function up(): void {
+return new class extends Migration
+{
+    public function up(): void
+    {
         Schema::table('transactions', function (Blueprint $table) {
             $table->string('handover_code_hash', 60)->nullable();
             $table->string('handover_code_plain', 6)->nullable();
@@ -25,7 +27,8 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void {
+    public function down(): void
+    {
         Schema::table('transactions', function (Blueprint $table) {
             $table->dropColumn([
                 'handover_code_hash',

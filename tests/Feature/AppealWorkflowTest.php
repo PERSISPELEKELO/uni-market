@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Enums\AppealStatus;
 use App\Models\Appeal;
 use App\Models\Category;
 use App\Models\Listing;

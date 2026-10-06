@@ -35,7 +35,7 @@ class TransactionHandoverController extends Controller
         }
 
         $code = $transaction->handover_code_plain;
-        if (!$code) {
+        if (! $code) {
             $code = $this->handoverService->generateHandoverCode($transaction);
         }
 

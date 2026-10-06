@@ -14,8 +14,11 @@ class Appeal extends Model
     use HasFactory;
 
     public const STATUS_PENDING = 'PENDING';
+
     public const STATUS_UNDER_REVIEW = 'UNDER_REVIEW';
+
     public const STATUS_UPHELD = 'UPHELD';
+
     public const STATUS_OVERTURNED = 'OVERTURNED';
 
     protected $fillable = [

@@ -87,7 +87,8 @@ class AppealController extends Controller
         $appeals = Appeal::orderBy('id', 'desc')->paginate($perPage);
 
         $sanitizedItems = collect($appeals->items())->map(function (Appeal $appeal) {
-            $anonId = 'STUDENT_ANON_' . str_pad((string) $appeal->user_id, 3, '0', STR_PAD_LEFT);
+            $anonId = 'STUDENT_ANON_'.str_pad((string) $appeal->user_id, 3, '0', STR_PAD_LEFT);
+
             return [
                 'id' => $appeal->id,
                 'anonymized_submitter_id' => $anonId,

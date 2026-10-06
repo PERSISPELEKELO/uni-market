@@ -19,6 +19,7 @@ class HandoverAndInspectionTest extends TestCase
     use RefreshDatabase;
 
     protected HandoverVerificationService $handoverService;
+
     protected InspectionService $inspectionService;
 
     protected function setUp(): void

@@ -61,7 +61,7 @@ class HandoverVerificationService
             || ($transaction->handover_otp_hash && Hash::check($submittedOtp, $transaction->handover_otp_hash))
             || ($transaction->handover_code_hash && Hash::check($submittedOtp, $transaction->handover_code_hash));
 
-        if (!$isValid) {
+        if (! $isValid) {
             $transaction->increment('handover_attempts');
             $remaining = 5 - $transaction->handover_attempts;
             throw new InvalidArgumentException("Invalid handover code. {$remaining} attempts remaining.");

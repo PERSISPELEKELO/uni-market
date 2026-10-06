@@ -34,10 +34,12 @@ class VerifyAuditChainCommand extends Command
 
         if ($result['is_valid']) {
             $this->info('✓ SUCCESS: Audit log chain is intact and valid.');
+
             return self::SUCCESS;
         }
 
         $this->error("✗ FAILURE: Audit chain CORRUPTED at ID {$result['failed_at_id']}.");
+
         return self::FAILURE;
     }
 }
