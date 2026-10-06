@@ -2,16 +2,22 @@
     $status = $user->student_verification_status;
 @endphp
 
-<div class="mx-auto max-w-2xl space-y-6">
-    <div>
-        <a href="{{ route('account') }}" class="mb-2 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800 dark:hover:text-brand-300">
-            <x-app-icon name="arrow-left" class="h-4 w-4" /> Back to my account
-        </a>
-        <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Student verification</h1>
-        <p class="mt-1 text-sm text-slate-600">
+<div class="{{ $embedded ? 'space-y-6' : 'mx-auto max-w-2xl space-y-6' }}">
+    @unless ($embedded)
+        <div>
+            <a href="{{ route('account') }}" class="mb-2 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800 dark:hover:text-brand-300">
+                <x-app-icon name="arrow-left" class="h-4 w-4" /> Back to my account
+            </a>
+            <h1 class="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Student verification</h1>
+            <p class="mt-1 text-sm text-slate-600">
+                Upload a photo or scan of your student ID card so an administrator can confirm your student status. This is separate from confirming your email address.
+            </p>
+        </div>
+    @else
+        <p class="text-sm text-slate-600">
             Upload a photo or scan of your student ID card so an administrator can confirm your student status. This is separate from confirming your email address.
         </p>
-    </div>
+    @endif
 
     @if (! $user->hasVerifiedEmail())
         <x-alert type="warning">

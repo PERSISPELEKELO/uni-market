@@ -52,16 +52,15 @@
                     </a>
 
                     <nav class="hidden items-center gap-1 md:flex" aria-label="Main navigation">
-                        <a href="{{ route('listings.index') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('listings.index', 'listings.show')]) @if(request()->routeIs('listings.index')) aria-current="page" @endif>Marketplace</a>
+                        <a href="{{ route('listings.index') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('listings.index', 'listings.show')]) @if(request()->routeIs('listings.index')) aria-current="page" @endif>Browse</a>
                         @auth
-                            <a href="{{ route('listings.mine') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('listings.mine', 'listings.edit')]) @if(request()->routeIs('listings.mine')) aria-current="page" @endif>My listings</a>
+                            <a href="{{ route('activity.index') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('activity.index', 'listings.mine', 'listings.edit', 'transactions.tracker')]) @if(request()->routeIs('activity.index')) aria-current="page" @endif>My Activity</a>
                             <a href="{{ route('chat.index') }}" @class(['nav-link inline-flex items-center gap-1.5', 'nav-link-active' => request()->routeIs('chat.*')]) @if(request()->routeIs('chat.*')) aria-current="page" @endif>
                                 Messages
                                 @if ($unreadMessageCount > 0)
                                     <span class="badge border-accent-700 bg-accent-700 px-2 py-0 text-white">{{ $unreadMessageCount }}<span class="sr-only"> unread</span></span>
                                 @endif
                             </a>
-                            <a href="{{ route('transactions.tracker') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('transactions.*')]) @if(request()->routeIs('transactions.*')) aria-current="page" @endif>My transactions</a>
                         @endauth
                     </nav>
                 </div>
@@ -110,6 +109,9 @@
                                 <a href="{{ route('account') }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
                                     <x-app-icon name="pencil" class="h-5 w-5" /> My account
                                 </a>
+                                <a href="{{ route('appeals.mine') }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
+                                    <x-app-icon name="flag" class="h-5 w-5" /> My appeals
+                                </a>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
@@ -144,16 +146,15 @@
                     <x-app-icon name="moon" class="block h-5 w-5 dark:hidden" />
                     <span>Toggle dark mode</span>
                 </button>
-                <a href="{{ route('listings.index') }}" class="nav-link py-3">Marketplace</a>
+                <a href="{{ route('listings.index') }}" class="nav-link py-3">Browse</a>
                 @auth
-                    <a href="{{ route('listings.mine') }}" class="nav-link py-3">My listings</a>
+                    <a href="{{ route('activity.index') }}" class="nav-link py-3">My Activity</a>
                     <a href="{{ route('chat.index') }}" class="nav-link flex items-center justify-between py-3">
                         <span>Messages</span>
                         @if ($unreadMessageCount > 0)
                             <span class="badge border-accent-700 bg-accent-700 text-white">{{ $unreadMessageCount }}<span class="sr-only"> unread</span></span>
                         @endif
                     </a>
-                    <a href="{{ route('transactions.tracker') }}" class="nav-link py-3">My transactions</a>
                     <div class="mt-2 border-t border-slate-100 pt-3">
                         <div class="flex items-center gap-2.5 px-3">
                             <x-avatar :user="auth()->user()" class="h-9 w-9 flex-shrink-0 text-sm" />
@@ -167,6 +168,9 @@
                         </a>
                         <a href="{{ route('account') }}" class="nav-link flex items-center gap-2 py-3">
                             <x-app-icon name="pencil" class="h-5 w-5" /> My account
+                        </a>
+                        <a href="{{ route('appeals.mine') }}" class="nav-link flex items-center gap-2 py-3">
+                            <x-app-icon name="flag" class="h-5 w-5" /> My appeals
                         </a>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf

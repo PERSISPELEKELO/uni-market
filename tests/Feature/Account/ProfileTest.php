@@ -256,6 +256,39 @@ describe('changing the password', function () {
     });
 });
 
+describe('account sections', function () {
+    it('shows the verification, security and reputation sections on one page', function () {
+        $user = User::factory()->pendingStudentVerification()->create();
+
+        $this->actingAs($user)->get(route('account'))
+            ->assertOk()
+            ->assertSee('id="verification"', false)
+            ->assertSee('id="security"', false)
+            ->assertSee('id="reputation"', false)
+            ->assertSee('Student ID document')
+            ->assertSee('Change password')
+            ->assertSee('Export reputation &amp; history', false)
+            ->assertSee(route('reputation.export'), false);
+    });
+
+    it('embeds student verification without its standalone back-link and heading', function () {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('account'))
+            ->assertOk()
+            ->assertDontSee('Back to my account');
+    });
+
+    it('still renders the standalone student verification page with its own heading', function () {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('verification.student.form'))
+            ->assertOk()
+            ->assertSee('Back to my account')
+            ->assertSee('Student verification');
+    });
+});
+
 it('only ever edits the signed-in member', function () {
     $victim = User::factory()->create(['name' => 'Victim Name']);
     $attacker = User::factory()->create();

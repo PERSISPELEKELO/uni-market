@@ -9,6 +9,8 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Middleware\EnsureUserIsNotSuspended;
 use App\Livewire\Account\Profile;
 use App\Livewire\Account\StudentVerification;
+use App\Livewire\Activity\MyActivity;
+use App\Livewire\Appeals\MyAppeals;
 use App\Livewire\Auth\ForgotPassword;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
@@ -64,8 +66,17 @@ Route::middleware(['auth', EnsureUserIsNotSuspended::class])->group(function () 
     Route::get('/chat/{receiver?}/{listing?}', MessageThread::class)->name('chat.index');
     Route::get('/chat-thread/{receiver}/{listing?}', MessageThread::class)->name('chat.thread');
 
-    // Escrow Transaction Tracker
+    // Escrow Transaction Tracker. Kept as its own standalone route/component,
+    // unchanged, alongside the new My Activity hub below: existing tests and
+    // notification links already target this exact route directly.
     Route::get('/transactions-tracker/{transaction?}', Tracker::class)->name('transactions.tracker');
+
+    // My Activity: the single nav destination for "things I'm doing on the
+    // marketplace" (buying, selling, personal insights) - see docs/ui-audit.md.
+    Route::get('/my-activity/{transaction?}', MyActivity::class)->name('activity.index');
+
+    // My Appeals: the first-ever frontend for the existing AppealWorkflowService.
+    Route::get('/my-appeals', MyAppeals::class)->name('appeals.mine');
 
     // Traditional Controller Endpoints
     Route::post('/transactions/{transaction}/verify-handover', [TransactionController::class, 'verifyHandover'])->name('transactions.verify-handover');

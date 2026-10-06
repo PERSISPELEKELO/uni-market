@@ -20,6 +20,8 @@ class StudentVerification extends Component
 
     public $document = null;
 
+    public bool $embedded = false;
+
     public function submit(): void
     {
         $user = Auth::user();
@@ -95,6 +97,7 @@ class StudentVerification extends Component
         return view('livewire.account.student-verification', [
             'user' => $user,
             'history' => $user->verificationDocuments,
+            'embedded' => $this->embedded,
         ])->layout('layouts.app', ['title' => 'Student Verification - UniMarket']);
     }
 }

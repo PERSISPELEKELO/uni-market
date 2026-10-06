@@ -18,7 +18,13 @@
     x-on:keydown.arrow-left.window="lightboxOpen && prev()"
     x-on:keydown.arrow-right.window="lightboxOpen && next()"
 >
-    <a href="{{ route('listings.index') }}" class="mb-4 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800 dark:hover:text-brand-300">
+    <x-breadcrumbs :items="[
+        ['label' => 'Browse', 'url' => route('listings.index')],
+        ['label' => $listing->category->name, 'url' => route('listings.index', ['category' => $listing->category_id])],
+        ['label' => $listing->title],
+    ]" />
+
+    <a href="{{ route('listings.index') }}" class="mb-4 inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-brand-800 dark:hover:text-brand-300 sm:hidden">
         <x-app-icon name="arrow-left" class="h-4 w-4" /> Back to marketplace
     </a>
 

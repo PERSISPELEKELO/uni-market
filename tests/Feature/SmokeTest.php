@@ -39,7 +39,7 @@ it('shows account links to signed-in users and sign-in links to guests', functio
     $this->actingAs(User::factory()->create(['name' => 'Chileshe Mwansa']))
         ->get(route('listings.index'))
         ->assertSee('Sell item')
-        ->assertSee('My listings')
+        ->assertSee('My Activity')
         ->assertSee('Log out')
         ->assertSee('Chileshe Mwansa')
         ->assertDontSee('Join UniMarket');
