@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Activity;
 
 use App\Models\Transaction;
+use App\Services\Insights\PeriodBoundary;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -24,6 +25,9 @@ class MyActivity extends Component
     #[Url(as: 'view')]
     public string $insightsView = 'buyer';
 
+    #[Url(as: 'period')]
+    public string $insightsPeriod = 'all';
+
     /**
      * Optional deep-link param, mirroring the existing /transactions-tracker/
      * {transaction} route, so a future link into this hub can still open one
@@ -35,6 +39,7 @@ class MyActivity extends Component
     {
         $this->tab = in_array($this->tab, ['buying', 'selling', 'insights'], true) ? $this->tab : 'buying';
         $this->insightsView = in_array($this->insightsView, ['buyer', 'seller'], true) ? $this->insightsView : 'buyer';
+        $this->insightsPeriod = array_key_exists($this->insightsPeriod, PeriodBoundary::OPTIONS) ? $this->insightsPeriod : 'all';
 
         if ($transaction !== null) {
             $this->tab = 'buying';
@@ -56,11 +61,19 @@ class MyActivity extends Component
         }
     }
 
+    public function setInsightsPeriod(string $period): void
+    {
+        if (array_key_exists($period, PeriodBoundary::OPTIONS)) {
+            $this->insightsPeriod = $period;
+        }
+    }
+
     public function render()
     {
         return view('livewire.activity.my-activity', [
             'reservationsReceived' => $this->tab === 'selling' ? $this->reservationsReceived() : collect(),
             'resolvedTransaction' => $this->resolvedTransaction(),
+            'periodOptions' => PeriodBoundary::OPTIONS,
         ])->layout('layouts.app', ['title' => 'My Activity - UniMarket']);
     }
 

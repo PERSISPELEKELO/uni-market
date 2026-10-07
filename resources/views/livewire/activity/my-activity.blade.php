@@ -50,23 +50,43 @@
             </div>
         @elseif ($tab === 'insights')
             <div class="space-y-6">
-                <div class="flex gap-2" role="tablist" aria-label="Insights view">
-                    <button type="button" wire:click="setInsightsView('buyer')" @class(['chip', 'chip-active' => $insightsView === 'buyer'])>As a buyer</button>
-                    <button type="button" wire:click="setInsightsView('seller')" @class(['chip', 'chip-active' => $insightsView === 'seller'])>As a seller</button>
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex gap-2" role="tablist" aria-label="Insights view">
+                        <button type="button" wire:click="setInsightsView('buyer')" @class(['chip', 'chip-active' => $insightsView === 'buyer'])>As a buyer</button>
+                        <button type="button" wire:click="setInsightsView('seller')" @class(['chip', 'chip-active' => $insightsView === 'seller'])>As a seller</button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label for="insights-period" class="text-sm font-medium text-slate-700">Date range</label>
+                        <select id="insights-period" wire:model.live="insightsPeriod" class="form-input min-h-10 w-auto py-2">
+                            @foreach ($periodOptions as $key => $label)
+                                <option value="{{ $key }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
                 @if ($insightsView === 'buyer')
                     @php
-                        $totals = $buyerInsights->totals($user);
+                        $totals = $buyerInsights->totals($user, $insightsPeriod);
                         $popular = $buyerInsights->popularWithStudentsLikeYou($user);
-                        $spendingData = collect($buyerInsights->spendingByCategory($user))->map(fn ($row) => ['label' => $row['category'], 'value' => $row['amount']])->all();
+                        $spendingData = collect($buyerInsights->spendingByCategory($user, $insightsPeriod))->map(fn ($row) => ['label' => $row['category'], 'value' => $row['amount']])->all();
                         $popularData = collect($popular['categories'])->map(fn ($row) => ['label' => $row['name'], 'value' => $row['total']])->all();
+                        $spendingByMonth = collect($buyerInsights->spendingByMonth($user))->map(fn ($row) => ['label' => $row['month'], 'value' => $row['total']])->all();
                     @endphp
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <x-stat-card label="Items bought" :value="$totals['total_items']" />
                         <x-stat-card label="Total spent" value="K{{ number_format($totals['total_spent'], 2) }}" />
                         <x-stat-card label="Average per item" value="K{{ number_format($totals['average_spend'], 2) }}" />
                     </div>
+
+                    <x-section title="Spending over time" description="Last 12 months - not affected by the date range above." class="card p-5">
+                        @if (collect($spendingByMonth)->sum('value') <= 0)
+                            <x-empty-state icon="bag" title="No purchases yet" description="Once you complete a purchase, your spending trend will appear here." />
+                        @else
+                            <x-chart :data="$spendingByMonth" value-label="Amount (K)" label-heading="Month" prefix="K" />
+                        @endif
+                    </x-section>
 
                     <x-section title="Spending by category" class="card p-5">
                         @if (empty($spendingData))
@@ -91,17 +111,56 @@
                     </x-section>
                 @else
                     @php
-                        $totals = $sellerInsights->totals($user);
+                        $totals = $sellerInsights->totals($user, $insightsPeriod);
                         $buyers = $sellerInsights->buyersByYearAndSchool($user);
                         $priceChecks = $sellerInsights->priceCheck($user);
+                        $soldByCategory = $sellerInsights->soldByCategory($user, $insightsPeriod);
+                        $funnel = $sellerInsights->funnel($user, $insightsPeriod);
+                        $earningsByMonth = collect($sellerInsights->earningsByMonth($user))->map(fn ($row) => ['label' => $row['month'], 'value' => $row['total']])->all();
                         $byYearData = $buyers['suppressed'] ? [] : collect($buyers['by_year'])->map(fn ($row) => ['label' => 'Year '.$row['year'], 'value' => $row['percentage']])->all();
                         $bySchoolData = $buyers['suppressed'] ? [] : collect($buyers['by_school'])->map(fn ($row) => ['label' => $row['school'], 'value' => $row['percentage']])->all();
+                        $byGenderData = $buyers['suppressed'] ? [] : collect($buyers['by_gender'])->map(fn ($row) => ['label' => $row['gender'], 'value' => $row['percentage']])->all();
+                        $soldByCategoryData = collect($soldByCategory)->map(fn ($row) => ['label' => $row['category'].($row['is_trending'] ? ' 🔥' : ''), 'value' => $row['total_items']])->all();
                     @endphp
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <x-stat-card label="Items sold" :value="$totals['items_sold']" />
                         <x-stat-card label="Total earned" value="K{{ number_format($totals['total_earned'], 2) }}" />
                         <x-stat-card label="Average rating" :value="$totals['average_rating'] ? number_format($totals['average_rating'], 1).' / 5.0' : '—'" />
                     </div>
+
+                    <x-section title="Earnings over time" description="Last 12 months - not affected by the date range above." class="card p-5">
+                        @if (collect($earningsByMonth)->sum('value') <= 0)
+                            <x-empty-state icon="bag" title="No sales yet" description="Once you complete a sale, your earnings trend will appear here." />
+                        @else
+                            <x-chart :data="$earningsByMonth" value-label="Amount (K)" label-heading="Month" prefix="K" />
+                        @endif
+                    </x-section>
+
+                    <x-section class="card p-5">
+                        <x-slot:title>
+                            <span class="inline-flex items-center gap-1">
+                                Items sold by category
+                                <x-info-tip text="The category with the most items sold is marked 🔥." />
+                            </span>
+                        </x-slot:title>
+                        @if (empty($soldByCategoryData))
+                            <x-empty-state icon="bag" title="No sales yet" description="Once you complete a sale, your category breakdown will appear here." />
+                        @else
+                            <x-chart :data="$soldByCategoryData" value-label="Items sold" label-heading="Category" />
+                        @endif
+                    </x-section>
+
+                    <x-section title="From view to sale" description="How your listings' visits turn into enquiries and sales." class="card p-5">
+                        @if ($funnel['views'] === 0)
+                            <x-empty-state icon="info" title="No views yet" description="Once students start viewing your listings, your funnel will appear here." />
+                        @else
+                            <x-chart :data="[
+                                ['label' => 'Views', 'value' => $funnel['views']],
+                                ['label' => 'Enquiries', 'value' => $funnel['enquiries']],
+                                ['label' => 'Sales', 'value' => $funnel['sales']],
+                            ]" value-label="Count" label-heading="Stage" />
+                        @endif
+                    </x-section>
 
                     <x-section class="card p-5">
                         <x-slot:title>
@@ -111,11 +170,12 @@
                             </span>
                         </x-slot:title>
                         @if ($buyers['suppressed'])
-                            <x-empty-state icon="info" title="Not enough data yet" description="Once enough different students have bought from you, a breakdown by year and school will appear here." />
+                            <x-empty-state icon="info" title="Not enough data yet" description="Once enough different students have bought from you, a breakdown by year, school and gender will appear here." />
                         @else
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <x-chart :data="$byYearData" value-label="Percent" label-heading="Year of study" suffix="%" />
                                 <x-chart :data="$bySchoolData" value-label="Percent" label-heading="School" suffix="%" />
+                                <x-chart :data="$byGenderData" value-label="Percent" label-heading="Gender" suffix="%" />
                             </div>
                         @endif
                     </x-section>
