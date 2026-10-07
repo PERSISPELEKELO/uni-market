@@ -35,6 +35,8 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'business_type',
         'year_of_study',
         'school',
+        'gender',
+        'intake_year',
         'password',
         'role',
         'is_verified',
@@ -52,6 +54,24 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'password',
         'remember_token',
     ];
+
+    /**
+     * Keeps the stored year_of_study column in sync with intake_year
+     * whenever one is set, so students never type a year number themselves
+     * (they pick an intake year) while every existing Insights query that
+     * groups by the year_of_study column - already tested, unchanged here -
+     * keeps working exactly as it does today. A daily scheduled command
+     * (users:recompute-year-of-study) re-runs this for everyone so the
+     * value keeps advancing as calendar time passes, not just on save.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (User $user) {
+            if ($user->intake_year !== null) {
+                $user->year_of_study = $user->currentYearOfStudy();
+            }
+        });
+    }
 
     public function listings(): HasMany
     {
@@ -273,12 +293,31 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
      */
     public function hasCompletedZutProfile(): bool
     {
-        return $this->year_of_study !== null && $this->school !== null;
+        return ($this->intake_year !== null || $this->year_of_study !== null) && $this->school !== null;
     }
 
     public function schoolLabel(): ?string
     {
         return $this->school ? config('zut.schools.'.$this->school) : null;
+    }
+
+    /**
+     * Prefers a live calculation from intake_year (new accounts); falls
+     * back to the directly-set year_of_study column for accounts that
+     * predate intake_year or never set one - so nothing already relying on
+     * year_of_study breaks.
+     */
+    public function currentYearOfStudy(): ?int
+    {
+        if ($this->intake_year === null) {
+            return $this->year_of_study;
+        }
+
+        $startMonth = (int) config('zut.academic_year_start_month');
+        $now = now();
+        $currentAcademicYear = $now->month >= $startMonth ? $now->year : $now->year - 1;
+
+        return max(1, $currentAcademicYear - $this->intake_year + 1);
     }
 
     /**
@@ -304,6 +343,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
             'student_verification_submitted_at' => 'datetime',
             'student_verification_reviewed_at' => 'datetime',
             'suspended_at' => 'datetime',
+            'intake_year' => 'integer',
         ];
     }
 }

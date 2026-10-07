@@ -12,3 +12,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('transactions:auto-complete')->hourly();
 Schedule::command('insights:prune')->daily();
+Schedule::command('users:recompute-year-of-study')->daily();
