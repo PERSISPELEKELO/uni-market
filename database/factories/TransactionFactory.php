@@ -27,6 +27,20 @@ class TransactionFactory extends Factory
         ];
     }
 
+    /**
+     * Mirrors what ReservationService::selectBuyer() does for real: category_id
+     * is a snapshot of the listing's category, so it defaults from whichever
+     * listing this transaction ends up with unless a test explicitly overrides it.
+     */
+    public function configure(): static
+    {
+        return $this->afterMaking(function (Transaction $transaction) {
+            if ($transaction->category_id === null && $transaction->listing_id) {
+                $transaction->category_id = Listing::find($transaction->listing_id)?->category_id;
+            }
+        });
+    }
+
     public function inInspection(): static
     {
         return $this->state(fn () => [

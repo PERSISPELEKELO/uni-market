@@ -18,12 +18,13 @@ use Illuminate\Support\Collection;
 class BuyerInsightsService
 {
     /**
+     * @param  string  $period  one of PeriodBoundary::OPTIONS - 'all' by default
      * @return array{total_items: int, total_spent: float, average_spend: float}
      */
-    public function totals(User $buyer): array
+    public function totals(User $buyer, string $period = 'all'): array
     {
-        return InsightsCache::remember("buyer:{$buyer->id}:totals", function () use ($buyer) {
-            $purchases = $this->completedPurchases($buyer);
+        return InsightsCache::remember("buyer:{$buyer->id}:totals:{$period}", function () use ($buyer, $period) {
+            $purchases = $this->completedPurchases($buyer, $period);
             $totalItems = $purchases->count();
             $totalSpent = (float) $purchases->sum('amount');
 
@@ -54,12 +55,15 @@ class BuyerInsightsService
     }
 
     /**
+     * @param  string  $period  one of PeriodBoundary::OPTIONS - 'all' by default
      * @return array<int, array{category: string, amount: float, percentage: float}>
      */
-    public function spendingByCategory(User $buyer): array
+    public function spendingByCategory(User $buyer, string $period = 'all'): array
     {
-        return InsightsCache::remember("buyer:{$buyer->id}:spending-by-category", function () use ($buyer) {
-            $purchases = $this->completedPurchases($buyer)->with('listing.category')->get();
+        return InsightsCache::remember("buyer:{$buyer->id}:spending-by-category:{$period}", function () use ($buyer, $period) {
+            // category_id is the category snapshotted at purchase time, not
+            // a live join - see the migration that added it.
+            $purchases = $this->completedPurchases($buyer, $period)->with('category')->get();
             $total = (float) $purchases->sum('amount');
 
             if ($total <= 0) {
@@ -67,7 +71,7 @@ class BuyerInsightsService
             }
 
             return $purchases
-                ->groupBy(fn (Transaction $t) => $t->listing?->category?->name ?? 'Other')
+                ->groupBy(fn (Transaction $t) => $t->category?->name ?? 'Other')
                 ->map(fn (Collection $group, string $category) => [
                     'category' => $category,
                     'amount' => round((float) $group->sum('amount'), 2),
@@ -193,9 +197,12 @@ class BuyerInsightsService
     /**
      * @return Builder<Transaction>
      */
-    private function completedPurchases(User $buyer)
+    private function completedPurchases(User $buyer, string $period = 'all')
     {
-        return Transaction::query()->where('buyer_id', $buyer->id)->where('status', 'COMPLETED');
+        return Transaction::query()
+            ->where('buyer_id', $buyer->id)
+            ->where('status', 'COMPLETED')
+            ->when(PeriodBoundary::start($period), fn ($query, $start) => $query->where('completed_at', '>=', $start));
     }
 
     /**

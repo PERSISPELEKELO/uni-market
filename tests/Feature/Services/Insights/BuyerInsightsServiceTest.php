@@ -39,6 +39,29 @@ it('computes real totals from the buyer\'s own completed purchases only', functi
         ->and($totals['average_spend'])->toBe(200.0);
 });
 
+it('only counts purchases within the requested date range', function () {
+    $buyer = User::factory()->create();
+    completedPurchase($buyer, ['amount' => 100, 'completed_at' => now()->subDays(200)]);
+    completedPurchase($buyer, ['amount' => 300, 'completed_at' => now()->subDays(5)]);
+
+    expect($this->service->totals($buyer, '30d')['total_items'])->toBe(1)
+        ->and($this->service->totals($buyer, '30d')['total_spent'])->toBe(300.0)
+        ->and($this->service->totals($buyer, 'all')['total_items'])->toBe(2);
+});
+
+it('keeps spendingByCategory\'s category as the one bought in, even if the listing is later recategorised', function () {
+    $buyer = User::factory()->create();
+    $original = Category::factory()->create(['name' => 'Original Category']);
+    $changed = Category::factory()->create(['name' => 'Changed Category']);
+
+    $purchase = completedPurchase($buyer, ['listing' => ['category_id' => $original->id]]);
+    $purchase->listing->update(['category_id' => $changed->id]);
+
+    $categories = collect($this->service->spendingByCategory($buyer))->pluck('category');
+
+    expect($categories)->toContain('Original Category')->not->toContain('Changed Category');
+});
+
 it('reports zero totals for a buyer with no completed purchases', function () {
     $totals = $this->service->totals(User::factory()->create());
 
