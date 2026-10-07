@@ -3,6 +3,7 @@
 use App\Livewire\Account\Profile;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -99,20 +100,26 @@ describe('updating details', function () {
             ->assertHasErrors(['bio' => 'max']);
     });
 
-    it('lets a member set their year of study and school', function () {
+    it('lets a member set their intake year and school, computing their year of study', function () {
+        config(['zut.academic_year_start_month' => 9]);
+        Carbon::setTestNow('2026-10-15');
         $user = User::factory()->create();
 
         Livewire::actingAs($user)->test(Profile::class)
-            ->set('year_of_study', 3)
+            ->set('intake_year', 2024)
             ->set('school', 'engineering')
             ->call('updateProfile')
             ->assertHasNoErrors();
 
-        expect($user->fresh()->year_of_study)->toBe(3)->and($user->fresh()->school)->toBe('engineering');
+        expect($user->fresh()->intake_year)->toBe(2024)
+            ->and($user->fresh()->year_of_study)->toBe(3)
+            ->and($user->fresh()->school)->toBe('engineering');
+
+        Carbon::setTestNow();
     });
 
-    it('leaves year of study and school optional, and rejects an invalid school', function () {
-        $user = User::factory()->create();
+    it('leaves intake year, school and gender optional, and rejects an invalid school', function () {
+        $user = User::factory()->create(['intake_year' => null, 'year_of_study' => null]);
 
         Livewire::actingAs($user)->test(Profile::class)->call('updateProfile')->assertHasNoErrors();
         expect($user->fresh()->year_of_study)->toBeNull();
@@ -121,6 +128,17 @@ describe('updating details', function () {
             ->set('school', 'made-up-school')
             ->call('updateProfile')
             ->assertHasErrors(['school' => 'in']);
+    });
+
+    it('lets a member set their gender, or leave it undisclosed', function () {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test(Profile::class)
+            ->set('gender', 'female')
+            ->call('updateProfile')
+            ->assertHasNoErrors();
+
+        expect($user->fresh()->gender)->toBe('female');
     });
 });
 

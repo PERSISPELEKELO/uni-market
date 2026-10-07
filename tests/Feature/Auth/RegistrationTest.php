@@ -2,6 +2,7 @@
 
 use App\Livewire\Auth\Register;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 
@@ -15,7 +16,7 @@ function validRegistration(array $overrides = []): array
         'email' => 'chileshe@example.com',
         'student_id' => '2024198273',
         'phone_number' => '+260971234567',
-        'year_of_study' => 2,
+        'intake_year' => now()->year - 1,
         'school' => 'ict',
         'password' => 'Sunshine123',
         'password_confirmation' => 'Sunshine123',
@@ -43,7 +44,10 @@ it('shows the registration page to guests', function () {
 });
 
 it('registers a student, combines first and last name, hashes the password and signs them in', function () {
-    fillRegistration(validRegistration())
+    config(['zut.academic_year_start_month' => 9]);
+    Carbon::setTestNow('2026-10-15');
+
+    fillRegistration(validRegistration(['intake_year' => 2025]))
         ->assertHasNoErrors()
         ->assertRedirect(route('listings.index'));
 
@@ -52,42 +56,56 @@ it('registers a student, combines first and last name, hashes the password and s
     expect($user->name)->toBe('Chileshe Mwansa')
         ->and($user->role)->toBe('student')
         ->and($user->is_verified)->toBeFalse()
+        ->and($user->intake_year)->toBe(2025)
         ->and($user->year_of_study)->toBe(2)
         ->and($user->school)->toBe('ict')
+        ->and($user->gender)->toBe('undisclosed')
         ->and($user->password)->not->toBe('Sunshine123')
         ->and(Hash::check('Sunshine123', $user->password))->toBeTrue();
 
     $this->assertAuthenticatedAs($user);
+
+    Carbon::setTestNow();
 });
 
 it('does not allow required fields to be empty', function () {
     Livewire::test(Register::class)
         ->call('register')
-        ->assertHasErrors(['first_name' => 'required', 'last_name' => 'required', 'email' => 'required', 'student_id' => 'required', 'year_of_study' => 'required', 'school' => 'required', 'password' => 'required'])
+        ->assertHasErrors(['first_name' => 'required', 'last_name' => 'required', 'email' => 'required', 'student_id' => 'required', 'intake_year' => 'required', 'school' => 'required', 'password' => 'required'])
         ->assertSee('Please enter your first name.')
         ->assertSee('Please enter your last name.')
         ->assertSee('Please enter your email address.')
         ->assertSee('Please enter your student ID number.')
-        ->assertSee('Please select your year of study.')
+        ->assertSee('Please select the year you started.')
         ->assertSee('Please select your school.')
         ->assertSee('Please choose a password.');
 
     expect(User::count())->toBe(0);
 });
 
-it('shows the year of study and school fields, with the privacy explanation', function () {
+it('shows the intake year, school and gender fields, with the privacy explanation', function () {
     $this->get(route('register'))
-        ->assertSee('Year of study')
+        ->assertSee('Year you started')
         ->assertSee('School')
-        ->assertSee('Used only to show anonymous trends');
+        ->assertSee('Gender')
+        ->assertSee('used only to show anonymous trends');
 });
 
-it('rejects a year of study outside 1-6', function (int $year) {
-    fillRegistration(validRegistration(['year_of_study' => $year]))
-        ->assertHasErrors(['year_of_study']);
+it('rejects an intake year outside the allowed range', function (int $yearOffset) {
+    fillRegistration(validRegistration(['intake_year' => now()->year + $yearOffset]))
+        ->assertHasErrors(['intake_year']);
 
     expect(User::count())->toBe(0);
-})->with(['zero' => [0], 'too high' => [7]]);
+})->with(['too far in the future' => [1], 'too far in the past' => [-11]]);
+
+it('leaves gender optional, defaulting to undisclosed, and rejects anything outside the list', function () {
+    fillRegistration(validRegistration(['gender' => '']))->assertHasErrors(['gender']);
+
+    fillRegistration(validRegistration(['email' => 'nogender@example.com', 'student_id' => '2024000077', 'gender' => 'undisclosed']))
+        ->assertHasNoErrors();
+
+    expect(User::where('email', 'nogender@example.com')->first()->gender)->toBe('undisclosed');
+});
 
 it('rejects a school that is not in the configured list', function () {
     fillRegistration(validRegistration(['school' => 'not-a-real-school']))

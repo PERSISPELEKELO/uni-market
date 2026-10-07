@@ -95,19 +95,20 @@
 
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
-                    <label for="year_of_study" class="form-label">Year of study</label>
+                    <label for="intake_year" class="form-label">Year you started</label>
                     <select
-                        id="year_of_study"
-                        wire:model="year_of_study"
+                        id="intake_year"
+                        wire:model="intake_year"
                         class="form-input"
-                        @error('year_of_study') aria-invalid="true" aria-describedby="year_of_study-error" @enderror
+                        @error('intake_year') aria-invalid="true" aria-describedby="intake_year-error" @enderror
                     >
                         <option value="">Choose a year</option>
-                        @for ($year = 1; $year <= 6; $year++)
-                            <option value="{{ $year }}">Year {{ $year }}</option>
-                        @endfor
+                        @foreach ($intakeYears as $year)
+                            <option value="{{ $year }}">{{ $year }}</option>
+                        @endforeach
                     </select>
-                    <x-form-error name="year_of_study" />
+                    <p class="form-hint">We work out your current year of study from this.</p>
+                    <x-form-error name="intake_year" />
                 </div>
 
                 <div>
@@ -126,8 +127,19 @@
                     <x-form-error name="school" />
                 </div>
             </div>
+
+            <div>
+                <label for="gender" class="form-label">Gender <span class="font-normal text-slate-600">(optional)</span></label>
+                <select id="gender" wire:model="gender" class="form-input">
+                    <option value="undisclosed">Prefer not to say</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                </select>
+                <x-form-error name="gender" />
+            </div>
+
             <p class="form-hint -mt-2">
-                Used only to show anonymous trends, such as what first-year students buy. Never shown with your name.
+                Your year, school and gender are used only to show anonymous trends, such as what first-year students buy - never shown with your name. Gender is optional.
             </p>
 
             <div>

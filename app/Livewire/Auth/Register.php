@@ -27,9 +27,11 @@ class Register extends Component
 
     public ?string $phone_number = null;
 
-    public ?int $year_of_study = null;
+    public ?int $intake_year = null;
 
     public string $school = '';
+
+    public string $gender = 'undisclosed';
 
     public string $password = '';
 
@@ -46,8 +48,9 @@ class Register extends Component
             'email' => ['required', 'string', 'email:rfc,strict,filter', 'max:255', 'unique:users,email'],
             'student_id' => ['required', 'digits_between:1,10', 'unique:users,student_id'],
             'phone_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9 ()\-]{7,20}$/', 'unique:users,phone_number'],
-            'year_of_study' => ['required', 'integer', 'min:1', 'max:6'],
+            'intake_year' => ['required', 'integer', 'min:'.(now()->year - 10), 'max:'.now()->year],
             'school' => ['required', 'string', Rule::in(array_keys(config('zut.schools')))],
+            'gender' => ['required', Rule::in(['female', 'male', 'undisclosed'])],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
         ];
     }
@@ -92,11 +95,12 @@ class Register extends Component
             'student_id.unique' => 'This student ID is already registered.',
             'phone_number.regex' => 'Please enter a valid phone number, for example +260971234567.',
             'phone_number.unique' => 'This phone number is already registered.',
-            'year_of_study.required' => 'Please select your year of study.',
-            'year_of_study.min' => 'Please select a year between 1 and 6.',
-            'year_of_study.max' => 'Please select a year between 1 and 6.',
+            'intake_year.required' => 'Please select the year you started.',
+            'intake_year.min' => 'Please select a valid intake year.',
+            'intake_year.max' => 'Please select a valid intake year.',
             'school.required' => 'Please select your school.',
             'school.in' => 'Please select one of the listed schools.',
+            'gender.in' => 'Please select one of the listed options.',
             'password.required' => 'Please choose a password.',
             'password.min' => 'Your password must be at least 8 characters long.',
             'password.letters' => 'Your password must include at least one letter.',
@@ -135,8 +139,9 @@ class Register extends Component
                 'email' => $this->email,
                 'student_id' => $this->student_id,
                 'phone_number' => $this->phone_number,
-                'year_of_study' => $this->year_of_study,
+                'intake_year' => $this->intake_year,
                 'school' => $this->school,
+                'gender' => $this->gender,
                 'password' => $this->password,
                 'role' => 'student',
                 'is_verified' => false,
@@ -182,6 +187,7 @@ class Register extends Component
     {
         return view('livewire.auth.register', [
             'schools' => config('zut.schools'),
+            'intakeYears' => range(now()->year, now()->year - 10),
         ])->layout('layouts.app', ['title' => 'Create your account - UniMarket']);
     }
 }

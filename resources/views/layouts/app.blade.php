@@ -220,7 +220,7 @@
                 <x-alert type="info">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <span>
-                            Add your year of study and school to your account - it only takes a moment, and helps show anonymous trends to students like you.
+                            Add the year you started and your school to your account - it only takes a moment, and helps show anonymous trends to students like you.
                             <a href="{{ route('account') }}" class="font-semibold underline underline-offset-2">Complete my profile</a>
                         </span>
                         <button
