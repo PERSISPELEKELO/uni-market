@@ -205,6 +205,22 @@ class MarketInsightsService
     }
 
     /**
+     * @return array{genders: array<int, string>, categories: array<int, string>, cells: array<int, array<int, int|null>>}
+     */
+    public function buyersByGenderAndCategory(string $period = '30d'): array
+    {
+        return InsightsCache::remember("market:gender-x-category:{$period}", function () use ($period) {
+            $raw = $this->heatmap($period, 'gender');
+
+            return [
+                'genders' => array_map(fn ($key) => ucfirst((string) $key), $raw['years']),
+                'categories' => $raw['categories'],
+                'cells' => $raw['cells'],
+            ];
+        });
+    }
+
+    /**
      * @return array{years?: array<int, int|string>, categories: array<int, string>, cells: array<int, array<int, int|null>>}
      */
     private function heatmap(string $period, string $groupColumn): array

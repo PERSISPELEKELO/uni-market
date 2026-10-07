@@ -78,6 +78,11 @@ class MarketInsights extends Page
         return app(MarketInsightsService::class)->buyersBySchoolAndCategory($this->period);
     }
 
+    public function buyersByGenderAndCategory(): array
+    {
+        return app(MarketInsightsService::class)->buyersByGenderAndCategory($this->period);
+    }
+
     public function fastestSelling(): array
     {
         return app(MarketInsightsService::class)->fastestSelling($this->period);

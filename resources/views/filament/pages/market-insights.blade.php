@@ -6,6 +6,7 @@
     $peakTimes = $this->peakTimes();
     $yearHeatmap = $this->buyersByYearAndCategory();
     $schoolHeatmap = $this->buyersBySchoolAndCategory();
+    $genderHeatmap = $this->buyersByGenderAndCategory();
     $userGrowth = $this->userGrowth();
     $shape = $this->sellersVsBuyersVsBoth();
     $topListings = $this->topListings();
@@ -149,7 +150,7 @@
         @endif
     </x-filament::section>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <x-filament::section>
             <x-slot name="heading">Buyers by year of study &times; category</x-slot>
             <x-slot name="description">Cells with fewer than {{ config('insights.min_group_size') }} distinct buyers are blank, not zero.</x-slot>
@@ -205,6 +206,38 @@
                                     <td class="py-1 pr-2 font-medium">{{ $school }}</td>
                                     @foreach ($schoolHeatmap['categories'] as $j => $category)
                                         <td class="px-2 py-1 text-center">{{ $schoolHeatmap['cells'][$i][$j] ?? '-' }}</td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </x-filament::section>
+
+        <x-filament::section>
+            <x-slot name="heading">Buyers by gender &times; category</x-slot>
+            <x-slot name="description">Cells with fewer than {{ config('insights.min_group_size') }} distinct buyers are blank, not zero.</x-slot>
+
+            @if (empty($genderHeatmap['genders']))
+                <p class="text-sm text-gray-500 dark:text-gray-400">Not enough data yet.</p>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <th class="py-1 pr-2 text-left font-medium text-gray-500 dark:text-gray-400">Gender</th>
+                                @foreach ($genderHeatmap['categories'] as $category)
+                                    <th class="whitespace-nowrap px-2 py-1 text-left font-medium text-gray-500 dark:text-gray-400">{{ $category }}</th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($genderHeatmap['genders'] as $i => $gender)
+                                <tr class="border-b border-gray-100 dark:border-gray-800">
+                                    <td class="py-1 pr-2 font-medium">{{ $gender }}</td>
+                                    @foreach ($genderHeatmap['categories'] as $j => $category)
+                                        <td class="px-2 py-1 text-center">{{ $genderHeatmap['cells'][$i][$j] ?? '-' }}</td>
                                     @endforeach
                                 </tr>
                             @endforeach

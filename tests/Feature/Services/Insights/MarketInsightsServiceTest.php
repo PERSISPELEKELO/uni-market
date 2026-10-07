@@ -118,6 +118,23 @@ it('splits participants into buyers-only, sellers-only and both, for the period'
         ->and($result['sellers_only'])->toBeGreaterThanOrEqual(1);
 });
 
+it('reveals a real cell in the gender x category heatmap once enough distinct buyers exist', function () {
+    config(['insights.min_group_size' => 5]);
+    $category = Category::factory()->create();
+
+    foreach (range(1, 5) as $_) {
+        $buyer = User::factory()->create(['gender' => 'female']);
+        $listing = Listing::factory()->create(['category_id' => $category->id]);
+        Transaction::factory()->create(['buyer_id' => $buyer->id, 'listing_id' => $listing->id, 'status' => 'COMPLETED', 'completed_at' => now()]);
+    }
+
+    $heatmap = $this->service->buyersByGenderAndCategory('30d');
+    $genderIndex = array_search('Female', $heatmap['genders'], true);
+    $categoryIndex = array_search($category->name, $heatmap['categories'], true);
+
+    expect($heatmap['cells'][$genderIndex][$categoryIndex])->toBe(5);
+});
+
 it('ranks top listings by completed sale value within the period', function () {
     $cheap = Listing::factory()->create(['title' => 'Cheap Item']);
     $expensive = Listing::factory()->create(['title' => 'Expensive Item']);
