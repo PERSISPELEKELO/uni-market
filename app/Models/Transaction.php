@@ -17,6 +17,7 @@ class Transaction extends Model
 
     protected $fillable = [
         'listing_id',
+        'category_id',
         'buyer_id',
         'seller_id',
         'amount',
@@ -91,6 +92,17 @@ class Transaction extends Model
     public function listing(): BelongsTo
     {
         return $this->belongsTo(Listing::class);
+    }
+
+    /**
+     * The listing's category *at the time of this transaction* - see the
+     * migration that added this column. Always prefer this over
+     * listing->category for any BI/reporting query, so a later
+     * recategorisation of the listing can't rewrite history.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     public function buyer(): BelongsTo
