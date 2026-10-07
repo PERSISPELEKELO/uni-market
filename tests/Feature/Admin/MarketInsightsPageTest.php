@@ -14,7 +14,10 @@ it('is reachable by an admin and shows real marketplace totals', function () {
     $this->actingAs($admin)->get('/admin/market-insights')
         ->assertOk()
         ->assertSee('Marketplace totals')
-        ->assertSee('Trust &amp; safety metrics', false);
+        ->assertSee('Trust &amp; safety metrics', false)
+        ->assertSee('User growth')
+        ->assertSee('Buyers vs. sellers vs. both', false)
+        ->assertSee('Top listings by sale value');
 });
 
 it('switches to every period option without error', function () {

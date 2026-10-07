@@ -88,3 +88,46 @@ it('only ever shows unmet searches with a genuinely low average result count', f
     expect($unmet->has('rare item'))->toBeTrue()
         ->and($unmet->has('common item'))->toBeFalse();
 });
+
+it('counts new accounts per week for user growth, within the period only', function () {
+    User::factory()->create(['created_at' => now()->subDays(2)]);
+    User::factory()->create(['created_at' => now()->subDays(2)]);
+    User::factory()->create(['created_at' => now()->subDays(60)]); // outside a 30d period
+
+    $growth = $this->service->userGrowth('30d');
+
+    expect(collect($growth)->sum('total'))->toBe(2);
+});
+
+it('splits participants into buyers-only, sellers-only and both, for the period', function () {
+    $buyerOnly = User::factory()->create();
+    $sellerOnly = User::factory()->create();
+    $both = User::factory()->create();
+
+    // buyerOnly only ever buys; sellerOnly only ever sells; both does both -
+    // each against a disposable counterparty that isn't itself asserted on.
+    Transaction::factory()->create(['status' => 'COMPLETED', 'buyer_id' => $buyerOnly->id, 'seller_id' => User::factory(), 'completed_at' => now()]);
+    Transaction::factory()->create(['status' => 'COMPLETED', 'buyer_id' => User::factory(), 'seller_id' => $sellerOnly->id, 'completed_at' => now()]);
+    Transaction::factory()->create(['status' => 'COMPLETED', 'buyer_id' => $both->id, 'seller_id' => User::factory(), 'completed_at' => now()]);
+    Transaction::factory()->create(['status' => 'COMPLETED', 'buyer_id' => User::factory(), 'seller_id' => $both->id, 'completed_at' => now()]);
+
+    $result = $this->service->sellersVsBuyersVsBoth('30d');
+
+    expect($result['both'])->toBe(1)
+        ->and($result['buyers_only'])->toBeGreaterThanOrEqual(1)
+        ->and($result['sellers_only'])->toBeGreaterThanOrEqual(1);
+});
+
+it('ranks top listings by completed sale value within the period', function () {
+    $cheap = Listing::factory()->create(['title' => 'Cheap Item']);
+    $expensive = Listing::factory()->create(['title' => 'Expensive Item']);
+
+    Transaction::factory()->create(['status' => 'COMPLETED', 'listing_id' => $cheap->id, 'amount' => 50, 'completed_at' => now()]);
+    Transaction::factory()->create(['status' => 'COMPLETED', 'listing_id' => $expensive->id, 'amount' => 5000, 'completed_at' => now()]);
+    Transaction::factory()->create(['status' => 'COMPLETED', 'listing_id' => $cheap->id, 'amount' => 50, 'completed_at' => now()->subDays(60)]); // outside period
+
+    $top = $this->service->topListings('30d');
+
+    expect($top[0]['listing']->title)->toBe('Expensive Item')
+        ->and($top[0]['amount'])->toBe(5000.0);
+});
