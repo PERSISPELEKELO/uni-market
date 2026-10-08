@@ -5,6 +5,8 @@
         x-on:click="open = !open"
         x-bind:aria-expanded="open"
         aria-haspopup="true"
+        aria-label="Notifications"
+        title="Notifications"
     >
         <x-app-icon name="bell" class="h-5 w-5" />
         <span class="sr-only">Notifications</span>

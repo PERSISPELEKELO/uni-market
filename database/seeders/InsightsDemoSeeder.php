@@ -99,7 +99,12 @@ class InsightsDemoSeeder extends Seeder
      */
     private function createStudents(array $schools): Collection
     {
-        return collect(range(1, 60))->map(function () use ($schools) {
+        $startMonth = (int) config('zut.academic_year_start_month');
+        $currentAcademicYear = now()->month >= $startMonth ? now()->year : now()->year - 1;
+
+        return collect(range(1, 60))->map(function () use ($schools, $currentAcademicYear) {
+            $targetYear = fake()->numberBetween(1, 4);
+
             return User::create([
                 'name' => fake()->unique()->name(),
                 'email' => fake()->unique()->safeEmail(),
@@ -108,8 +113,11 @@ class InsightsDemoSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'student',
                 'is_verified' => fake()->boolean(70),
-                'year_of_study' => fake()->numberBetween(1, 4),
+                // intake_year drives year_of_study automatically (see User::booted()) -
+                // chosen so it lands back on the target year right now.
+                'intake_year' => $currentAcademicYear - $targetYear + 1,
                 'school' => fake()->randomElement($schools),
+                'gender' => fake()->randomElement(['female', 'male', 'female', 'male', 'undisclosed']),
                 'email_verified_at' => now(),
             ]);
         });

@@ -135,14 +135,17 @@
 
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                         <div>
-                            <label for="year_of_study" class="form-label">Year of study <span class="font-normal text-slate-600">(optional)</span></label>
-                            <select id="year_of_study" wire:model="year_of_study" class="form-input" @error('year_of_study') aria-invalid="true" aria-describedby="year_of_study-error" @enderror>
+                            <label for="intake_year" class="form-label">Year you started <span class="font-normal text-slate-600">(optional)</span></label>
+                            <select id="intake_year" wire:model="intake_year" class="form-input" @error('intake_year') aria-invalid="true" aria-describedby="intake_year-error" @enderror>
                                 <option value="">Not set</option>
-                                @for ($year = 1; $year <= 6; $year++)
-                                    <option value="{{ $year }}">Year {{ $year }}</option>
-                                @endfor
+                                @foreach ($intakeYears as $year)
+                                    <option value="{{ $year }}">{{ $year }}</option>
+                                @endforeach
                             </select>
-                            <x-form-error name="year_of_study" />
+                            @if ($user->intake_year)
+                                <p class="form-hint">Current year of study: {{ $user->currentYearOfStudy() }}</p>
+                            @endif
+                            <x-form-error name="intake_year" />
                         </div>
                         <div>
                             <label for="school" class="form-label">School <span class="font-normal text-slate-600">(optional)</span></label>
@@ -155,7 +158,17 @@
                             <x-form-error name="school" />
                         </div>
                     </div>
-                    <p class="form-hint -mt-2">Used only to show anonymous trends. Never shown with your name on your public profile.</p>
+
+                    <div>
+                        <label for="gender" class="form-label">Gender <span class="font-normal text-slate-600">(optional)</span></label>
+                        <select id="gender" wire:model="gender" class="form-input">
+                            <option value="undisclosed">Prefer not to say</option>
+                            <option value="female">Female</option>
+                            <option value="male">Male</option>
+                        </select>
+                        <x-form-error name="gender" />
+                    </div>
+                    <p class="form-hint -mt-2">Your year, school and gender are used only to show anonymous trends. Never shown with your name on your public profile.</p>
 
                     <div>
                         <label for="bio" class="form-label">Bio <span class="font-normal text-slate-600">(optional)</span></label>

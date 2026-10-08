@@ -6,6 +6,10 @@
     $peakTimes = $this->peakTimes();
     $yearHeatmap = $this->buyersByYearAndCategory();
     $schoolHeatmap = $this->buyersBySchoolAndCategory();
+    $genderHeatmap = $this->buyersByGenderAndCategory();
+    $userGrowth = $this->userGrowth();
+    $shape = $this->sellersVsBuyersVsBoth();
+    $topListings = $this->topListings();
 @endphp
 
 <x-filament-panels::page>
@@ -76,6 +80,78 @@
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <x-filament::section>
+            <x-slot name="heading">User growth (new accounts per week)</x-slot>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200 text-left text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                            <th class="py-1.5 pr-4 font-medium">Week starting</th>
+                            <th class="py-1.5 font-medium">New accounts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($userGrowth as $row)
+                            <tr class="border-b border-gray-100 dark:border-gray-800">
+                                <td class="py-1.5 pr-4">{{ $row['week'] }}</td>
+                                <td class="py-1.5 font-medium">{{ $row['total'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </x-filament::section>
+
+        <x-filament::section>
+            <x-slot name="heading">Buyers vs. sellers vs. both</x-slot>
+            <x-slot name="description">Among everyone with at least one completed transaction in this period.</x-slot>
+
+            <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                    <p class="text-2xl font-bold text-gray-950 dark:text-white">{{ $shape['buyers_only'] }}</p>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Buyers only</p>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold text-gray-950 dark:text-white">{{ $shape['sellers_only'] }}</p>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Sellers only</p>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold text-gray-950 dark:text-white">{{ $shape['both'] }}</p>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Both</p>
+                </div>
+            </div>
+        </x-filament::section>
+    </div>
+
+    <x-filament::section>
+        <x-slot name="heading">Top listings by sale value</x-slot>
+
+        @if (empty($topListings))
+            <p class="text-sm text-gray-500 dark:text-gray-400">No completed sales in this period.</p>
+        @else
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200 text-left text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                            <th class="py-1.5 pr-4 font-medium">Listing</th>
+                            <th class="py-1.5 font-medium">Amount (K)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($topListings as $row)
+                            <tr class="border-b border-gray-100 dark:border-gray-800">
+                                <td class="py-1.5 pr-4">{{ $row['listing']->title }}</td>
+                                <td class="py-1.5 font-medium">{{ number_format($row['amount'], 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </x-filament::section>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <x-filament::section>
             <x-slot name="heading">Buyers by year of study &times; category</x-slot>
             <x-slot name="description">Cells with fewer than {{ config('insights.min_group_size') }} distinct buyers are blank, not zero.</x-slot>
 
@@ -130,6 +206,38 @@
                                     <td class="py-1 pr-2 font-medium">{{ $school }}</td>
                                     @foreach ($schoolHeatmap['categories'] as $j => $category)
                                         <td class="px-2 py-1 text-center">{{ $schoolHeatmap['cells'][$i][$j] ?? '-' }}</td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </x-filament::section>
+
+        <x-filament::section>
+            <x-slot name="heading">Buyers by gender &times; category</x-slot>
+            <x-slot name="description">Cells with fewer than {{ config('insights.min_group_size') }} distinct buyers are blank, not zero.</x-slot>
+
+            @if (empty($genderHeatmap['genders']))
+                <p class="text-sm text-gray-500 dark:text-gray-400">Not enough data yet.</p>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <th class="py-1 pr-2 text-left font-medium text-gray-500 dark:text-gray-400">Gender</th>
+                                @foreach ($genderHeatmap['categories'] as $category)
+                                    <th class="whitespace-nowrap px-2 py-1 text-left font-medium text-gray-500 dark:text-gray-400">{{ $category }}</th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($genderHeatmap['genders'] as $i => $gender)
+                                <tr class="border-b border-gray-100 dark:border-gray-800">
+                                    <td class="py-1 pr-2 font-medium">{{ $gender }}</td>
+                                    @foreach ($genderHeatmap['categories'] as $j => $category)
+                                        <td class="px-2 py-1 text-center">{{ $genderHeatmap['cells'][$i][$j] ?? '-' }}</td>
                                     @endforeach
                                 </tr>
                             @endforeach

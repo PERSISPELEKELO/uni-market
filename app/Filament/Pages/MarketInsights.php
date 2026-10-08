@@ -53,6 +53,21 @@ class MarketInsights extends Page
         return app(MarketInsightsService::class)->valueOverTime($this->period);
     }
 
+    public function userGrowth(): array
+    {
+        return app(MarketInsightsService::class)->userGrowth($this->period);
+    }
+
+    public function sellersVsBuyersVsBoth(): array
+    {
+        return app(MarketInsightsService::class)->sellersVsBuyersVsBoth($this->period);
+    }
+
+    public function topListings(): array
+    {
+        return app(MarketInsightsService::class)->topListings($this->period);
+    }
+
     public function buyersByYearAndCategory(): array
     {
         return app(MarketInsightsService::class)->buyersByYearAndCategory($this->period);
@@ -61,6 +76,11 @@ class MarketInsights extends Page
     public function buyersBySchoolAndCategory(): array
     {
         return app(MarketInsightsService::class)->buyersBySchoolAndCategory($this->period);
+    }
+
+    public function buyersByGenderAndCategory(): array
+    {
+        return app(MarketInsightsService::class)->buyersByGenderAndCategory($this->period);
     }
 
     public function fastestSelling(): array
@@ -145,6 +165,26 @@ class MarketInsights extends Page
             fputcsv($handle, ['Category', 'Dispute rate (%)']);
             foreach ($trust['dispute_rate_by_category'] as $row) {
                 fputcsv($handle, [$row['category'], $row['rate']]);
+            }
+            fputcsv($handle, []);
+
+            fputcsv($handle, ['User growth']);
+            fputcsv($handle, ['Week starting', 'New accounts']);
+            foreach ($this->userGrowth() as $row) {
+                fputcsv($handle, [$row['week'], $row['total']]);
+            }
+            fputcsv($handle, []);
+
+            $shape = $this->sellersVsBuyersVsBoth();
+            fputcsv($handle, ['Buyers vs sellers vs both']);
+            fputcsv($handle, ['Buyers only', 'Sellers only', 'Both']);
+            fputcsv($handle, [$shape['buyers_only'], $shape['sellers_only'], $shape['both']]);
+            fputcsv($handle, []);
+
+            fputcsv($handle, ['Top listings by sale value']);
+            fputcsv($handle, ['Listing', 'Amount (K)']);
+            foreach ($this->topListings() as $row) {
+                fputcsv($handle, [$row['listing']->title, $row['amount']]);
             }
 
             fclose($handle);

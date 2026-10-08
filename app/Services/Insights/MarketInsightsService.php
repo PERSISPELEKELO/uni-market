@@ -96,6 +96,86 @@ class MarketInsightsService
     }
 
     /**
+     * New accounts per week in the period - the platform's own growth, not
+     * anything about what any individual student does.
+     *
+     * @return array<int, array{week: string, total: int}>
+     */
+    public function userGrowth(string $period = '30d'): array
+    {
+        return InsightsCache::remember("market:user-growth:{$period}", function () use ($period) {
+            [$start, $end] = $this->periodBoundaries($period);
+
+            $rows = User::query()
+                ->whereBetween('created_at', [$start, $end])
+                ->get(['created_at'])
+                ->groupBy(fn (User $u) => $u->created_at->startOfWeek()->format('Y-m-d'));
+
+            $weeks = collect();
+            $cursor = $start->copy()->startOfWeek();
+
+            while ($cursor->lessThanOrEqualTo($end)) {
+                $key = $cursor->format('Y-m-d');
+                $weeks->push(['week' => $key, 'total' => $rows->get($key, collect())->count()]);
+                $cursor->addWeek();
+            }
+
+            return $weeks->all();
+        });
+    }
+
+    /**
+     * Among everyone who took part in at least one completed transaction in
+     * the period, how many only ever bought, only ever sold, or did both -
+     * a platform-shape metric, never a named list of who's in which group.
+     *
+     * @return array{buyers_only: int, sellers_only: int, both: int}
+     */
+    public function sellersVsBuyersVsBoth(string $period = '30d'): array
+    {
+        return InsightsCache::remember("market:sellers-vs-buyers:{$period}", function () use ($period) {
+            [$start, $end] = $this->periodBoundaries($period);
+
+            $transactions = Transaction::where('status', 'COMPLETED')
+                ->whereBetween('completed_at', [$start, $end])
+                ->get(['buyer_id', 'seller_id']);
+
+            $buyerIds = $transactions->pluck('buyer_id')->unique();
+            $sellerIds = $transactions->pluck('seller_id')->unique();
+            $bothIds = $buyerIds->intersect($sellerIds);
+
+            return [
+                'buyers_only' => $buyerIds->diff($sellerIds)->count(),
+                'sellers_only' => $sellerIds->diff($buyerIds)->count(),
+                'both' => $bothIds->count(),
+            ];
+        });
+    }
+
+    /**
+     * The highest-grossing listings in the period, by completed sale value.
+     *
+     * @return array<int, array{listing: Listing, amount: float}>
+     */
+    public function topListings(string $period = '30d', int $limit = 10): array
+    {
+        return InsightsCache::remember("market:top-listings:{$period}:{$limit}", function () use ($period, $limit) {
+            [$start, $end] = $this->periodBoundaries($period);
+
+            return Transaction::where('status', 'COMPLETED')
+                ->whereBetween('completed_at', [$start, $end])
+                ->with('listing')
+                ->get()
+                ->filter(fn (Transaction $t) => $t->listing !== null)
+                ->sortByDesc('amount')
+                ->take($limit)
+                ->map(fn (Transaction $t) => ['listing' => $t->listing, 'amount' => (float) $t->amount])
+                ->values()
+                ->all();
+        });
+    }
+
+    /**
      * Heatmap data: completed-purchase counts per (year of study) x
      * (category), suppressed cell by cell.
      *
@@ -118,6 +198,22 @@ class MarketInsightsService
 
             return [
                 'schools' => array_map(fn ($key) => config('zut.schools.'.$key, (string) $key), $raw['years']),
+                'categories' => $raw['categories'],
+                'cells' => $raw['cells'],
+            ];
+        });
+    }
+
+    /**
+     * @return array{genders: array<int, string>, categories: array<int, string>, cells: array<int, array<int, int|null>>}
+     */
+    public function buyersByGenderAndCategory(string $period = '30d'): array
+    {
+        return InsightsCache::remember("market:gender-x-category:{$period}", function () use ($period) {
+            $raw = $this->heatmap($period, 'gender');
+
+            return [
+                'genders' => array_map(fn ($key) => ucfirst((string) $key), $raw['years']),
                 'categories' => $raw['categories'],
                 'cells' => $raw['cells'],
             ];

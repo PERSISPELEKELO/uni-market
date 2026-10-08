@@ -13,4 +13,10 @@ return [
         'education' => 'School of Education',
         'other' => 'Other',
     ],
+
+    // The calendar month a new academic year begins in - used only to turn
+    // a student's intake_year into a current year-of-study. Assumed
+    // September; change this if the real academic calendar starts earlier
+    // or later (e.g. January).
+    'academic_year_start_month' => 9,
 ];

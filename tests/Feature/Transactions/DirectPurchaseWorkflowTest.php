@@ -176,6 +176,26 @@ describe('Test 7 - historical transactions keep the mode that applied when creat
     });
 });
 
+describe('category_id is snapshotted on the transaction, not a live join', function () {
+    it('stores the listing\'s category_id on the transaction at creation time', function () {
+        $category = categoryWithMode(Category::MODE_DIRECT);
+        [$transaction, , , $listing] = purchase($category);
+
+        expect($transaction->category_id)->toBe($listing->category_id);
+    });
+
+    it('keeps a completed transaction\'s category_id even if the listing is later recategorised', function () {
+        $books = categoryWithMode(Category::MODE_DIRECT);
+        $electronics = categoryWithMode(Category::MODE_INSPECTION);
+        [$transaction, , , $listing] = purchase($books);
+
+        $listing->update(['category_id' => $electronics->id]);
+
+        expect($transaction->fresh()->category_id)->toBe($books->id)
+            ->and($transaction->fresh()->category_id)->not->toBe($listing->fresh()->category_id);
+    });
+});
+
 describe('listing detail page messaging', function () {
     it('shows direct-purchase steps for a DIRECT category and not the escrow copy', function () {
         $food = categoryWithMode(Category::MODE_DIRECT);

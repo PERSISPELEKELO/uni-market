@@ -6,6 +6,8 @@ namespace App\Services\Insights;
 
 use App\Models\Category;
 use App\Models\Listing;
+use App\Models\ListingView;
+use App\Models\Message;
 use App\Models\SearchLog;
 use App\Models\Transaction;
 use App\Models\User;
@@ -21,12 +23,13 @@ use Illuminate\Support\Collection;
 class SellerInsightsService
 {
     /**
+     * @param  string  $period  one of PeriodBoundary::OPTIONS - 'all' by default
      * @return array{items_sold: int, total_earned: float, average_price: float, average_days_to_sale: ?float, average_rating: ?float}
      */
-    public function totals(User $seller): array
+    public function totals(User $seller, string $period = 'all'): array
     {
-        return InsightsCache::remember("seller:{$seller->id}:totals", function () use ($seller) {
-            $sales = $this->completedSales($seller)->get(['amount', 'created_at', 'completed_at']);
+        return InsightsCache::remember("seller:{$seller->id}:totals:{$period}", function () use ($seller, $period) {
+            $sales = $this->completedSales($seller, $period)->get(['amount', 'created_at', 'completed_at']);
             $itemsSold = $sales->count();
             $totalEarned = (float) $sales->sum('amount');
 
@@ -64,11 +67,14 @@ class SellerInsightsService
     }
 
     /**
-     * Percentage of this seller's buyers by year of study and by school.
-     * Suppressed (returns an empty breakdown with a reason) if fewer than
-     * the minimum distinct buyers have both fields set.
+     * Percentage of this seller's buyers by year of study, by school, and by
+     * gender - three separate single-dimension breakdowns, never cross-
+     * tabulated together. Suppressed (empty, with a reason) if fewer than
+     * the minimum distinct buyers have year/school set. Gender is always
+     * collected (it defaults to 'undisclosed' rather than being left
+     * blank), so by_gender uses the same buyer set and threshold check.
      *
-     * @return array{by_year: array<int, array{year: int, percentage: float}>, by_school: array<int, array{school: string, percentage: float}>, suppressed: bool}
+     * @return array{by_year: array<int, array{year: int, percentage: float}>, by_school: array<int, array{school: string, percentage: float}>, by_gender: array<int, array{gender: string, percentage: float}>, suppressed: bool}
      */
     public function buyersByYearAndSchool(User $seller): array
     {
@@ -77,11 +83,11 @@ class SellerInsightsService
                 ->join('users', 'users.id', '=', 'transactions.buyer_id')
                 ->whereNotNull('users.year_of_study')
                 ->whereNotNull('users.school')
-                ->select('users.id as buyer_id', 'users.year_of_study', 'users.school')
+                ->select('users.id as buyer_id', 'users.year_of_study', 'users.school', 'users.gender')
                 ->get();
 
             if ($buyers->pluck('buyer_id')->unique()->count() < (int) config('insights.min_group_size')) {
-                return ['by_year' => [], 'by_school' => [], 'suppressed' => true];
+                return ['by_year' => [], 'by_school' => [], 'by_gender' => [], 'suppressed' => true];
             }
 
             $total = $buyers->count();
@@ -98,7 +104,79 @@ class SellerInsightsService
                 ->values()
                 ->all();
 
-            return ['by_year' => $byYear, 'by_school' => $bySchool, 'suppressed' => false];
+            $byGender = $buyers->groupBy('gender')
+                ->map(fn (Collection $g, $gender) => ['gender' => ucfirst((string) $gender), 'percentage' => round(($g->count() / $total) * 100, 1)])
+                ->sortByDesc('percentage')
+                ->values()
+                ->all();
+
+            return ['by_year' => $byYear, 'by_school' => $bySchool, 'by_gender' => $byGender, 'suppressed' => false];
+        });
+    }
+
+    /**
+     * Items sold by category, with the highest-selling one flagged as
+     * trending. category_id is the category snapshotted at transaction
+     * time, not a live join - see the migration that added it.
+     *
+     * @param  string  $period  one of PeriodBoundary::OPTIONS - 'all' by default
+     * @return array<int, array{category: string, total_items: int, amount: float, is_trending: bool}>
+     */
+    public function soldByCategory(User $seller, string $period = 'all'): array
+    {
+        return InsightsCache::remember("seller:{$seller->id}:sold-by-category:{$period}", function () use ($seller, $period) {
+            $sales = $this->completedSales($seller, $period)->with('category')->get();
+
+            if ($sales->isEmpty()) {
+                return [];
+            }
+
+            $rows = $sales
+                ->groupBy(fn (Transaction $t) => $t->category?->name ?? 'Other')
+                ->map(fn (Collection $group, string $category) => [
+                    'category' => $category,
+                    'total_items' => $group->count(),
+                    'amount' => round((float) $group->sum('amount'), 2),
+                ])
+                ->sortByDesc('total_items')
+                ->values();
+
+            return $rows->map(fn (array $row, int $index) => [...$row, 'is_trending' => $index === 0])->all();
+        });
+    }
+
+    /**
+     * How many of this seller's listings turned into a view, then an
+     * enquiry (first message from a prospective buyer), then a sale -
+     * built from the existing listing_views, messages and transactions
+     * tables rather than a new, competing event log.
+     *
+     * @param  string  $period  one of PeriodBoundary::OPTIONS - 'all' by default
+     * @return array{views: int, enquiries: int, sales: int}
+     */
+    public function funnel(User $seller, string $period = 'all'): array
+    {
+        return InsightsCache::remember("seller:{$seller->id}:funnel:{$period}", function () use ($seller, $period) {
+            $start = PeriodBoundary::start($period);
+            $listingIds = $seller->listings()->pluck('id');
+
+            $views = ListingView::whereIn('listing_id', $listingIds)
+                ->when($start, fn ($q, $s) => $q->where('viewed_at', '>=', $s))
+                ->count();
+
+            // Grouped in PHP rather than a multi-column COUNT(DISTINCT ...)
+            // aggregate, which SQLite and MySQL don't agree on the syntax for.
+            $enquiries = Message::whereIn('listing_id', $listingIds)
+                ->where('sender_id', '!=', $seller->id)
+                ->when($start, fn ($q, $s) => $q->where('created_at', '>=', $s))
+                ->select('listing_id', 'sender_id')
+                ->groupBy('listing_id', 'sender_id')
+                ->get()
+                ->count();
+
+            $sales = $this->completedSales($seller, $period)->count();
+
+            return ['views' => $views, 'enquiries' => $enquiries, 'sales' => $sales];
         });
     }
 
@@ -218,8 +296,11 @@ class SellerInsightsService
     /**
      * @return Builder<Transaction>
      */
-    private function completedSales(User $seller)
+    private function completedSales(User $seller, string $period = 'all')
     {
-        return Transaction::query()->where('seller_id', $seller->id)->where('status', 'COMPLETED');
+        return Transaction::query()
+            ->where('seller_id', $seller->id)
+            ->where('status', 'COMPLETED')
+            ->when(PeriodBoundary::start($period), fn ($query, $start) => $query->where('completed_at', '>=', $start));
     }
 }

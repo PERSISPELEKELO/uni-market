@@ -32,9 +32,11 @@ class Profile extends Component
 
     public ?string $business_type = null;
 
-    public ?int $year_of_study = null;
+    public ?int $intake_year = null;
 
     public ?string $school = null;
+
+    public string $gender = 'undisclosed';
 
     public $avatar = null;
 
@@ -53,8 +55,12 @@ class Profile extends Component
         $this->bio = $user->bio;
         $this->programme = $user->programme;
         $this->business_type = $user->business_type;
-        $this->year_of_study = $user->year_of_study;
+        $this->intake_year = $user->intake_year;
         $this->school = $user->school;
+        // $user may be a not-yet-refreshed instance (e.g. straight from a
+        // factory ::create() in tests) that never saw the database's own
+        // default for this column applied back onto it in memory.
+        $this->gender = $user->gender ?? 'undisclosed';
     }
 
     public function updateProfile(): void
@@ -72,8 +78,9 @@ class Profile extends Component
             'bio' => ['nullable', 'string', 'max:1000'],
             'programme' => ['nullable', 'string', 'max:150'],
             'business_type' => ['nullable', 'string', 'max:150'],
-            'year_of_study' => ['nullable', 'integer', 'min:1', 'max:6'],
+            'intake_year' => ['nullable', 'integer', 'min:'.(now()->year - 10), 'max:'.now()->year],
             'school' => ['nullable', 'string', Rule::in(array_keys(config('zut.schools')))],
+            'gender' => ['required', Rule::in(['female', 'male', 'undisclosed'])],
         ], [
             'name.required' => 'Please enter your full name.',
             'name.min' => 'Please enter your full name.',
@@ -82,8 +89,8 @@ class Profile extends Component
             'bio.max' => 'Your bio can be at most 1,000 characters long.',
             'programme.max' => 'Please keep this under 150 characters.',
             'business_type.max' => 'Please keep this under 150 characters.',
-            'year_of_study.min' => 'Please select a year between 1 and 6.',
-            'year_of_study.max' => 'Please select a year between 1 and 6.',
+            'intake_year.min' => 'Please select a valid intake year.',
+            'intake_year.max' => 'Please select a valid intake year.',
             'school.in' => 'Please select one of the listed schools.',
         ]);
 
@@ -93,8 +100,9 @@ class Profile extends Component
             'bio' => $this->bio,
             'programme' => $this->programme,
             'business_type' => $this->business_type,
-            'year_of_study' => $this->year_of_study,
+            'intake_year' => $this->intake_year,
             'school' => $this->school,
+            'gender' => $this->gender,
         ]);
 
         $this->dispatch('notify', type: 'success', message: 'Your details have been saved.');
@@ -190,6 +198,7 @@ class Profile extends Component
         return view('livewire.account.profile', [
             'user' => Auth::user()->fresh(),
             'schools' => config('zut.schools'),
+            'intakeYears' => range(now()->year, now()->year - 10),
         ])->layout('layouts.app', ['title' => 'My Account - UniMarket']);
     }
 }

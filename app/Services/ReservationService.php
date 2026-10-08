@@ -105,6 +105,7 @@ class ReservationService
 
             $transaction = Transaction::create([
                 'listing_id' => $listing->id,
+                'category_id' => $listing->category_id,
                 'buyer_id' => $lockedReservation->buyer_id,
                 'seller_id' => $seller->id,
                 'amount' => $listing->price,
