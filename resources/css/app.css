@@ -145,6 +145,13 @@
         @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:bg-slate-200;
     }
 
+    /* Opt-in: only for cards/tiles that are themselves a link or button
+       (listing cards, stat tiles, quick actions) - never a plain content
+       card like a form, where a hover-lift would be meaningless motion. */
+    .card-hover {
+        @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md;
+    }
+
     /* Buttons - every tap target is at least 44px tall on touch screens */
     .btn {
         @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold
@@ -263,8 +270,8 @@
     /* Filter chips */
     .chip {
         @apply inline-flex min-h-10 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border
-            border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition-colors
-            hover:bg-slate-50 dark:bg-slate-200;
+            border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition-colors duration-200
+            hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 dark:bg-slate-200;
     }
 
     .chip-active {
