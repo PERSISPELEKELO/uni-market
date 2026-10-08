@@ -225,7 +225,7 @@ class SellerInsightsService
      */
     public function priceCheck(User $seller): Collection
     {
-        return $seller->listings()->active()->get()->map(function (Listing $listing) {
+        return $seller->listings()->active()->with('category')->get()->map(function (Listing $listing) {
             $comparablePrices = Transaction::query()
                 ->where('transactions.status', 'COMPLETED')
                 ->join('listings', 'listings.id', '=', 'transactions.listing_id')

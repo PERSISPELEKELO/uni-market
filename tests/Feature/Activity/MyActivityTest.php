@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Activity\MyActivity;
+use App\Models\Category;
 use App\Models\Listing;
 use App\Models\Reservation;
 use App\Models\Transaction;
@@ -66,20 +67,41 @@ it('only ever shows the signed-in student\'s own insights', function () {
     Livewire::actingAs($user)->test(MyActivity::class)
         ->call('setTab', 'insights')
         ->assertSee('Items bought')
+        ->assertSee('Items sold')
+        ->call('setInsightsSidebarView', 'buying')
         ->assertSee('Spending by category')
         ->assertSee('Spending over time');
 });
 
-it('shows the seller insights sections: earnings over time, sold by category, funnel, who buys from me', function () {
+it('shows the seller insights sections: earnings over time, sold by category, funnel', function () {
     $user = User::factory()->create();
 
     Livewire::actingAs($user)->test(MyActivity::class)
         ->call('setTab', 'insights')
-        ->call('setInsightsView', 'seller')
+        ->call('setInsightsSidebarView', 'selling')
         ->assertSee('Earnings over time')
         ->assertSee('Items sold by category')
-        ->assertSee('From view to sale')
-        ->assertSee('Who buys from me');
+        ->assertSee('From view to sale');
+});
+
+it('shows the customers section with year, school and gender breakdowns', function () {
+    config(['insights.min_group_size' => 1]);
+    $seller = User::factory()->create();
+    $buyer = User::factory()->create(['year_of_study' => 2, 'school' => 'ict']);
+    Transaction::factory()->create([
+        'seller_id' => $seller->id,
+        'buyer_id' => $buyer->id,
+        'listing_id' => Listing::factory()->create(['user_id' => $seller->id])->id,
+        'status' => 'COMPLETED',
+        'completed_at' => now(),
+    ]);
+
+    Livewire::actingAs($seller)->test(MyActivity::class)
+        ->call('setTab', 'insights')
+        ->call('setInsightsSidebarView', 'customers')
+        ->assertSee('By school')
+        ->assertSee('By year of study')
+        ->assertSee('By gender');
 });
 
 it('never shows one student\'s purchase totals on another student\'s insights tab', function () {
@@ -101,6 +123,45 @@ it('never shows one student\'s purchase totals on another student\'s insights ta
         ->call('setTab', 'insights')
         ->assertDontSee('999,999.00')
         ->assertSee('K0.00');
+});
+
+it('filters the price-check table by the clicked category and can reset it', function () {
+    $seller = User::factory()->create();
+    $books = Category::factory()->create(['name' => 'Books']);
+    $shoes = Category::factory()->create(['name' => 'Shoes']);
+    Listing::factory()->create(['user_id' => $seller->id, 'category_id' => $books->id, 'title' => 'A Textbook', 'status' => 'active']);
+    Listing::factory()->create(['user_id' => $seller->id, 'category_id' => $shoes->id, 'title' => 'Running Shoes', 'status' => 'active']);
+
+    $component = Livewire::actingAs($seller)->test(MyActivity::class)
+        ->call('setTab', 'insights')
+        ->call('setInsightsSidebarView', 'selling')
+        ->assertSee('A Textbook')
+        ->assertSee('Running Shoes');
+
+    $component->call('applyChartFilter', 'category', 'Books')
+        ->assertSet('selectedCategory', 'Books')
+        ->assertSee('A Textbook')
+        ->assertDontSee('Running Shoes');
+
+    $component->call('resetChartFilters')
+        ->assertSet('selectedCategory', null)
+        ->assertSee('Running Shoes');
+});
+
+it('ignores a chart filter dimension it does not recognise', function () {
+    Livewire::actingAs(User::factory()->create())->test(MyActivity::class)
+        ->call('applyChartFilter', 'something-unsupported', 'value')
+        ->assertSet('selectedCategory', null);
+});
+
+it('resets the category filter when switching insights sections', function () {
+    Livewire::actingAs(User::factory()->create())->test(MyActivity::class)
+        ->call('setTab', 'insights')
+        ->call('setInsightsSidebarView', 'selling')
+        ->call('applyChartFilter', 'category', 'Books')
+        ->assertSet('selectedCategory', 'Books')
+        ->call('setInsightsSidebarView', 'buying')
+        ->assertSet('selectedCategory', null);
 });
 
 it('switches the insights date range and ignores an invalid value', function () {

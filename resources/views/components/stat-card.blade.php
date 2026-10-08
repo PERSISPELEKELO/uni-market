@@ -1,4 +1,18 @@
-@props(['label', 'value', 'hint' => null, 'trend' => null, 'icon' => null, 'tip' => null])
+@props([
+    'label',
+    'value' => null,
+    'hint' => null,
+    'trend' => null,
+    'icon' => null,
+    'tip' => null,
+    // Numeric mode: animates 0 -> number on first paint (see resources/js/app.js's
+    // countUp()). Only ever re-animates on first paint, never on a later
+    // Livewire re-render, since Alpine's x-init does not re-run on every morph.
+    'number' => null,
+    'prefix' => '',
+    'suffix' => '',
+    'decimals' => 0,
+])
 
 <div {{ $attributes->class(['card p-4 sm:p-5']) }}>
     <div class="flex items-center justify-between gap-2">
@@ -13,7 +27,15 @@
         @endif
     </div>
 
-    <p class="mt-1 text-2xl font-bold text-ink">{{ $value }}</p>
+    @if ($number !== null)
+        <p
+            class="mt-1 text-2xl font-bold text-ink"
+            x-data="countUp({{ (float) $number }}, {{ (int) $decimals }}, @js($prefix), @js($suffix))"
+            x-text="displayValue"
+        >{{ $prefix }}{{ number_format((float) $number, $decimals) }}{{ $suffix }}</p>
+    @else
+        <p class="mt-1 text-2xl font-bold text-ink">{{ $value }}</p>
+    @endif
 
     @if ($trend !== null)
         <p @class([
