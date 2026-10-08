@@ -2,8 +2,11 @@
 
 namespace App\Livewire\Auth;
 
+use App\Models\Listing;
+use App\Models\User;
 use App\Services\AuditLoggerService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -92,8 +95,23 @@ class Login extends Component
 
     public function render()
     {
-        return view('livewire.auth.login')
-            ->layout('layouts.app', ['title' => 'Log in - UniMarket']);
+        return view('livewire.auth.login', [
+            'stats' => $this->sideStats(),
+        ])->layout('layouts.app', ['title' => 'Log in - UniMarket']);
+    }
+
+    /**
+     * Real counts for the small stats card next to the form - never
+     * placeholder numbers like a reference design's "98% success rate".
+     *
+     * @return array{students: int, listings: int}
+     */
+    private function sideStats(): array
+    {
+        return Cache::remember('marketplace:hero-stats-brief', now()->addMinutes(10), fn () => [
+            'students' => User::where('role', 'student')->count(),
+            'listings' => Listing::active()->count(),
+        ]);
     }
 
     private function throttleKey(): string
