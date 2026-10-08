@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Services\Insights\ChartPalette;
 use App\Services\Insights\FrequentlyBoughtTogetherService;
 use App\Services\Insights\MarketInsightsService;
 use App\Services\Insights\SellerInsightsService;
@@ -30,6 +31,12 @@ class MarketInsights extends Page
 
     public string $period = '30d';
 
+    public string $section = 'overview';
+
+    public ?string $selectedCategory = null;
+
+    private const SECTIONS = ['overview', 'marketplace', 'growth', 'trust', 'listings'];
+
     /**
      * @return array<string, string>
      */
@@ -40,6 +47,162 @@ class MarketInsights extends Page
             '30d' => 'Last 30 days',
             'semester' => 'This semester (120 days)',
             '12mo' => 'Last 12 months',
+        ];
+    }
+
+    public function setSection(string $section): void
+    {
+        if (in_array($section, self::SECTIONS, true)) {
+            $this->section = $section;
+            $this->selectedCategory = null;
+        }
+    }
+
+    public function applyChartFilter(string $dimension, string $value): void
+    {
+        if ($dimension === 'category') {
+            $this->selectedCategory = $value;
+            $this->dispatch('charts-updated', charts: $this->chartsForCurrentSection());
+        }
+    }
+
+    public function resetChartFilters(): void
+    {
+        $this->selectedCategory = null;
+        $this->dispatch('charts-updated', charts: $this->chartsForCurrentSection());
+    }
+
+    public function updatedPeriod(): void
+    {
+        $this->dispatch('charts-updated', charts: $this->chartsForCurrentSection());
+    }
+
+    /**
+     * @return array<string, array{labels: array<int, string>, datasets: array<int, array<string, mixed>>}>
+     */
+    public function chartsForCurrentSection(): array
+    {
+        $service = app(MarketInsightsService::class);
+
+        return match ($this->section) {
+            'growth' => [
+                'user-growth' => $this->lineChart($service->userGrowth($this->period), 'week', 'total', 'New accounts'),
+                'buyer-seller-shape' => $this->shapeChart($service->sellersVsBuyersVsBoth($this->period)),
+            ],
+            'trust' => [
+                'dispute-rate-by-category' => $this->categoryRateChart($service->trust($this->period)['dispute_rate_by_category']),
+                'fastest-selling' => $this->fastestSellingChart($service->fastestSelling($this->period)['categories']),
+            ],
+            'listings' => [
+                'funnel' => $this->funnelChart($service->listingFunnel($this->period)),
+                'peak-days' => $this->peakChart($service->peakTimes($this->period)['days'], 'day'),
+            ],
+            default => [
+                'value-over-time' => $this->lineChart($service->valueOverTime($this->period), 'week', 'value', 'Value (K)'),
+            ],
+        };
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function lineChart(array $rows, string $labelKey, string $valueKey, string $label): array
+    {
+        return [
+            'labels' => array_column($rows, $labelKey),
+            'datasets' => [[
+                'label' => $label,
+                'data' => array_column($rows, $valueKey),
+                'borderColor' => ChartPalette::COLORS[0],
+                'backgroundColor' => ChartPalette::COLORS[0].'33',
+                'fill' => true,
+                'tension' => 0.3,
+            ]],
+        ];
+    }
+
+    /**
+     * @param  array{buyers_only: int, sellers_only: int, both: int}  $shape
+     */
+    private function shapeChart(array $shape): array
+    {
+        return [
+            'labels' => ['Buyers only', 'Sellers only', 'Both'],
+            'datasets' => [[
+                'data' => [$shape['buyers_only'], $shape['sellers_only'], $shape['both']],
+                'backgroundColor' => ChartPalette::take(3),
+            ]],
+            'centerText' => (string) ($shape['buyers_only'] + $shape['sellers_only'] + $shape['both']),
+        ];
+    }
+
+    /**
+     * @param  array<int, array{category: string, rate: float}>  $rows
+     */
+    private function categoryRateChart(array $rows): array
+    {
+        $rows = $this->selectedCategory !== null
+            ? array_values(array_filter($rows, fn (array $row) => $row['category'] === $this->selectedCategory))
+            : $rows;
+
+        $labels = array_column($rows, 'category');
+
+        return [
+            'labels' => $labels,
+            'datasets' => [[
+                'label' => 'Dispute rate (%)',
+                'data' => array_column($rows, 'rate'),
+                'backgroundColor' => ChartPalette::take(count($labels)),
+            ]],
+        ];
+    }
+
+    /**
+     * @param  array<int, array{category: string, median_days: float}>  $rows
+     */
+    private function fastestSellingChart(array $rows): array
+    {
+        $rows = $this->selectedCategory !== null
+            ? array_values(array_filter($rows, fn (array $row) => $row['category'] === $this->selectedCategory))
+            : $rows;
+
+        return [
+            'labels' => array_column($rows, 'category'),
+            'datasets' => [[
+                'label' => 'Median days to sell',
+                'data' => array_column($rows, 'median_days'),
+                'backgroundColor' => ChartPalette::COLORS[1],
+            ]],
+        ];
+    }
+
+    /**
+     * @param  array{views: int, reservations: int, sales: int, view_to_reservation: float, reservation_to_sale: float}  $funnel
+     */
+    private function funnelChart(array $funnel): array
+    {
+        return [
+            'labels' => ['Views', 'Reservations', 'Sales'],
+            'datasets' => [[
+                'label' => 'Count',
+                'data' => [$funnel['views'], $funnel['reservations'], $funnel['sales']],
+                'backgroundColor' => ChartPalette::take(3),
+            ]],
+        ];
+    }
+
+    /**
+     * @param  array<int, array{day?: string, hour?: int, total: int}>  $rows
+     */
+    private function peakChart(array $rows, string $labelKey): array
+    {
+        return [
+            'labels' => array_column($rows, $labelKey),
+            'datasets' => [[
+                'label' => 'Completed sales',
+                'data' => array_column($rows, 'total'),
+                'backgroundColor' => ChartPalette::take(count($rows)),
+            ]],
         ];
     }
 
