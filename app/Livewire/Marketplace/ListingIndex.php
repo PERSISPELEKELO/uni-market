@@ -77,8 +77,16 @@ class ListingIndex extends Component
         $this->resetPage();
     }
 
-    public function selectCategory(?int $categoryId): void
+    /**
+     * Accepts a loose value (not strictly ?int) since the sidebar's
+     * <select> sends it through as a string, including an empty string
+     * for "All categories" - normalised here rather than relying on PHP's
+     * implicit string-to-int coercion for an empty string, which throws.
+     */
+    public function selectCategory(mixed $categoryId): void
     {
+        $categoryId = ($categoryId === null || $categoryId === '') ? null : (int) $categoryId;
+
         $this->selectedCategory = ($this->selectedCategory === $categoryId) ? null : $categoryId;
         $this->resetPage();
     }
@@ -92,6 +100,16 @@ class ListingIndex extends Component
     public function setCondition(string $condition): void
     {
         $this->conditionFilter = ($this->conditionFilter === $condition) ? '' : $condition;
+        $this->resetPage();
+    }
+
+    public function updatedConditionFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedHotDealsOnly(): void
+    {
         $this->resetPage();
     }
 

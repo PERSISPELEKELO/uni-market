@@ -106,6 +106,40 @@ describe('browsing', function () {
             ->assertSee('Gaming laptop');
     });
 
+    it('accepts the category filter as a string, as the sidebar dropdown sends it, including the empty "all" option', function () {
+        $books = Category::factory()->create();
+        $tech = Category::factory()->create();
+        Listing::factory()->create(['title' => 'Physics textbook', 'category_id' => $books->id]);
+        Listing::factory()->create(['title' => 'Gaming laptop', 'category_id' => $tech->id]);
+
+        $component = Livewire::test(ListingIndex::class)
+            ->call('selectCategory', (string) $books->id)
+            ->assertSet('selectedCategory', $books->id)
+            ->assertSee('Physics textbook')
+            ->assertDontSee('Gaming laptop');
+
+        $component->call('selectCategory', '')
+            ->assertSet('selectedCategory', null)
+            ->assertSee('Physics textbook')
+            ->assertSee('Gaming laptop');
+    });
+
+    it('filters by condition and hot deals through direct property binding, as the sidebar controls do', function () {
+        $listing = Listing::factory()->create(['title' => 'On sale now', 'condition' => 'new', 'price' => 80, 'previous_price' => 100, 'price_dropped_at' => now()]);
+        Listing::factory()->create(['title' => 'Full price item', 'condition' => 'fair']);
+
+        Livewire::test(ListingIndex::class)
+            ->set('conditionFilter', 'new')
+            ->assertSee('On sale now')
+            ->assertDontSee('Full price item')
+            ->set('conditionFilter', '')
+            ->set('hotDealsOnly', true)
+            ->assertSee('On sale now')
+            ->assertDontSee('Full price item');
+
+        expect($listing->fresh()->isHotDeal())->toBeTrue();
+    });
+
     it('sorts by price', function () {
         Listing::factory()->create(['title' => 'Cheap thing', 'price' => 10]);
         Listing::factory()->create(['title' => 'Pricey thing', 'price' => 900]);
