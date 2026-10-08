@@ -5,6 +5,7 @@
     'type' => 'text',
     'required' => false,
     'hint' => null,
+    'optional' => false,
 ])
 
 @php
@@ -17,6 +18,9 @@
             {{ $label }}
             @if ($required)
                 <span class="text-danger-700 dark:text-danger-400" aria-hidden="true">*</span>
+            @endif
+            @if ($optional)
+                <span class="font-normal text-slate-600">(optional)</span>
             @endif
         </label>
     @endif
