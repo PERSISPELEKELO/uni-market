@@ -1,10 +1,16 @@
 <div>
-    <section class="rounded-2xl bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 p-6 text-white shadow-sm sm:p-10" aria-labelledby="hero-heading">
-        <div class="max-w-2xl">
-            <h1 id="hero-heading" class="text-2xl font-bold leading-tight tracking-tight sm:text-4xl">
+    <section class="rounded-2xl bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 p-6 text-center text-white shadow-sm sm:p-10" aria-labelledby="hero-heading">
+        <div class="mx-auto max-w-2xl">
+            @guest
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15" aria-hidden="true">
+                    <x-app-icon name="bag" class="h-7 w-7" />
+                </div>
+            @endguest
+
+            <h1 id="hero-heading" class="mt-4 text-2xl font-bold leading-tight tracking-tight sm:text-4xl">
                 Buy and sell within your campus community
             </h1>
-            <p class="mt-2 text-sm text-brand-100 sm:text-base">
+            <p class="mx-auto mt-2 max-w-xl text-sm text-brand-100 sm:text-base">
                 Textbooks, laptops, dorm gear and more from verified students, with in-app chat and protected handovers.
             </p>
 
@@ -21,17 +27,37 @@
                         maxlength="100"
                         autocomplete="off"
                         placeholder="Search textbooks, laptops, dorm gear..."
-                        class="form-input border-transparent pl-11 shadow-sm"
+                        class="form-input border-transparent pl-11 text-left shadow-sm"
                     />
                 </div>
             </form>
 
             @guest
-                <p class="mt-4 text-sm text-brand-100">
-                    New here?
-                    <a href="{{ route('register') }}" class="font-semibold text-white underline underline-offset-2 hover:text-brand-200">Create a free account</a>
-                    to start selling.
-                </p>
+                <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+                    <a href="{{ route('listings.index') }}" class="btn min-h-11 border border-white/30 bg-white/10 px-4 text-white hover:bg-white/20">
+                        <x-app-icon name="search" class="h-4 w-4" /> Browse the marketplace
+                    </a>
+                    <a href="{{ route('register') }}" class="btn min-h-11 bg-white px-4 text-brand-800 hover:bg-brand-50">
+                        <x-app-icon name="plus" class="h-4 w-4" /> Join UniMarket
+                    </a>
+                </div>
+
+                @if ($heroStats)
+                    <dl class="mt-8 grid grid-cols-3 gap-4 border-t border-white/15 pt-6">
+                        <div>
+                            <dt class="text-2xl font-bold sm:text-3xl">{{ number_format($heroStats['students']) }}+</dt>
+                            <dd class="mt-0.5 text-xs text-brand-100 sm:text-sm">Students</dd>
+                        </div>
+                        <div>
+                            <dt class="text-2xl font-bold sm:text-3xl">{{ number_format($heroStats['listings']) }}+</dt>
+                            <dd class="mt-0.5 text-xs text-brand-100 sm:text-sm">Active listings</dd>
+                        </div>
+                        <div>
+                            <dt class="text-2xl font-bold sm:text-3xl">{{ number_format($heroStats['sales']) }}+</dt>
+                            <dd class="mt-0.5 text-xs text-brand-100 sm:text-sm">Completed sales</dd>
+                        </div>
+                    </dl>
+                @endif
             @endguest
         </div>
     </section>

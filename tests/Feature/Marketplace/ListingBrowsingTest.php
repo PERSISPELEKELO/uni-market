@@ -13,6 +13,21 @@ use Livewire\Livewire;
 beforeEach(fn () => $this->withoutVite());
 
 describe('browsing', function () {
+    it('shows real headline stats in the hero to a guest, but not to a signed-in student', function () {
+        User::factory()->count(2)->create(['role' => 'student']);
+        Listing::factory()->create();
+        Transaction::factory()->create(['status' => 'COMPLETED']);
+
+        $this->get(route('listings.index'))
+            ->assertSee('Students')
+            ->assertSee('Active listings')
+            ->assertSee('Completed sales');
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('listings.index'))
+            ->assertDontSee('Completed sales');
+    });
+
     it('shows the reservation count on a listing card, and hides it when there are none', function () {
         $withReservations = Listing::factory()->create(['title' => 'Popular textbook']);
         Reservation::factory()->for($withReservations)->count(2)->create();
