@@ -109,10 +109,10 @@
                             $sellerTotals = $sellerInsights->totals($user, $insightsPeriod);
                         @endphp
                         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                            <x-stat-card label="Items bought" :number="$buyerTotals['total_items']" />
-                            <x-stat-card label="Total spent" :number="$buyerTotals['total_spent']" prefix="K" :decimals="2" />
-                            <x-stat-card label="Items sold" :number="$sellerTotals['items_sold']" />
-                            <x-stat-card label="Total earned" :number="$sellerTotals['total_earned']" prefix="K" :decimals="2" />
+                            <x-stat-card label="Items bought" :number="$buyerTotals['total_items']" icon="bag" />
+                            <x-stat-card label="Total spent" :number="$buyerTotals['total_spent']" prefix="K" :decimals="2" icon="upload" />
+                            <x-stat-card label="Items sold" :number="$sellerTotals['items_sold']" icon="bag" />
+                            <x-stat-card label="Total earned" :number="$sellerTotals['total_earned']" prefix="K" :decimals="2" icon="download" />
                         </div>
 
                         <x-section title="Spending vs. earnings over time" description="Last 12 months - not affected by the date range above." class="card p-5">
@@ -121,9 +121,9 @@
                     @elseif ($insightsSidebarView === 'selling')
                         @php $priceChecks = $sellerInsights->priceCheck($user); @endphp
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                            <x-stat-card label="Items sold" :number="$totals['items_sold']" />
-                            <x-stat-card label="Total earned" :number="$totals['total_earned']" prefix="K" :decimals="2" />
-                            <x-stat-card label="Average rating" :value="$totals['average_rating'] ? number_format($totals['average_rating'], 1).' / 5.0' : '—'" />
+                            <x-stat-card label="Items sold" :number="$totals['items_sold']" icon="bag" />
+                            <x-stat-card label="Total earned" :number="$totals['total_earned']" prefix="K" :decimals="2" icon="download" />
+                            <x-stat-card label="Average rating" :value="$totals['average_rating'] ? number_format($totals['average_rating'], 1).' / 5.0' : '—'" icon="check-circle" />
                         </div>
 
                         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -184,9 +184,9 @@
                     @elseif ($insightsSidebarView === 'buying')
                         @php $popular = $buyerInsights->popularWithStudentsLikeYou($user); @endphp
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                            <x-stat-card label="Items bought" :number="$totals['total_items']" />
-                            <x-stat-card label="Total spent" :number="$totals['total_spent']" prefix="K" :decimals="2" />
-                            <x-stat-card label="Average per item" :number="$totals['average_spend']" prefix="K" :decimals="2" />
+                            <x-stat-card label="Items bought" :number="$totals['total_items']" icon="bag" />
+                            <x-stat-card label="Total spent" :number="$totals['total_spent']" prefix="K" :decimals="2" icon="upload" />
+                            <x-stat-card label="Average per item" :number="$totals['average_spend']" prefix="K" :decimals="2" icon="chart-bar" />
                         </div>
 
                         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">

@@ -29,9 +29,12 @@
                     </div>
 
                     <div class="flex flex-wrap gap-2 sm:flex-shrink-0">
+                        <a href="{{ route('listings.show', $listing) }}" class="btn btn-secondary btn-sm min-w-11 px-0" title="View listing" aria-label="View listing">
+                            <x-app-icon name="eye" class="h-4 w-4" />
+                        </a>
                         @can('update', $listing)
-                            <a href="{{ route('listings.edit', $listing) }}" class="btn btn-secondary btn-sm">
-                                <x-app-icon name="pencil" class="h-4 w-4" /> Edit
+                            <a href="{{ route('listings.edit', $listing) }}" class="btn btn-secondary btn-sm min-w-11 px-0" title="Edit listing" aria-label="Edit listing">
+                                <x-app-icon name="pencil" class="h-4 w-4" />
                             </a>
                         @endcan
                         @can('delete', $listing)
@@ -39,9 +42,11 @@
                                 type="button"
                                 wire:click="delete({{ $listing->id }})"
                                 wire:confirm="Remove this listing? Buyers will no longer be able to see it."
-                                class="btn btn-danger-outline btn-sm"
+                                class="btn btn-danger-outline btn-sm min-w-11 px-0"
+                                title="Remove listing"
+                                aria-label="Remove listing"
                             >
-                                <x-app-icon name="trash" class="h-4 w-4" /> Remove
+                                <x-app-icon name="trash" class="h-4 w-4" />
                             </button>
                         @endcan
                     </div>

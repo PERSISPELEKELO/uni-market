@@ -14,7 +14,7 @@
     'decimals' => 0,
 ])
 
-<div {{ $attributes->class(['card p-4 sm:p-5']) }}>
+<div {{ $attributes->class(['card card-hover p-4 sm:p-5']) }}>
     <div class="flex items-center justify-between gap-2">
         <p class="flex items-center gap-1 text-xs font-medium text-slate-600">
             {{ $label }}
