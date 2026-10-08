@@ -90,7 +90,7 @@
     <section class="min-w-0 flex-1 flex-col bg-white md:flex dark:bg-slate-200" x-bind:class="pane === 'thread' ? 'flex' : 'hidden'" aria-label="Conversation">
         @if ($activeUser)
             <div class="flex flex-wrap items-center gap-3 border-b border-slate-200 p-3 sm:p-4">
-                <button type="button" x-on:click="pane = 'list'" class="btn btn-secondary btn-sm min-h-11 min-w-11 px-2 md:hidden">
+                <button type="button" x-on:click="pane = 'list'" class="btn btn-secondary btn-sm min-h-11 min-w-11 px-2 md:hidden" title="Back to conversations">
                     <x-app-icon name="arrow-left" class="h-5 w-5" />
                     <span class="sr-only">Back to conversations</span>
                 </button>

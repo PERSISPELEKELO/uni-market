@@ -112,7 +112,7 @@
                 @foreach ($form->existing_images as $index => $path)
                     <li class="relative">
                         <x-listing-image :src="asset('storage/'.$path)" :alt="'Current photo '.($index + 1)" class="aspect-square w-full rounded-lg border border-slate-200" />
-                        <button type="button" wire:click="removeExistingPhoto({{ $index }})" class="btn btn-danger btn-sm absolute right-1 top-1 min-h-8 min-w-8 rounded-full px-1.5 py-1.5">
+                        <button type="button" wire:click="removeExistingPhoto({{ $index }})" class="btn btn-danger btn-sm absolute right-1 top-1 min-h-8 min-w-8 rounded-full px-1.5 py-1.5" title="Remove photo {{ $index + 1 }}">
                             <x-app-icon name="x" class="h-4 w-4" />
                             <span class="sr-only">Remove current photo {{ $index + 1 }}</span>
                         </button>
@@ -171,7 +171,7 @@
                         @else
                             <x-listing-image class="aspect-square w-full rounded-lg border border-slate-200" />
                         @endif
-                        <button type="button" wire:click="removeNewPhoto({{ $index }})" class="btn btn-danger btn-sm absolute right-1 top-1 min-h-8 min-w-8 rounded-full px-1.5 py-1.5">
+                        <button type="button" wire:click="removeNewPhoto({{ $index }})" class="btn btn-danger btn-sm absolute right-1 top-1 min-h-8 min-w-8 rounded-full px-1.5 py-1.5" title="Remove photo {{ $index + 1 }}">
                             <x-app-icon name="x" class="h-4 w-4" />
                             <span class="sr-only">Remove new photo {{ $index + 1 }}</span>
                         </button>

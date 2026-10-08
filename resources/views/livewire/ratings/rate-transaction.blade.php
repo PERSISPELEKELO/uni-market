@@ -24,6 +24,7 @@
                             role="radio"
                             aria-checked="{{ $stars === $value ? 'true' : 'false' }}"
                             aria-label="{{ $value }} {{ \Illuminate\Support\Str::plural('star', $value) }}"
+                            title="{{ $value }} {{ \Illuminate\Support\Str::plural('star', $value) }}"
                             class="rounded p-1 text-warn-500 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
                             x-bind:class="(hover || {{ $stars }}) >= {{ $value }} ? 'text-warn-500' : 'text-slate-300'"
                         >

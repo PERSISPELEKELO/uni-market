@@ -253,7 +253,7 @@
             <div class="max-h-[92vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl sm:p-6 dark:bg-slate-200" role="dialog" aria-modal="true" aria-labelledby="dispute-title">
                 <div class="flex items-start justify-between gap-4">
                     <h3 id="dispute-title" class="text-lg font-bold text-ink">Raise a dispute</h3>
-                    <button type="button" wire:click="closeDisputeModal" class="-m-2 rounded-lg p-2 text-slate-600 hover:bg-slate-100">
+                    <button type="button" wire:click="closeDisputeModal" class="-m-2 rounded-lg p-2 text-slate-600 hover:bg-slate-100" title="Close">
                         <x-app-icon name="x" class="h-5 w-5" />
                         <span class="sr-only">Close</span>
                     </button>

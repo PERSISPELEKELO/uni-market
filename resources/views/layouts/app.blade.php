@@ -72,13 +72,14 @@
                         x-data
                         x-on:click="window.uniMarketTheme.toggle()"
                         aria-label="Toggle dark mode"
+                        title="Toggle dark mode"
                     >
                         <x-app-icon name="sun" class="hidden h-5 w-5 dark:block" />
                         <x-app-icon name="moon" class="block h-5 w-5 dark:hidden" />
                     </button>
 
                     @auth
-                        <a href="{{ route('listings.create') }}" class="btn btn-primary btn-sm min-w-11 px-2 sm:min-h-11 sm:px-4 sm:text-sm">
+                        <a href="{{ route('listings.create') }}" class="btn btn-primary btn-sm min-w-11 px-2 sm:min-h-11 sm:px-4 sm:text-sm" title="Sell item">
                             <x-app-icon name="plus" class="h-4 w-4" />
                             <span class="sr-only sm:not-sr-only">Sell item</span>
                         </a>
@@ -125,7 +126,7 @@
                         <a href="{{ route('register') }}" class="btn btn-primary btn-sm hidden sm:inline-flex sm:min-h-11 sm:px-4 sm:text-sm">Join UniMarket</a>
                     @endauth
 
-                    <button type="button" class="btn btn-secondary btn-sm min-h-11 min-w-11 px-2 md:hidden" x-on:click="mobileOpen = !mobileOpen" x-bind:aria-expanded="mobileOpen" aria-controls="mobile-menu">
+                    <button type="button" class="btn btn-secondary btn-sm min-h-11 min-w-11 px-2 md:hidden" x-on:click="mobileOpen = !mobileOpen" x-bind:aria-expanded="mobileOpen" aria-controls="mobile-menu" title="Toggle menu">
                         <span class="sr-only">Toggle menu</span>
                         <x-app-icon name="menu" x-show="!mobileOpen" />
                         <x-app-icon name="x" x-cloak x-show="mobileOpen" />
@@ -227,6 +228,7 @@
                             type="button"
                             x-on:click="dismissed = true; try { localStorage.setItem('uniMarketZutBannerDismissed', '1'); } catch (e) {}"
                             class="-m-1 flex-shrink-0 rounded p-1 hover:bg-black/5"
+                            title="Dismiss"
                         >
                             <span class="sr-only">Dismiss</span>
                             <x-app-icon name="x" class="h-4 w-4" />
@@ -282,7 +284,7 @@
         <template x-for="toast in toasts" :key="toast.id">
             <div class="alert pointer-events-auto shadow-lg" x-bind:class="'alert-' + toast.type" x-bind:role="toast.type === 'error' ? 'alert' : 'status'">
                 <div class="min-w-0 flex-1 break-words" x-text="toast.message"></div>
-                <button type="button" class="-m-1 flex-shrink-0 rounded p-1 hover:bg-black/5" x-on:click="remove(toast.id)">
+                <button type="button" class="-m-1 flex-shrink-0 rounded p-1 hover:bg-black/5" x-on:click="remove(toast.id)" title="Dismiss">
                     <span class="sr-only">Dismiss</span>
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
                 </button>
