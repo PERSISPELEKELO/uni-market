@@ -1,22 +1,43 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-initial-theme="{{ auth()->user()->theme ?? '' }}">
 <head>
     <meta charset="utf-8">
     <script>
         (function () {
+            // An authenticated user's saved theme (set server-side above)
+            // always wins over this browser's localStorage, so the setting
+            // follows them across devices; localStorage is only the
+            // fallback for guests and for 'auto' mode's last resolution.
+            var initial = document.documentElement.dataset.initialTheme || '';
             var stored = null;
             try {
                 stored = localStorage.getItem('uniMarketTheme');
             } catch (e) {}
-            var isDark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-            document.documentElement.classList.toggle('dark', isDark);
+            var theme = initial || stored || 'auto';
+            var mql = window.matchMedia('(prefers-color-scheme: dark)');
+
+            function apply() {
+                var isDark = theme === 'dark' || (theme === 'auto' && mql.matches);
+                document.documentElement.classList.toggle('dark', isDark);
+            }
+
+            apply();
+            mql.addEventListener('change', function () {
+                if (theme === 'auto') {
+                    apply();
+                }
+            });
 
             window.uniMarketTheme = {
-                toggle: function () {
-                    var dark = document.documentElement.classList.toggle('dark');
+                set: function (next) {
+                    theme = next;
                     try {
-                        localStorage.setItem('uniMarketTheme', dark ? 'dark' : 'light');
+                        localStorage.setItem('uniMarketTheme', next);
                     } catch (e) {}
+                    apply();
+                },
+                toggle: function () {
+                    window.uniMarketTheme.set(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
                 },
             };
         })();
@@ -140,7 +161,8 @@
                                 <a href="{{ route('appeals.mine') }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
                                     <x-app-icon name="flag" class="h-5 w-5" /> My appeals
                                 </a>
-                                <form method="POST" action="{{ route('logout') }}">
+                                @livewire('account.theme-toggle')
+                                <form method="POST" action="{{ route('logout') }}" class="border-t border-slate-100 pt-1">
                                     @csrf
                                     <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
                                         <x-app-icon name="logout" class="h-5 w-5" /> Log out
