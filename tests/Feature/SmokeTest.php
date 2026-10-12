@@ -18,6 +18,7 @@ it('renders every signed-in page without errors', function (string $routeName) {
     'my listings' => 'listings.mine',
     'messages' => 'chat.index',
     'my transactions' => 'transactions.tracker',
+    'buying hub' => 'activity.buying',
 ]);
 
 it('ships an accessible, responsive page shell', function () {

@@ -9,6 +9,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Middleware\EnsureUserIsNotSuspended;
 use App\Livewire\Account\Profile;
 use App\Livewire\Account\StudentVerification;
+use App\Livewire\Activity\BuyingHub;
 use App\Livewire\Activity\MyActivity;
 use App\Livewire\Appeals\MyAppeals;
 use App\Livewire\Auth\ForgotPassword;
@@ -77,6 +78,10 @@ Route::middleware(['auth', EnsureUserIsNotSuspended::class])->group(function () 
     // My Activity: the single nav destination for "things I'm doing on the
     // marketplace" (buying, selling, personal insights) - see docs/ui-audit.md.
     Route::get('/my-activity/{transaction?}', MyActivity::class)->name('activity.index');
+
+    // Buyer-side counterpart to My Listings (the seller dashboard): recent
+    // activity, saved items, price-drop alerts and past sellers.
+    Route::get('/buying-hub', BuyingHub::class)->name('activity.buying');
 
     // My Appeals: the first-ever frontend for the existing AppealWorkflowService.
     Route::get('/my-appeals', MyAppeals::class)->name('appeals.mine');

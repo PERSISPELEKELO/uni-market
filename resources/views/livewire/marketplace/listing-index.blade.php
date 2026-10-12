@@ -104,7 +104,8 @@
                     ['label' => 'Browse all', 'icon' => 'home', 'href' => route('listings.index'), 'active' => true],
                     ...(auth()->check() ? [
                         ['label' => 'Inbox', 'icon' => 'chat', 'href' => route('chat.index')],
-                        ['label' => 'Selling', 'icon' => 'bag', 'href' => route('listings.mine')],
+                        ['label' => 'Buying', 'icon' => 'bag', 'href' => route('activity.buying')],
+                        ['label' => 'Selling', 'icon' => 'layout-grid', 'href' => route('listings.mine')],
                     ] : []),
                 ]],
             ]" class="card p-3" />
