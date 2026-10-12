@@ -52,12 +52,30 @@
                     </a>
 
                     <nav class="hidden items-center gap-1 md:flex" aria-label="Main navigation">
-                        <a href="{{ route('listings.index') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('listings.index', 'listings.show')]) @if(request()->routeIs('listings.index')) aria-current="page" @endif>Browse</a>
+                        <a
+                            href="{{ route('listings.index') }}"
+                            @class(['relative inline-flex min-h-11 min-w-11 items-center justify-center border-b-2 border-transparent text-slate-600 transition-colors hover:text-brand-800', 'border-brand-700 text-brand-800' => request()->routeIs('listings.index', 'listings.show')])
+                            @if(request()->routeIs('listings.index')) aria-current="page" @endif
+                            aria-label="Home"
+                            title="Home"
+                        >
+                            <x-app-icon name="home" class="h-5 w-5" />
+                            <span class="sr-only">Home</span>
+                        </a>
                         @auth
-                            <a href="{{ route('activity.index') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('activity.index', 'listings.mine', 'listings.edit', 'transactions.tracker')]) @if(request()->routeIs('activity.index')) aria-current="page" @endif>My Activity</a>
+                            <a
+                                href="{{ route('activity.index') }}"
+                                @class(['relative inline-flex min-h-11 min-w-11 items-center justify-center border-b-2 border-transparent text-slate-600 transition-colors hover:text-brand-800', 'border-brand-700 text-brand-800' => request()->routeIs('activity.index', 'listings.mine', 'listings.edit', 'transactions.tracker')])
+                                @if(request()->routeIs('activity.index')) aria-current="page" @endif
+                                aria-label="My Activity"
+                                title="My Activity"
+                            >
+                                <x-app-icon name="layout-grid" class="h-5 w-5" />
+                                <span class="sr-only">My Activity</span>
+                            </a>
                             <a
                                 href="{{ route('chat.index') }}"
-                                @class(['nav-link relative inline-flex min-h-11 min-w-11 items-center justify-center', 'nav-link-active' => request()->routeIs('chat.*')])
+                                @class(['relative inline-flex min-h-11 min-w-11 items-center justify-center border-b-2 border-transparent text-slate-600 transition-colors hover:text-brand-800', 'border-brand-700 text-brand-800' => request()->routeIs('chat.*')])
                                 @if(request()->routeIs('chat.*')) aria-current="page" @endif
                                 aria-label="Messages"
                                 title="Messages"
@@ -65,7 +83,7 @@
                                 <x-app-icon name="chat" class="h-5 w-5" />
                                 <span class="sr-only">Messages</span>
                                 @if ($unreadMessageCount > 0)
-                                    <span class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-accent-700 px-1 text-[10px] font-bold text-white dark:border-slate-200">
+                                    <span class="absolute -right-1 top-0 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-accent-700 px-1 text-[10px] font-bold text-white dark:border-slate-200">
                                         {{ $unreadMessageCount > 9 ? '9+' : $unreadMessageCount }}<span class="sr-only"> unread</span>
                                     </span>
                                 @endif
