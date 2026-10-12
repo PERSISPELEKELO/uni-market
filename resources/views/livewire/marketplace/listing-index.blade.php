@@ -98,7 +98,17 @@
     </section>
 
     <div class="mt-6 flex flex-col gap-6 sm:mt-8 lg:flex-row lg:items-start" x-data="{ filtersOpen: window.innerWidth >= 1024 }">
-        <aside class="lg:w-64 lg:flex-shrink-0">
+        <aside class="space-y-5 lg:w-64 lg:flex-shrink-0">
+            <x-app-sidebar :groups="[
+                ['items' => [
+                    ['label' => 'Browse all', 'icon' => 'home', 'href' => route('listings.index'), 'active' => true],
+                    ...(auth()->check() ? [
+                        ['label' => 'Inbox', 'icon' => 'chat', 'href' => route('chat.index')],
+                        ['label' => 'Selling', 'icon' => 'bag', 'href' => route('listings.mine')],
+                    ] : []),
+                ]],
+            ]" class="card p-3" />
+
             <button type="button" x-on:click="filtersOpen = !filtersOpen" class="btn btn-secondary btn-block justify-between lg:hidden" x-bind:aria-expanded="filtersOpen" aria-controls="marketplace-filters">
                 <span class="inline-flex items-center gap-2"><x-app-icon name="menu" class="h-4 w-4" /> Filters</span>
                 <x-app-icon name="chevron-down" class="h-4 w-4 transition-transform" x-bind:class="filtersOpen ? 'rotate-180' : ''" />
@@ -172,10 +182,13 @@
 
     <section class="mt-6" aria-live="polite" aria-busy="false">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <p class="text-sm text-slate-700">
-                <span class="font-semibold text-ink">{{ number_format($listings->total()) }}</span>
-                {{ \Illuminate\Support\Str::plural('item', $listings->total()) }} available
-            </p>
+            <div>
+                <h2 class="text-base font-bold text-ink">{{ $hasActiveFilters ? 'Results' : "Today's picks" }}</h2>
+                <p class="text-sm text-slate-700">
+                    <span class="font-semibold text-ink">{{ number_format($listings->total()) }}</span>
+                    {{ \Illuminate\Support\Str::plural('item', $listings->total()) }} available
+                </p>
+            </div>
             @if ($hasActiveFilters)
                 <button type="button" wire:click="clearFilters" class="btn btn-secondary btn-sm">
                     <x-app-icon name="x" class="h-4 w-4" /> Clear filters
@@ -183,7 +196,7 @@
             @endif
         </div>
 
-        <div wire:loading.delay class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3" role="status" aria-label="Loading listings">
+        <div wire:loading.delay class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4" role="status" aria-label="Loading listings">
             @for ($i = 0; $i < 8; $i++)
                 <x-listing-card-skeleton />
             @endfor
@@ -191,7 +204,7 @@
 
         <div wire:loading.delay.remove>
             @if ($listings->count() > 0)
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
                     @foreach ($listings as $listing)
                         <x-listing-card :listing="$listing" wire:key="listing-{{ $listing->id }}" />
                     @endforeach

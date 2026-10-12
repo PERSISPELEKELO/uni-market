@@ -172,6 +172,26 @@ describe('browsing', function () {
     it('shows an inviting empty state when nothing is for sale', function () {
         $this->get(route('listings.index'))->assertOk()->assertSee('Nothing for sale yet');
     });
+
+    it('labels the unfiltered grid "Today\'s picks" but switches to "Results" once filtering', function () {
+        Listing::factory()->create(['title' => 'Only item']);
+
+        Livewire::test(ListingIndex::class)
+            ->assertSee("Today's picks")
+            ->assertDontSee('Results')
+            ->set('search', 'Only')
+            ->assertSee('Results');
+    });
+
+    it('badges a listing created in the last 24 hours as "Just listed"', function () {
+        $fresh = Listing::factory()->create(['title' => 'Brand new post', 'created_at' => now()->subHours(2)]);
+        $old = Listing::factory()->create(['title' => 'Old post', 'created_at' => now()->subDays(5)]);
+
+        $response = $this->get(route('listings.index'));
+
+        $response->assertSeeInOrder(['Brand new post', 'Just listed']);
+        expect($old->created_at->diffInHours())->toBeGreaterThan(24);
+    });
 });
 
 describe('viewing a listing', function () {
