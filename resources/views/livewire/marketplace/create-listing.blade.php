@@ -19,7 +19,11 @@
 
         <div class="flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:justify-end">
             <a href="{{ route('listings.index') }}" class="btn btn-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="save,form.images">
+            <button type="button" wire:click.prevent="saveAsDraft" class="btn btn-secondary" wire:loading.attr="disabled" wire:target="saveAsDraft,save,form.images">
+                <span wire:loading.remove wire:target="saveAsDraft">Save as draft</span>
+                <span wire:loading wire:target="saveAsDraft">Saving...</span>
+            </button>
+            <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:target="save,saveAsDraft,form.images">
                 <span wire:loading.remove wire:target="save">Publish listing</span>
                 <span wire:loading wire:target="save">Publishing...</span>
             </button>

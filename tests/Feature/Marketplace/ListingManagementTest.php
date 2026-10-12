@@ -5,6 +5,8 @@ use App\Livewire\Marketplace\EditListing;
 use App\Livewire\Marketplace\MyListings;
 use App\Models\Category;
 use App\Models\Listing;
+use App\Models\Reservation;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
@@ -135,6 +137,30 @@ describe('creating a listing', function () {
         ]))->call('save')->assertHasErrors(['form.category_id', 'form.condition']);
     });
 
+    it('saves as a draft, invisible to everyone but the seller, and publishable later', function () {
+        $seller = User::factory()->create();
+        $stranger = User::factory()->create();
+        $category = Category::factory()->create();
+
+        $component = Livewire::actingAs($seller)->test(CreateListing::class);
+        fillListingForm($component, validListingData($category, [
+            'form.images' => [fakePhoto('front.png')],
+        ]))->call('saveAsDraft')->assertHasNoErrors()->assertRedirect(route('listings.mine'));
+
+        $listing = Listing::firstOrFail();
+        expect($listing->status)->toBe('draft');
+
+        $this->get(route('listings.show', $listing))->assertOk(); // seller
+        $this->actingAs($stranger)->get(route('listings.show', $listing))->assertNotFound();
+        $this->get(route('listings.index'))->assertDontSee($listing->title);
+
+        Livewire::actingAs($seller)->test(MyListings::class)
+            ->call('publish', $listing->id);
+
+        expect($listing->fresh()->status)->toBe('active');
+        $this->get(route('listings.index'))->assertSee($listing->title);
+    });
+
     it('stores markup as plain text and never as html', function () {
         $seller = User::factory()->create();
         $category = Category::factory()->create();
@@ -263,6 +289,85 @@ describe('deleting a listing', function () {
             ->assertOk()
             ->assertSee('My own bicycle')
             ->assertDontSee('Somebody elses laptop');
+    });
+});
+
+describe('seller dashboard status tiles', function () {
+    it('counts each listing exactly once, under the right tile', function () {
+        $seller = User::factory()->create();
+        Listing::factory()->suspended()->create(['user_id' => $seller->id]);
+        Listing::factory()->create(['user_id' => $seller->id]); // active
+        Listing::factory()->sold()->create(['user_id' => $seller->id]);
+        Listing::factory()->create(['user_id' => $seller->id, 'status' => Listing::STATUS_DRAFT]);
+        Listing::factory()->create(['user_id' => $seller->id, 'created_at' => now()->subDays(30)]); // to renew
+
+        Livewire::actingAs($seller)->test(MyListings::class)
+            ->assertViewHas('counts', fn ($counts) => $counts === [
+                'needs_attention' => 1,
+                'active' => 2,
+                'sold' => 1,
+                'draft' => 1,
+                'to_renew' => 1,
+            ]);
+    });
+
+    it('filters the list to one status at a time and can clear the filter', function () {
+        $seller = User::factory()->create();
+        Listing::factory()->create(['user_id' => $seller->id, 'title' => 'Active item']);
+        Listing::factory()->sold()->create(['user_id' => $seller->id, 'title' => 'Sold item']);
+
+        Livewire::actingAs($seller)->test(MyListings::class)
+            ->call('setStatusFilter', 'sold')
+            ->assertSee('Sold item')
+            ->assertDontSee('Active item')
+            ->call('setStatusFilter', 'sold')
+            ->assertSee('Active item')
+            ->assertSee('Sold item');
+    });
+
+    it('only ever shows and acts on the signed-in seller\'s own listings', function () {
+        $seller = User::factory()->create();
+        $other = Listing::factory()->create();
+
+        expect(fn () => Livewire::actingAs($seller)->test(MyListings::class)->call('publish', $other->id))
+            ->toThrow(ModelNotFoundException::class);
+    });
+});
+
+describe('renewing and manually completing a listing', function () {
+    it('lets the seller renew an ageing listing', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id, 'created_at' => now()->subDays(25)]);
+
+        expect($listing->isDueForRenewal())->toBeTrue();
+
+        Livewire::actingAs($seller)->test(MyListings::class)->call('renew', $listing->id);
+
+        expect($listing->fresh()->isDueForRenewal())->toBeFalse();
+    });
+
+    it('marks an active listing sold without creating a transaction, and cancels its reservations', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id]);
+        $reservation = Reservation::factory()->for($listing)->create();
+
+        Livewire::actingAs($seller)->test(MyListings::class)->call('markSoldManually', $listing->id);
+
+        expect($listing->fresh()->status)->toBe('sold')
+            ->and($reservation->fresh()->status)->toBe(Reservation::STATUS_CANCELLED)
+            ->and(Transaction::count())->toBe(0);
+    });
+
+    it('does not let marking sold or renewing apply to a listing that is not active', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->sold()->create(['user_id' => $seller->id]);
+
+        Livewire::actingAs($seller)->test(MyListings::class)
+            ->call('markSoldManually', $listing->id)
+            ->call('renew', $listing->id);
+
+        expect($listing->fresh()->status)->toBe('sold')
+            ->and($listing->fresh()->renewed_at)->toBeNull();
     });
 });
 

@@ -20,22 +20,32 @@ class CreateListing extends Component
 
     public function save()
     {
+        return $this->persist(Listing::STATUS_ACTIVE);
+    }
+
+    public function saveAsDraft()
+    {
+        return $this->persist(Listing::STATUS_DRAFT);
+    }
+
+    private function persist(string $status)
+    {
         $this->authorize('create', Listing::class);
 
         try {
-            $listing = $this->form->store(Auth::user());
+            $listing = $this->form->store(Auth::user(), $status);
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (\Throwable $exception) {
             report($exception);
 
-            $this->dispatch('notify', type: 'error', message: 'We could not publish your listing right now. Please try again in a moment.');
+            $this->dispatch('notify', type: 'error', message: 'We could not save your listing right now. Please try again in a moment.');
 
             return null;
         }
 
         app(AuditLoggerService::class)->log(
-            'LISTING_CREATED',
+            $status === Listing::STATUS_DRAFT ? 'LISTING_DRAFTED' : 'LISTING_CREATED',
             'Listing',
             $listing->id,
             [
@@ -45,6 +55,11 @@ class CreateListing extends Component
             ],
             Auth::user()
         );
+
+        if ($status === Listing::STATUS_DRAFT) {
+            return redirect()->route('listings.mine')
+                ->with('success', 'Saved as a draft - publish it from My Listings whenever you are ready.');
+        }
 
         return redirect()->route('listings.show', $listing)
             ->with('success', 'Your listing is live on the campus marketplace!');

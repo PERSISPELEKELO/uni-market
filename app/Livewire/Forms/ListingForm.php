@@ -112,14 +112,14 @@ class ListingForm extends Form
         $this->images = array_values($this->images);
     }
 
-    public function store(User $seller): Listing
+    public function store(User $seller, string $status = Listing::STATUS_ACTIVE): Listing
     {
         $this->validate();
 
         $paths = $this->storeNewImages();
 
         try {
-            return $seller->listings()->create($this->listingAttributes($paths) + ['status' => Listing::STATUS_ACTIVE]);
+            return $seller->listings()->create($this->listingAttributes($paths) + ['status' => $status]);
         } catch (\Throwable $exception) {
             Storage::disk('public')->delete($paths);
 

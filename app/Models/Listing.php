@@ -133,6 +133,19 @@ class Listing extends Model
     }
 
     /**
+     * In-memory equivalent of scopeToRenew(), for checking a single
+     * already-loaded listing without an extra query.
+     */
+    public function isDueForRenewal(): bool
+    {
+        if ($this->status !== self::STATUS_ACTIVE) {
+            return false;
+        }
+
+        return ($this->renewed_at ?? $this->created_at)->lte(now()->subDays(self::RENEW_AFTER_DAYS));
+    }
+
+    /**
      * Listings with a genuine, currently-active price reduction. Real
      * database data only - see isHotDeal()/ListingForm::update().
      */
