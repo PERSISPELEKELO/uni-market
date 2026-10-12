@@ -22,6 +22,14 @@ class Listing extends Model
 
     public const STATUS_SUSPENDED = 'suspended';
 
+    public const STATUS_DRAFT = 'draft';
+
+    /**
+     * A listing is nudged to renew once it's been live (or last renewed)
+     * this many days, ahead of the 30-day point sellers are told about.
+     */
+    public const RENEW_AFTER_DAYS = 23;
+
     /**
      * Item conditions accepted by the marketplace, keyed by stored value.
      *
@@ -45,6 +53,7 @@ class Listing extends Model
         'condition',
         'status',
         'images',
+        'renewed_at',
     ];
 
     protected $casts = [
@@ -52,6 +61,7 @@ class Listing extends Model
         'price' => 'decimal:2',
         'previous_price' => 'decimal:2',
         'price_dropped_at' => 'datetime',
+        'renewed_at' => 'datetime',
     ];
 
     public function seller(): BelongsTo
@@ -79,6 +89,21 @@ class Listing extends Model
         return $this->hasMany(ListingView::class);
     }
 
+    public function events(): HasMany
+    {
+        return $this->hasMany(ListingEvent::class);
+    }
+
+    public function savedBy(): HasMany
+    {
+        return $this->hasMany(SavedListing::class);
+    }
+
+    public function isSavedBy(?User $user): bool
+    {
+        return $user !== null && $this->savedBy()->where('user_id', $user->id)->exists();
+    }
+
     public function activeReservations(): HasMany
     {
         return $this->reservations()->active()->with('buyer')->latest();
@@ -95,6 +120,16 @@ class Listing extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_ACTIVE);
+    }
+
+    /**
+     * Active listings that are old enough to nudge the seller to renew -
+     * a manual bump (see MyListings::renew()), never automatic archiving.
+     */
+    public function scopeToRenew(Builder $query): Builder
+    {
+        return $query->active()
+            ->whereRaw('COALESCE(renewed_at, created_at) <= ?', [now()->subDays(self::RENEW_AFTER_DAYS)]);
     }
 
     /**

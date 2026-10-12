@@ -3,6 +3,7 @@
 namespace App\Livewire\Chat;
 
 use App\Models\Listing;
+use App\Models\ListingEvent;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -140,6 +141,15 @@ class MessageThread extends Component
             'message' => $this->newMessage,
             'is_read' => false,
         ]);
+
+        if ($this->activeListingId) {
+            ListingEvent::create([
+                'listing_id' => $this->activeListingId,
+                'user_id' => $currentUserId,
+                'type' => ListingEvent::TYPE_MESSAGE,
+                'created_at' => now(),
+            ]);
+        }
 
         $this->newMessage = '';
         $this->dispatch('message-sent');
