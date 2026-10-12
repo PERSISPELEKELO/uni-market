@@ -6,12 +6,14 @@ namespace App\Services\Insights;
 
 use App\Models\Category;
 use App\Models\Listing;
+use App\Models\ListingEvent;
 use App\Models\ListingView;
 use App\Models\Message;
 use App\Models\SearchLog;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -181,20 +183,153 @@ class SellerInsightsService
     }
 
     /**
-     * @return Collection<int, array{listing: Listing, views: int, reservations: int, conversion_rate: ?float, days_listed: int}>
+     * One row per listing with its clicks (= listing_events views), saves,
+     * shares and reservation conversion - the seller insights "per-listing
+     * performance" table.
+     *
+     * @return Collection<int, array{listing: Listing, clicks: int, saves: int, shares: int, reservations: int, conversion_rate: ?float, days_listed: int}>
      */
     public function perListingStats(User $seller): Collection
     {
         return $seller->listings()
-            ->withCount(['views', 'reservations'])
+            ->with('category')
+            ->withCount([
+                'reservations',
+                'events as clicks_count' => fn ($q) => $q->where('type', ListingEvent::TYPE_VIEW),
+                'events as saves_count' => fn ($q) => $q->where('type', ListingEvent::TYPE_SAVE),
+                'events as shares_count' => fn ($q) => $q->where('type', ListingEvent::TYPE_SHARE),
+            ])
             ->get()
             ->map(fn (Listing $listing) => [
                 'listing' => $listing,
-                'views' => $listing->views_count,
+                'clicks' => $listing->clicks_count,
+                'saves' => $listing->saves_count,
+                'shares' => $listing->shares_count,
                 'reservations' => $listing->reservations_count,
-                'conversion_rate' => $listing->views_count > 0 ? round(($listing->reservations_count / $listing->views_count) * 100, 1) : null,
+                'conversion_rate' => $listing->clicks_count > 0 ? round(($listing->reservations_count / $listing->clicks_count) * 100, 1) : null,
                 'days_listed' => $listing->created_at->diffInDays(now()),
             ]);
+    }
+
+    /**
+     * Clicks (listing views), saves, shares and enquiries on this seller's
+     * listings for the chosen period, each with its percentage change versus
+     * the immediately-preceding period of equal length (null for 'all',
+     * which has no meaningful previous period, or when the previous period
+     * had zero events to compare against).
+     *
+     * @return array<string, array{count: int, change_percentage: ?float}>
+     */
+    public function engagementTotals(User $seller, string $period = 'all'): array
+    {
+        return InsightsCache::remember("seller:{$seller->id}:engagement:{$period}", function () use ($seller, $period) {
+            $listingIds = $seller->listings()->pluck('id');
+            $start = PeriodBoundary::start($period);
+            $previousStart = PeriodBoundary::previousStart($period);
+            $previousEnd = PeriodBoundary::previousEnd($period);
+
+            $countEvents = function (string $type, ?Carbon $from, ?Carbon $to = null) use ($listingIds) {
+                return ListingEvent::whereIn('listing_id', $listingIds)
+                    ->where('type', $type)
+                    ->when($from, fn ($q) => $q->where('created_at', '>=', $from))
+                    ->when($to, fn ($q) => $q->where('created_at', '<', $to))
+                    ->count();
+            };
+
+            $metrics = [];
+
+            foreach ([
+                'clicks' => ListingEvent::TYPE_VIEW,
+                'saves' => ListingEvent::TYPE_SAVE,
+                'shares' => ListingEvent::TYPE_SHARE,
+                'enquiries' => ListingEvent::TYPE_MESSAGE,
+            ] as $key => $type) {
+                $current = $countEvents($type, $start);
+                $previous = $previousStart !== null ? $countEvents($type, $previousStart, $previousEnd) : null;
+
+                $metrics[$key] = [
+                    'count' => $current,
+                    'change_percentage' => ($previous !== null && $previous > 0)
+                        ? round((($current - $previous) / $previous) * 100)
+                        : null,
+                ];
+            }
+
+            return $metrics;
+        });
+    }
+
+    /**
+     * Daily counts of one engagement metric over the chosen period, for the
+     * line chart below the clickable KPI tiles. 'all' windows to the last 90
+     * days for readability - the KPI tile itself still counts true all-time
+     * via engagementTotals().
+     *
+     * @return array<int, array{date: string, total: int}>
+     */
+    public function engagementTrend(User $seller, string $metric, string $period = 'all'): array
+    {
+        $type = match ($metric) {
+            'saves' => ListingEvent::TYPE_SAVE,
+            'shares' => ListingEvent::TYPE_SHARE,
+            'enquiries' => ListingEvent::TYPE_MESSAGE,
+            default => ListingEvent::TYPE_VIEW,
+        };
+
+        $listingIds = $seller->listings()->pluck('id');
+        $start = PeriodBoundary::start($period) ?? now()->subDays(90);
+        $days = max(1, (int) ceil($start->diffInDays(now())));
+
+        $rows = ListingEvent::whereIn('listing_id', $listingIds)
+            ->where('type', $type)
+            ->where('created_at', '>=', $start->copy()->startOfDay())
+            ->get()
+            ->groupBy(fn (ListingEvent $e) => $e->created_at->format('Y-m-d'));
+
+        return collect(range($days, 0))->map(function (int $daysAgo) use ($rows) {
+            $date = now()->subDays($daysAgo);
+
+            return ['date' => $date->format('M j'), 'total' => $rows->get($date->format('Y-m-d'))?->count() ?? 0];
+        })->all();
+    }
+
+    /**
+     * This seller's listings ranked by clicks in the last 24 hours, each
+     * with an up/down arrow versus the 24 hours before that.
+     *
+     * @return Collection<int, array{listing: Listing, clicks_today: int, clicks_yesterday: int}>
+     */
+    public function trendingToday(User $seller): Collection
+    {
+        $listingIds = $seller->listings()->pluck('id');
+
+        $today = ListingEvent::whereIn('listing_id', $listingIds)
+            ->where('type', ListingEvent::TYPE_VIEW)
+            ->recent(24)
+            ->get()
+            ->countBy('listing_id');
+
+        $yesterday = ListingEvent::whereIn('listing_id', $listingIds)
+            ->where('type', ListingEvent::TYPE_VIEW)
+            ->where('created_at', '>=', now()->subHours(48))
+            ->where('created_at', '<', now()->subHours(24))
+            ->get()
+            ->countBy('listing_id');
+
+        if ($today->isEmpty()) {
+            return collect();
+        }
+
+        return $seller->listings()
+            ->whereIn('id', $today->keys())
+            ->get()
+            ->map(fn (Listing $listing) => [
+                'listing' => $listing,
+                'clicks_today' => $today->get($listing->id, 0),
+                'clicks_yesterday' => $yesterday->get($listing->id, 0),
+            ])
+            ->sortByDesc('clicks_today')
+            ->values();
     }
 
     /**

@@ -36,6 +36,48 @@ const centerTextPlugin = {
 Chart.register(centerTextPlugin);
 
 /**
+ * Draws a vertical guide line at the hovered x position, alongside Chart.js's
+ * own default tooltip. Opt in via `options.plugins.crosshair` (chartTile
+ * enables it automatically for line charts) - bar/doughnut charts don't get
+ * it, since a vertical line across discrete bars/slices isn't meaningful.
+ */
+const crosshairPlugin = {
+    id: 'crosshair',
+    afterEvent(chart, args) {
+        if (!chart.config.options?.plugins?.crosshair) {
+            return;
+        }
+
+        if (args.event.type === 'mousemove') {
+            const points = chart.getElementsAtEventForMode(args.event, 'index', { intersect: false }, false);
+            chart.$crosshairX = points.length ? points[0].element.x : null;
+        } else if (args.event.type === 'mouseout') {
+            chart.$crosshairX = null;
+        }
+
+        args.changed = true;
+    },
+    afterDraw(chart) {
+        if (!chart.config.options?.plugins?.crosshair || chart.$crosshairX == null) {
+            return;
+        }
+
+        const { ctx, chartArea } = chart;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(chart.$crosshairX, chartArea.top);
+        ctx.lineTo(chart.$crosshairX, chartArea.bottom);
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.5)';
+        ctx.stroke();
+        ctx.restore();
+    },
+};
+
+Chart.register(crosshairPlugin);
+
+/**
  * Renders one Chart.js chart inside a Livewire-managed page. The canvas's
  * wrapper carries `wire:ignore` so Livewire's own DOM morphing never
  * touches it; all data updates instead flow through a single dispatched
@@ -60,6 +102,7 @@ function chartTile({ chartId, type, data, options, clickDimension }) {
                     animation: { duration: 500 },
                     plugins: {
                         centerText: centerText ? { text: centerText } : undefined,
+                        crosshair: type === 'line' ? {} : undefined,
                         legend: { display: (chartData.datasets || []).length > 1 },
                         tooltip: {
                             callbacks: {

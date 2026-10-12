@@ -119,31 +119,140 @@
                             <x-chart-js id="overview-trend" type="line" :data="$charts['overview-trend']" aria-label="Spending versus earnings over time" empty="Buy or sell something to see your trend here." />
                         </x-section>
                     @elseif ($insightsSidebarView === 'selling')
-                        @php $priceChecks = $sellerInsights->priceCheck($user); @endphp
+                        @php
+                            $priceChecks = $sellerInsights->priceCheck($user);
+                            $metricTiles = [
+                                'clicks' => ['label' => 'Clicks on listings', 'icon' => 'eye'],
+                                'saves' => ['label' => 'Listing saves', 'icon' => 'bookmark'],
+                                'shares' => ['label' => 'Listing shares', 'icon' => 'share'],
+                                'enquiries' => ['label' => 'Enquiries', 'icon' => 'chat'],
+                            ];
+                        @endphp
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <x-stat-card label="Items sold" :number="$totals['items_sold']" icon="bag" />
                             <x-stat-card label="Total earned" :number="$totals['total_earned']" prefix="K" :decimals="2" icon="download" />
                             <x-stat-card label="Average rating" :value="$totals['average_rating'] ? number_format($totals['average_rating'], 1).' / 5.0' : '—'" icon="check-circle" />
                         </div>
 
-                        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                            <x-section class="card p-5">
-                                <x-slot:title>
-                                    <span class="inline-flex items-center gap-1">
-                                        Items sold by category
-                                        <x-info-tip text="Click a bar to filter the price-check table below to that category. The busiest category is highlighted." />
-                                    </span>
-                                </x-slot:title>
-                                <x-chart-js id="sold-by-category" type="bar" :data="$charts['sold-by-category']" click-dimension="category" aria-label="Items sold by category" empty="Once you complete a sale, your category breakdown will appear here." />
-                            </x-section>
+                        <section class="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Engagement, click a tile to chart it">
+                            @foreach ($metricTiles as $key => $tile)
+                                @php $metric = $engagementTotals[$key] ?? ['count' => 0, 'change_percentage' => null]; @endphp
+                                <button
+                                    type="button"
+                                    wire:click="setInsightsMetric('{{ $key }}')"
+                                    @class(['card card-hover p-4 text-left', 'ring-2 ring-brand-700' => $insightsMetric === $key])
+                                    aria-pressed="{{ $insightsMetric === $key ? 'true' : 'false' }}"
+                                >
+                                    <div class="flex items-center justify-between gap-2">
+                                        <p class="text-xs font-medium text-slate-600">{{ $tile['label'] }}</p>
+                                        <x-app-icon :name="$tile['icon']" class="h-4 w-4 text-slate-400" />
+                                    </div>
+                                    <p class="mt-1 text-2xl font-bold text-ink">{{ number_format($metric['count']) }}</p>
+                                    @if ($metric['change_percentage'] !== null)
+                                        <p @class(['mt-1 inline-flex items-center gap-1 text-xs font-semibold', 'text-accent-700 dark:text-accent-300' => $metric['change_percentage'] > 0, 'text-danger-700 dark:text-danger-400' => $metric['change_percentage'] < 0, 'text-slate-500' => $metric['change_percentage'] == 0])>
+                                            @if ($metric['change_percentage'] > 0)
+                                                <x-app-icon name="chevron-up" class="h-3 w-3" /> Up {{ abs($metric['change_percentage']) }}%
+                                            @elseif ($metric['change_percentage'] < 0)
+                                                <x-app-icon name="chevron-down" class="h-3 w-3" /> Down {{ abs($metric['change_percentage']) }}%
+                                            @else
+                                                No change
+                                            @endif
+                                        </p>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </section>
 
-                            <x-section title="Earnings over time" description="Last 12 months - not affected by the date range above." class="card p-5">
-                                <x-chart-js id="earnings-over-time" type="line" :data="$charts['earnings-over-time']" aria-label="Earnings over time" empty="Once you complete a sale, your earnings trend will appear here." />
+                        <x-section :title="$metricTiles[$insightsMetric]['label']" description="Over the selected date range." class="card p-5">
+                            <x-chart-js id="engagement-trend" type="line" :data="$charts['engagement-trend']" aria-label="{{ $metricTiles[$insightsMetric]['label'] }} over time" empty="Once students interact with your listings, this trend will appear here." />
+                        </x-section>
+
+                        @if ($trendingToday->isNotEmpty())
+                            <x-section title="Trending today" description="Ranked by clicks in the last 24 hours." class="card p-5">
+                                <ul class="divide-y divide-slate-100">
+                                    @foreach ($trendingToday->take(5) as $row)
+                                        @php $delta = $row['clicks_today'] - $row['clicks_yesterday']; @endphp
+                                        <li class="flex items-center justify-between gap-3 py-2.5">
+                                            <a href="{{ route('listings.show', $row['listing']) }}" class="min-w-0 truncate text-sm font-medium text-ink hover:text-brand-800 dark:hover:text-brand-300">{{ $row['listing']->title }}</a>
+                                            <span class="flex flex-shrink-0 items-center gap-2 text-sm">
+                                                <span class="font-semibold text-ink">{{ $row['clicks_today'] }}</span>
+                                                @if ($delta > 0)
+                                                    <span class="inline-flex items-center gap-0.5 text-xs font-semibold text-accent-700 dark:text-accent-300"><x-app-icon name="chevron-up" class="h-3 w-3" /> {{ $delta }}</span>
+                                                @elseif ($delta < 0)
+                                                    <span class="inline-flex items-center gap-0.5 text-xs font-semibold text-danger-700 dark:text-danger-400"><x-app-icon name="chevron-down" class="h-3 w-3" /> {{ abs($delta) }}</span>
+                                                @else
+                                                    <span class="text-xs text-slate-500">No change</span>
+                                                @endif
+                                            </span>
+                                        </li>
+                                    @endforeach
+                                </ul>
                             </x-section>
-                        </div>
+                        @endif
+
+                        <x-section title="Per-listing performance" description="Click a column to sort." class="card overflow-x-auto p-5">
+                            @if ($listingPerformance->isEmpty())
+                                <x-empty-state icon="bag" title="No listings yet" description="List an item to see how it performs." />
+                            @else
+                                @php
+                                    $columns = [
+                                        'clicks' => 'Clicks',
+                                        'saves' => 'Saves',
+                                        'shares' => 'Shares',
+                                        'reservations' => 'Reservations',
+                                        'conversion_rate' => 'Conversion',
+                                        'days_listed' => 'Days listed',
+                                    ];
+                                @endphp
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="border-b border-slate-200 text-left text-xs text-slate-500">
+                                            <th class="py-1.5 font-medium">Listing</th>
+                                            @foreach ($columns as $column => $label)
+                                                <th class="py-1.5 text-right font-medium">
+                                                    <button type="button" wire:click="sortListingsBy('{{ $column }}')" class="inline-flex items-center gap-0.5 hover:text-ink">
+                                                        {{ $label }}
+                                                        @if ($listingSort === $column)
+                                                            <x-app-icon :name="$listingSortDirection === 'desc' ? 'chevron-down' : 'chevron-up'" class="h-3 w-3" />
+                                                        @endif
+                                                    </button>
+                                                </th>
+                                            @endforeach
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($listingPerformance as $row)
+                                            <tr class="border-b border-slate-100" wire:key="performance-{{ $row['listing']->id }}">
+                                                <td class="max-w-[12rem] truncate py-1.5 pr-3 text-slate-700">{{ $row['listing']->title }}</td>
+                                                <td class="py-1.5 text-right text-ink">{{ $row['clicks'] }}</td>
+                                                <td class="py-1.5 text-right text-ink">{{ $row['saves'] }}</td>
+                                                <td class="py-1.5 text-right text-ink">{{ $row['shares'] }}</td>
+                                                <td class="py-1.5 text-right text-ink">{{ $row['reservations'] }}</td>
+                                                <td class="py-1.5 text-right text-ink">{{ $row['conversion_rate'] !== null ? $row['conversion_rate'].'%' : '—' }}</td>
+                                                <td class="py-1.5 text-right text-ink">{{ $row['days_listed'] }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @endif
+                        </x-section>
 
                         <x-section title="From view to sale" description="How your listings' visits turn into enquiries and sales." class="card p-5">
                             <x-chart-js id="funnel" type="bar" :data="$charts['funnel']" aria-label="View to sale funnel" empty="Once students start viewing your listings, your funnel will appear here." height="h-48" />
+                        </x-section>
+
+                        <x-section class="card p-5">
+                            <x-slot:title>
+                                <span class="inline-flex items-center gap-1">
+                                    Items sold by category
+                                    <x-info-tip text="Click a bar to filter the price-check table below to that category. The busiest category is highlighted." />
+                                </span>
+                            </x-slot:title>
+                            <x-chart-js id="sold-by-category" type="bar" :data="$charts['sold-by-category']" click-dimension="category" aria-label="Items sold by category" empty="Once you complete a sale, your category breakdown will appear here." />
+                        </x-section>
+
+                        <x-section title="Earnings over time" description="Last 12 months - not affected by the date range above." class="card p-5">
+                            <x-chart-js id="earnings-over-time" type="line" :data="$charts['earnings-over-time']" aria-label="Earnings over time" empty="Once you complete a sale, your earnings trend will appear here." />
                         </x-section>
 
                         <x-section title="Price check on your active listings" description="How your prices compare to similar recent sales." class="card overflow-x-auto p-5">

@@ -9,6 +9,7 @@ use App\Services\Insights\BuyerInsightsService;
 use App\Services\Insights\ChartPalette;
 use App\Services\Insights\PeriodBoundary;
 use App\Services\Insights\SellerInsightsService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -45,6 +46,17 @@ class MyActivity extends Component
     #[Url(as: 'category')]
     public ?string $selectedCategory = null;
 
+    #[Url(as: 'metric')]
+    public string $insightsMetric = 'clicks';
+
+    public string $listingSort = 'clicks';
+
+    public string $listingSortDirection = 'desc';
+
+    private const METRICS = ['clicks', 'saves', 'shares', 'enquiries'];
+
+    private const SORTABLE_COLUMNS = ['clicks', 'saves', 'shares', 'reservations', 'conversion_rate', 'days_listed'];
+
     /**
      * Optional deep-link param, mirroring the existing /transactions-tracker/
      * {transaction} route, so a future link into this hub can still open one
@@ -59,6 +71,7 @@ class MyActivity extends Component
         $this->tab = in_array($this->tab, ['buying', 'selling', 'insights'], true) ? $this->tab : 'buying';
         $this->insightsPeriod = array_key_exists($this->insightsPeriod, PeriodBoundary::OPTIONS) ? $this->insightsPeriod : 'all';
         $this->insightsSidebarView = in_array($this->insightsSidebarView, self::SIDEBAR_VIEWS, true) ? $this->insightsSidebarView : 'overview';
+        $this->insightsMetric = in_array($this->insightsMetric, self::METRICS, true) ? $this->insightsMetric : 'clicks';
 
         if ($transaction !== null) {
             $this->tab = 'buying';
@@ -90,6 +103,28 @@ class MyActivity extends Component
     }
 
     /**
+     * Clicking a KPI tile selects its metric and swaps the trend chart below
+     * it to match (see resources/views/livewire/activity/my-activity.blade.php).
+     */
+    public function setInsightsMetric(string $metric): void
+    {
+        if (in_array($metric, self::METRICS, true)) {
+            $this->insightsMetric = $metric;
+            $this->dispatch('charts-updated', charts: $this->chartsForCurrentView());
+        }
+    }
+
+    public function sortListingsBy(string $column): void
+    {
+        if (! in_array($column, self::SORTABLE_COLUMNS, true)) {
+            return;
+        }
+
+        $this->listingSortDirection = ($this->listingSort === $column && $this->listingSortDirection === 'desc') ? 'asc' : 'desc';
+        $this->listingSort = $column;
+    }
+
+    /**
      * Fired by a chart's onclick handler (see resources/js/app.js's
      * chartTile()) via $wire.applyChartFilter(dimension, value). Only
      * 'category' is meaningful today - anything else is ignored rather
@@ -111,12 +146,30 @@ class MyActivity extends Component
 
     public function render()
     {
+        $user = Auth::user();
+        $sellerInsights = app(SellerInsightsService::class);
+        $onSellingInsights = $this->tab === 'insights' && $this->insightsSidebarView === 'selling';
+
         return view('livewire.activity.my-activity', [
             'reservationsReceived' => $this->tab === 'selling' ? $this->reservationsReceived() : collect(),
             'resolvedTransaction' => $this->resolvedTransaction(),
             'periodOptions' => PeriodBoundary::OPTIONS,
             'charts' => $this->tab === 'insights' ? $this->chartsForCurrentView() : [],
+            'engagementTotals' => $onSellingInsights ? $sellerInsights->engagementTotals($user, $this->insightsPeriod) : [],
+            'trendingToday' => $onSellingInsights ? $sellerInsights->trendingToday($user) : collect(),
+            'listingPerformance' => $onSellingInsights ? $this->sortedListingPerformance($sellerInsights) : collect(),
         ])->layout('layouts.app', ['title' => 'My Activity - UniMarket']);
+    }
+
+    private function sortedListingPerformance(SellerInsightsService $sellerInsights): Collection
+    {
+        $rows = $sellerInsights->perListingStats(Auth::user());
+
+        if ($this->selectedCategory !== null) {
+            $rows = $rows->filter(fn (array $row) => $row['listing']->category->name === $this->selectedCategory);
+        }
+
+        return $rows->sortBy(fn (array $row) => $row[$this->listingSort], descending: $this->listingSortDirection === 'desc')->values();
     }
 
     /**
@@ -130,6 +183,7 @@ class MyActivity extends Component
 
         return match ($this->insightsSidebarView) {
             'selling' => [
+                'engagement-trend' => $this->engagementTrendChart($sellerInsights->engagementTrend($user, $this->insightsMetric, $this->insightsPeriod)),
                 'sold-by-category' => $this->categoryChart($sellerInsights->soldByCategory($user, $this->insightsPeriod), 'total_items', 'Items sold'),
                 'earnings-over-time' => $this->monthlyChart($sellerInsights->earningsByMonth($user), 'Earnings (K)'),
                 'funnel' => $this->funnelChart($sellerInsights->funnel($user, $this->insightsPeriod)),
@@ -241,6 +295,26 @@ class MyActivity extends Component
                     'tension' => 0.3,
                 ],
             ],
+        ];
+    }
+
+    /**
+     * @param  array<int, array{date: string, total: int}>  $rows
+     */
+    private function engagementTrendChart(array $rows): array
+    {
+        $labels = ['clicks' => 'Clicks', 'saves' => 'Saves', 'shares' => 'Shares', 'enquiries' => 'Enquiries'];
+
+        return [
+            'labels' => array_column($rows, 'date'),
+            'datasets' => [[
+                'label' => $labels[$this->insightsMetric] ?? 'Clicks',
+                'data' => array_column($rows, 'total'),
+                'borderColor' => ChartPalette::COLORS[0],
+                'backgroundColor' => ChartPalette::COLORS[0].'33',
+                'fill' => true,
+                'tension' => 0.3,
+            ]],
         ];
     }
 
