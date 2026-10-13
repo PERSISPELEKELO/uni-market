@@ -216,10 +216,17 @@ Because the site is hosted in Laravel Herd, you don't need to run `php artisan s
 
 ## Demo Login Credentials
 
-- **Student Buyer**: `chileshe@student.zut.zm` / `password123`
-- **Student Seller**: `mwamba@student.zut.zm` / `password123`
-- **Student (third account, for reservation/messaging scenarios)**: `kabwe@student.zut.zm` / `password123`
-- **Admin Moderator**: `admin@zut.zm` / `password123` (Admin Panel: [http://uni-market.test/admin](http://uni-market.test/admin))
+`php artisan migrate:fresh --seed` now only creates the canonical category list - no demo users or listings. For a clean, demo-ready database with exactly one seller, one buyer and one admin (and nothing else - no listings, transactions, messages or disputes, so every number shown during a demo is genuinely created live), run the local-only command:
+
+```bash
+php artisan demo:reset
+```
+
+This wipes the entire local database (`migrate:fresh`) and uploaded listing/avatar/verification files, so it asks for confirmation first - pass `--force` to skip the prompt. It refuses to run outside `APP_ENV=local`.
+
+- **Seller**: `seller@student.zut.zm` / `Seller@2026`
+- **Buyer**: `buyer@student.zut.zm` / `Buyer@2026`
+- **Admin Moderator**: `admin@zut.zm` / `Admin@2026` (Admin Panel: [http://uni-market.test/admin](http://uni-market.test/admin))
 
 For a much larger, realistic dataset to see the Business Intelligence features with (60+ students across every year/school, ~150 listings, months of transactions, views and searches), run the local-only seeder: `php artisan db:seed --class=InsightsDemoSeeder` (refuses to run outside `APP_ENV=local`).
 
