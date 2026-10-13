@@ -5,9 +5,12 @@ namespace App\Livewire\Marketplace;
 use App\Models\Category;
 use App\Models\Listing;
 use App\Models\SearchLog;
+use App\Models\Transaction;
+use App\Models\User;
 use App\Services\Insights\BuyerInsightsService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -74,8 +77,16 @@ class ListingIndex extends Component
         $this->resetPage();
     }
 
-    public function selectCategory(?int $categoryId): void
+    /**
+     * Accepts a loose value (not strictly ?int) since the sidebar's
+     * <select> sends it through as a string, including an empty string
+     * for "All categories" - normalised here rather than relying on PHP's
+     * implicit string-to-int coercion for an empty string, which throws.
+     */
+    public function selectCategory(mixed $categoryId): void
     {
+        $categoryId = ($categoryId === null || $categoryId === '') ? null : (int) $categoryId;
+
         $this->selectedCategory = ($this->selectedCategory === $categoryId) ? null : $categoryId;
         $this->resetPage();
     }
@@ -89,6 +100,16 @@ class ListingIndex extends Component
     public function setCondition(string $condition): void
     {
         $this->conditionFilter = ($this->conditionFilter === $condition) ? '' : $condition;
+        $this->resetPage();
+    }
+
+    public function updatedConditionFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedHotDealsOnly(): void
+    {
         $this->resetPage();
     }
 
@@ -131,6 +152,7 @@ class ListingIndex extends Component
             'hotDeals' => $hasActiveFilters ? collect() : Listing::active()->hotDeals()->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])->latest('price_dropped_at')->limit(8)->get(),
             'sellingFast' => $hasActiveFilters ? collect() : $this->sellingFast(),
             'popularWithYou' => ($hasActiveFilters || ! Auth::check()) ? collect() : app(BuyerInsightsService::class)->popularListings(Auth::user()),
+            'heroStats' => Auth::check() ? null : $this->heroStats(),
         ])->layout('layouts.app', ['title' => 'Campus Marketplace - UniMarket']);
     }
 
@@ -152,5 +174,21 @@ class ListingIndex extends Component
             ->get()
             ->filter(fn (Listing $listing) => $listing->views_count > 0)
             ->values();
+    }
+
+    /**
+     * Real headline numbers for the guest-facing hero, cached briefly since
+     * they change slowly and every guest page load would otherwise run
+     * three counts. Never a placeholder/invented figure.
+     *
+     * @return array{students: int, listings: int, sales: int}
+     */
+    private function heroStats(): array
+    {
+        return Cache::remember('marketplace:hero-stats', now()->addMinutes(10), fn () => [
+            'students' => User::where('role', 'student')->count(),
+            'listings' => Listing::active()->count(),
+            'sales' => Transaction::where('status', 'COMPLETED')->count(),
+        ]);
     }
 }

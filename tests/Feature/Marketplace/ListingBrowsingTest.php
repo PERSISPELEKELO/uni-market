@@ -13,6 +13,21 @@ use Livewire\Livewire;
 beforeEach(fn () => $this->withoutVite());
 
 describe('browsing', function () {
+    it('shows real headline stats in the hero to a guest, but not to a signed-in student', function () {
+        User::factory()->count(2)->create(['role' => 'student']);
+        Listing::factory()->create();
+        Transaction::factory()->create(['status' => 'COMPLETED']);
+
+        $this->get(route('listings.index'))
+            ->assertSee('Students')
+            ->assertSee('Active listings')
+            ->assertSee('Completed sales');
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('listings.index'))
+            ->assertDontSee('Completed sales');
+    });
+
     it('shows the reservation count on a listing card, and hides it when there are none', function () {
         $withReservations = Listing::factory()->create(['title' => 'Popular textbook']);
         Reservation::factory()->for($withReservations)->count(2)->create();
@@ -91,6 +106,40 @@ describe('browsing', function () {
             ->assertSee('Gaming laptop');
     });
 
+    it('accepts the category filter as a string, as the sidebar dropdown sends it, including the empty "all" option', function () {
+        $books = Category::factory()->create();
+        $tech = Category::factory()->create();
+        Listing::factory()->create(['title' => 'Physics textbook', 'category_id' => $books->id]);
+        Listing::factory()->create(['title' => 'Gaming laptop', 'category_id' => $tech->id]);
+
+        $component = Livewire::test(ListingIndex::class)
+            ->call('selectCategory', (string) $books->id)
+            ->assertSet('selectedCategory', $books->id)
+            ->assertSee('Physics textbook')
+            ->assertDontSee('Gaming laptop');
+
+        $component->call('selectCategory', '')
+            ->assertSet('selectedCategory', null)
+            ->assertSee('Physics textbook')
+            ->assertSee('Gaming laptop');
+    });
+
+    it('filters by condition and hot deals through direct property binding, as the sidebar controls do', function () {
+        $listing = Listing::factory()->create(['title' => 'On sale now', 'condition' => 'new', 'price' => 80, 'previous_price' => 100, 'price_dropped_at' => now()]);
+        Listing::factory()->create(['title' => 'Full price item', 'condition' => 'fair']);
+
+        Livewire::test(ListingIndex::class)
+            ->set('conditionFilter', 'new')
+            ->assertSee('On sale now')
+            ->assertDontSee('Full price item')
+            ->set('conditionFilter', '')
+            ->set('hotDealsOnly', true)
+            ->assertSee('On sale now')
+            ->assertDontSee('Full price item');
+
+        expect($listing->fresh()->isHotDeal())->toBeTrue();
+    });
+
     it('sorts by price', function () {
         Listing::factory()->create(['title' => 'Cheap thing', 'price' => 10]);
         Listing::factory()->create(['title' => 'Pricey thing', 'price' => 900]);
@@ -122,6 +171,26 @@ describe('browsing', function () {
 
     it('shows an inviting empty state when nothing is for sale', function () {
         $this->get(route('listings.index'))->assertOk()->assertSee('Nothing for sale yet');
+    });
+
+    it('labels the unfiltered grid "Today\'s picks" but switches to "Results" once filtering', function () {
+        Listing::factory()->create(['title' => 'Only item']);
+
+        Livewire::test(ListingIndex::class)
+            ->assertSee("Today's picks")
+            ->assertDontSee('Results')
+            ->set('search', 'Only')
+            ->assertSee('Results');
+    });
+
+    it('badges a listing created in the last 24 hours as "Just listed"', function () {
+        $fresh = Listing::factory()->create(['title' => 'Brand new post', 'created_at' => now()->subHours(2)]);
+        $old = Listing::factory()->create(['title' => 'Old post', 'created_at' => now()->subDays(5)]);
+
+        $response = $this->get(route('listings.index'));
+
+        $response->assertSeeInOrder(['Brand new post', 'Just listed']);
+        expect($old->created_at->diffInHours())->toBeGreaterThan(24);
     });
 });
 

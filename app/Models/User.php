@@ -37,6 +37,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'school',
         'gender',
         'intake_year',
+        'theme',
         'password',
         'role',
         'is_verified',
@@ -81,6 +82,16 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
     public function purchases(): HasMany
     {
         return $this->hasMany(Transaction::class, 'buyer_id');
+    }
+
+    public function savedListings(): HasMany
+    {
+        return $this->hasMany(SavedListing::class);
+    }
+
+    public function listingEvents(): HasMany
+    {
+        return $this->hasMany(ListingEvent::class);
     }
 
     public function reservations(): HasMany

@@ -2,6 +2,7 @@
 
 use App\Livewire\Chat\MessageThread;
 use App\Models\Listing;
+use App\Models\ListingEvent;
 use App\Models\Message;
 use App\Models\Transaction;
 use App\Models\User;
@@ -38,6 +39,27 @@ it('sends a message about a listing', function () {
         ->and($message->receiver_id)->toBe($listing->user_id)
         ->and($message->listing_id)->toBe($listing->id)
         ->and($message->message)->toBe('Is this still available?');
+});
+
+it('writes a unified listing_events row for a message about a listing', function () {
+    $buyer = User::factory()->create();
+    $listing = Listing::factory()->create();
+
+    Livewire::actingAs($buyer)->test(MessageThread::class, ['receiver' => $listing->user_id, 'listing' => $listing->id])
+        ->set('newMessage', 'Is this still available?')
+        ->call('sendMessage');
+
+    expect(ListingEvent::where('listing_id', $listing->id)->where('user_id', $buyer->id)->where('type', ListingEvent::TYPE_MESSAGE)->count())->toBe(1);
+});
+
+it('does not write a listing_events row for a message with no listing attached', function () {
+    $other = User::factory()->create();
+
+    Livewire::actingAs(User::factory()->create())->test(MessageThread::class, ['receiver' => $other->id])
+        ->set('newMessage', 'Hey there')
+        ->call('sendMessage');
+
+    expect(ListingEvent::where('type', ListingEvent::TYPE_MESSAGE)->count())->toBe(0);
 });
 
 it('rejects empty and over-long messages', function () {

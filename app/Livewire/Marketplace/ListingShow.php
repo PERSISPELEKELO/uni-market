@@ -4,6 +4,7 @@ namespace App\Livewire\Marketplace;
 
 use App\Models\Category;
 use App\Models\Listing;
+use App\Models\ListingEvent;
 use App\Models\ListingView;
 use App\Models\Reservation;
 use App\Services\Insights\FrequentlyBoughtTogetherService;
@@ -62,6 +63,14 @@ class ListingShow extends Component
             'viewer_id' => $viewerId,
             'session_hash' => $sessionHash,
             'viewed_at' => now(),
+        ]);
+
+        ListingEvent::create([
+            'listing_id' => $this->listing->id,
+            'user_id' => $viewerId,
+            'session_hash' => $sessionHash,
+            'type' => ListingEvent::TYPE_VIEW,
+            'created_at' => now(),
         ]);
     }
 

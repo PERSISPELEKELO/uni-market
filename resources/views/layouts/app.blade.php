@@ -1,22 +1,43 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" data-initial-theme="{{ auth()->user()->theme ?? '' }}">
 <head>
     <meta charset="utf-8">
     <script>
         (function () {
+            // An authenticated user's saved theme (set server-side above)
+            // always wins over this browser's localStorage, so the setting
+            // follows them across devices; localStorage is only the
+            // fallback for guests and for 'auto' mode's last resolution.
+            var initial = document.documentElement.dataset.initialTheme || '';
             var stored = null;
             try {
                 stored = localStorage.getItem('uniMarketTheme');
             } catch (e) {}
-            var isDark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-            document.documentElement.classList.toggle('dark', isDark);
+            var theme = initial || stored || 'auto';
+            var mql = window.matchMedia('(prefers-color-scheme: dark)');
+
+            function apply() {
+                var isDark = theme === 'dark' || (theme === 'auto' && mql.matches);
+                document.documentElement.classList.toggle('dark', isDark);
+            }
+
+            apply();
+            mql.addEventListener('change', function () {
+                if (theme === 'auto') {
+                    apply();
+                }
+            });
 
             window.uniMarketTheme = {
-                toggle: function () {
-                    var dark = document.documentElement.classList.toggle('dark');
+                set: function (next) {
+                    theme = next;
                     try {
-                        localStorage.setItem('uniMarketTheme', dark ? 'dark' : 'light');
+                        localStorage.setItem('uniMarketTheme', next);
                     } catch (e) {}
+                    apply();
+                },
+                toggle: function () {
+                    window.uniMarketTheme.set(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
                 },
             };
         })();
@@ -52,13 +73,40 @@
                     </a>
 
                     <nav class="hidden items-center gap-1 md:flex" aria-label="Main navigation">
-                        <a href="{{ route('listings.index') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('listings.index', 'listings.show')]) @if(request()->routeIs('listings.index')) aria-current="page" @endif>Browse</a>
+                        <a
+                            href="{{ route('listings.index') }}"
+                            @class(['relative inline-flex min-h-11 min-w-11 items-center justify-center border-b-2 border-transparent text-slate-600 transition-colors hover:text-brand-800', 'border-brand-700 text-brand-800' => request()->routeIs('listings.index', 'listings.show')])
+                            @if(request()->routeIs('listings.index')) aria-current="page" @endif
+                            aria-label="Home"
+                            title="Home"
+                        >
+                            <x-app-icon name="home" class="h-5 w-5" />
+                            <span class="sr-only">Home</span>
+                        </a>
                         @auth
-                            <a href="{{ route('activity.index') }}" @class(['nav-link', 'nav-link-active' => request()->routeIs('activity.index', 'listings.mine', 'listings.edit', 'transactions.tracker')]) @if(request()->routeIs('activity.index')) aria-current="page" @endif>My Activity</a>
-                            <a href="{{ route('chat.index') }}" @class(['nav-link inline-flex items-center gap-1.5', 'nav-link-active' => request()->routeIs('chat.*')]) @if(request()->routeIs('chat.*')) aria-current="page" @endif>
-                                Messages
+                            <a
+                                href="{{ route('activity.index') }}"
+                                @class(['relative inline-flex min-h-11 min-w-11 items-center justify-center border-b-2 border-transparent text-slate-600 transition-colors hover:text-brand-800', 'border-brand-700 text-brand-800' => request()->routeIs('activity.index', 'listings.mine', 'listings.edit', 'transactions.tracker')])
+                                @if(request()->routeIs('activity.index')) aria-current="page" @endif
+                                aria-label="My Activity"
+                                title="My Activity"
+                            >
+                                <x-app-icon name="layout-grid" class="h-5 w-5" />
+                                <span class="sr-only">My Activity</span>
+                            </a>
+                            <a
+                                href="{{ route('chat.index') }}"
+                                @class(['relative inline-flex min-h-11 min-w-11 items-center justify-center border-b-2 border-transparent text-slate-600 transition-colors hover:text-brand-800', 'border-brand-700 text-brand-800' => request()->routeIs('chat.*')])
+                                @if(request()->routeIs('chat.*')) aria-current="page" @endif
+                                aria-label="Messages"
+                                title="Messages"
+                            >
+                                <x-app-icon name="chat" class="h-5 w-5" />
+                                <span class="sr-only">Messages</span>
                                 @if ($unreadMessageCount > 0)
-                                    <span class="badge border-accent-700 bg-accent-700 px-2 py-0 text-white">{{ $unreadMessageCount }}<span class="sr-only"> unread</span></span>
+                                    <span class="absolute -right-1 top-0 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-accent-700 px-1 text-[10px] font-bold text-white dark:border-slate-200">
+                                        {{ $unreadMessageCount > 9 ? '9+' : $unreadMessageCount }}<span class="sr-only"> unread</span>
+                                    </span>
                                 @endif
                             </a>
                         @endauth
@@ -79,17 +127,17 @@
                     </button>
 
                     @auth
-                        <a href="{{ route('listings.create') }}" class="btn btn-primary btn-sm min-w-11 px-2 sm:min-h-11 sm:px-4 sm:text-sm" title="Sell item">
-                            <x-app-icon name="plus" class="h-4 w-4" />
-                            <span class="sr-only sm:not-sr-only">Sell item</span>
+                        <a href="{{ route('listings.create') }}" class="btn btn-primary btn-sm min-h-11 min-w-11 px-2" title="Sell item" aria-label="Sell item">
+                            <x-app-icon name="plus" class="h-5 w-5" />
+                            <span class="sr-only">Sell item</span>
                         </a>
 
                         @livewire('notifications.bell')
 
                         <div class="relative hidden md:block" x-data="{ menuOpen: false }" x-on:click.outside="menuOpen = false" x-on:keydown.escape="menuOpen = false">
-                            <button type="button" class="btn btn-secondary btn-sm sm:min-h-11" x-on:click="menuOpen = !menuOpen" x-bind:aria-expanded="menuOpen" aria-haspopup="true">
+                            <button type="button" class="btn btn-secondary btn-sm min-h-11 min-w-11 px-2" x-on:click="menuOpen = !menuOpen" x-bind:aria-expanded="menuOpen" aria-haspopup="true" aria-label="Your account" title="{{ auth()->user()->name }}">
                                 <x-avatar :user="auth()->user()" class="h-6 w-6 text-xs" />
-                                <span class="max-w-[9rem] truncate">{{ auth()->user()->name }}</span>
+                                <span class="sr-only">{{ auth()->user()->name }}</span>
                                 <x-app-icon name="chevron-down" class="h-4 w-4" />
                             </button>
 
@@ -113,7 +161,8 @@
                                 <a href="{{ route('appeals.mine') }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
                                     <x-app-icon name="flag" class="h-5 w-5" /> My appeals
                                 </a>
-                                <form method="POST" action="{{ route('logout') }}">
+                                @livewire('account.theme-toggle')
+                                <form method="POST" action="{{ route('logout') }}" class="border-t border-slate-100 pt-1">
                                     @csrf
                                     <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
                                         <x-app-icon name="logout" class="h-5 w-5" /> Log out

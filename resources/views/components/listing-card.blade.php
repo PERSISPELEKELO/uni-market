@@ -1,18 +1,32 @@
 @props(['listing'])
 
-<article {{ $attributes->class(['card group flex flex-col overflow-hidden transition-shadow hover:shadow-md']) }}>
-    <a href="{{ route('listings.show', $listing) }}" class="block focus-visible:outline-offset-[-2px]" aria-label="{{ $listing->title }}, K{{ number_format($listing->price, 2) }}">
-        <x-listing-image :src="$listing->cover_image_url" :alt="$listing->title" class="aspect-[4/3] w-full">
-            <span class="badge badge-neutral absolute left-3 top-3 bg-white/95 shadow-sm dark:bg-slate-200/95">
-                {{ $listing->condition_label }}
-            </span>
-            @if ($listing->isHotDeal())
-                <span class="badge absolute right-3 top-3 border-none bg-danger-600 text-white shadow-sm">
-                    🔥 Hot Deal
+<article {{ $attributes->class(['card card-hover group flex flex-col overflow-hidden']) }}>
+    <div class="relative">
+        <a href="{{ route('listings.show', $listing) }}" class="block focus-visible:outline-offset-[-2px]" aria-label="{{ $listing->title }}, K{{ number_format($listing->price, 2) }}">
+            <x-listing-image :src="$listing->cover_image_url" :alt="$listing->title" class="aspect-[4/3] w-full" zoom>
+                <span class="badge badge-neutral absolute left-3 top-3 bg-white/95 shadow-sm dark:bg-slate-200/95">
+                    {{ $listing->condition_label }}
                 </span>
-            @endif
-        </x-listing-image>
-    </a>
+                @if ($listing->isHotDeal())
+                    <span class="badge absolute right-3 top-3 border-none bg-danger-600 text-white shadow-sm">
+                        🔥 Hot Deal
+                    </span>
+                @elseif ($listing->created_at->diffInHours() < 24)
+                    <span class="badge absolute right-3 top-3 border-none bg-accent-700 text-white shadow-sm">
+                        Just listed
+                    </span>
+                @endif
+            </x-listing-image>
+        </a>
+
+        @auth
+            @unless ($listing->isOwnedBy(auth()->user()))
+                <div class="absolute bottom-3 right-3">
+                    @livewire('marketplace.save-toggle', ['listing' => $listing], key('save-'.$listing->id))
+                </div>
+            @endunless
+        @endauth
+    </div>
 
     <div class="flex flex-1 flex-col p-4 sm:p-5">
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">{{ $listing->category->name }}</p>

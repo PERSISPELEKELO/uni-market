@@ -9,11 +9,12 @@ use Illuminate\Auth\Access\Response;
 class ListingPolicy
 {
     /**
-     * Anyone may view a listing, except suspended ones which only the seller and staff can see.
+     * Anyone may view a listing, except suspended or draft ones, which only
+     * the seller and staff can see.
      */
     public function view(?User $user, Listing $listing): bool
     {
-        if ($listing->status !== Listing::STATUS_SUSPENDED) {
+        if (! in_array($listing->status, [Listing::STATUS_SUSPENDED, Listing::STATUS_DRAFT], true)) {
             return true;
         }
 
@@ -26,7 +27,8 @@ class ListingPolicy
     }
 
     /**
-     * Only the seller can edit, and only while the item is still open for sale.
+     * Only the seller can edit, and only while the item is still a draft or
+     * open for sale.
      */
     public function update(User $user, Listing $listing): Response
     {
@@ -34,7 +36,7 @@ class ListingPolicy
             return Response::denyAsNotFound();
         }
 
-        if ($listing->status !== Listing::STATUS_ACTIVE) {
+        if (! in_array($listing->status, [Listing::STATUS_ACTIVE, Listing::STATUS_DRAFT], true)) {
             return Response::deny('This listing is reserved, sold or suspended, so it can no longer be edited.');
         }
 

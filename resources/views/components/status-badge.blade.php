@@ -17,6 +17,12 @@
         'SUSPENDED' => ['badge-danger', 'Suspended'],
         default => ['badge-neutral', ucfirst(strtolower(str_replace('_', ' ', $key)))],
     };
+
+    $icon = match ($style) {
+        'badge-success' => 'check-circle',
+        'badge-warning', 'badge-danger' => 'warning',
+        default => 'clock',
+    };
 @endphp
 
-<span {{ $attributes->class(['badge', $style]) }}>{{ $label }}</span>
+<span {{ $attributes->class(['badge', $style]) }}><x-app-icon :name="$icon" class="h-3 w-3" />{{ $label }}</span>

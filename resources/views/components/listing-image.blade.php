@@ -1,4 +1,4 @@
-@props(['src' => null, 'alt' => '', 'lazy' => true, 'label' => true])
+@props(['src' => null, 'alt' => '', 'lazy' => true, 'label' => true, 'zoom' => false])
 
 <div {{ $attributes->class(['relative overflow-hidden bg-slate-100']) }}>
     @if ($src)
@@ -6,7 +6,7 @@
             src="{{ $src }}"
             alt="{{ $alt }}"
             @if ($lazy) loading="lazy" @endif
-            class="h-full w-full object-cover"
+            @class(['h-full w-full object-cover', 'transition-transform duration-200 group-hover:scale-105' => $zoom])
             onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');"
         />
     @endif

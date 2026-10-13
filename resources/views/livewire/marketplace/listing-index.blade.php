@@ -1,10 +1,16 @@
 <div>
-    <section class="rounded-2xl bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 p-6 text-white shadow-sm sm:p-10" aria-labelledby="hero-heading">
-        <div class="max-w-2xl">
-            <h1 id="hero-heading" class="text-2xl font-bold leading-tight tracking-tight sm:text-4xl">
+    <section class="rounded-2xl bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 p-6 text-center text-white shadow-sm sm:p-10" aria-labelledby="hero-heading">
+        <div class="mx-auto max-w-2xl">
+            @guest
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15" aria-hidden="true">
+                    <x-app-icon name="bag" class="h-7 w-7" />
+                </div>
+            @endguest
+
+            <h1 id="hero-heading" class="mt-4 text-2xl font-bold leading-tight tracking-tight sm:text-4xl">
                 Buy and sell within your campus community
             </h1>
-            <p class="mt-2 text-sm text-brand-100 sm:text-base">
+            <p class="mx-auto mt-2 max-w-xl text-sm text-brand-100 sm:text-base">
                 Textbooks, laptops, dorm gear and more from verified students, with in-app chat and protected handovers.
             </p>
 
@@ -21,17 +27,37 @@
                         maxlength="100"
                         autocomplete="off"
                         placeholder="Search textbooks, laptops, dorm gear..."
-                        class="form-input border-transparent pl-11 shadow-sm"
+                        class="form-input border-transparent pl-11 text-left shadow-sm"
                     />
                 </div>
             </form>
 
             @guest
-                <p class="mt-4 text-sm text-brand-100">
-                    New here?
-                    <a href="{{ route('register') }}" class="font-semibold text-white underline underline-offset-2 hover:text-brand-200">Create a free account</a>
-                    to start selling.
-                </p>
+                <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+                    <a href="{{ route('listings.index') }}" class="btn min-h-11 border border-white/30 bg-white/10 px-4 text-white hover:bg-white/20">
+                        <x-app-icon name="search" class="h-4 w-4" /> Browse the marketplace
+                    </a>
+                    <a href="{{ route('register') }}" class="btn min-h-11 bg-white px-4 text-brand-800 hover:bg-brand-50">
+                        <x-app-icon name="plus" class="h-4 w-4" /> Join UniMarket
+                    </a>
+                </div>
+
+                @if ($heroStats)
+                    <dl class="mt-8 grid grid-cols-3 gap-4 border-t border-white/15 pt-6">
+                        <div>
+                            <dt class="text-2xl font-bold sm:text-3xl">{{ number_format($heroStats['students']) }}+</dt>
+                            <dd class="mt-0.5 text-xs text-brand-100 sm:text-sm">Students</dd>
+                        </div>
+                        <div>
+                            <dt class="text-2xl font-bold sm:text-3xl">{{ number_format($heroStats['listings']) }}+</dt>
+                            <dd class="mt-0.5 text-xs text-brand-100 sm:text-sm">Active listings</dd>
+                        </div>
+                        <div>
+                            <dt class="text-2xl font-bold sm:text-3xl">{{ number_format($heroStats['sales']) }}+</dt>
+                            <dd class="mt-0.5 text-xs text-brand-100 sm:text-sm">Completed sales</dd>
+                        </div>
+                    </dl>
+                @endif
             @endguest
         </div>
     </section>
@@ -69,34 +95,70 @@
             @endforeach
         </div>
 
-        <div x-data="{ open: window.innerWidth >= 1024 }" class="mt-4 border-b border-slate-200 pb-5">
-            <button type="button" x-on:click="open = !open" class="flex min-h-10 w-full items-center justify-between text-sm font-semibold text-ink lg:hidden">
-                More filters
-                <x-app-icon name="chevron-down" class="h-4 w-4 transition-transform" x-bind:class="open ? 'rotate-180' : ''" />
+    </section>
+
+    <div class="mt-6 flex flex-col gap-6 sm:mt-8 lg:flex-row lg:items-start" x-data="{ filtersOpen: window.innerWidth >= 1024 }">
+        <aside class="space-y-5 lg:w-64 lg:flex-shrink-0">
+            <x-app-sidebar :groups="[
+                ['items' => [
+                    ['label' => 'Browse all', 'icon' => 'home', 'href' => route('listings.index'), 'active' => true],
+                    ...(auth()->check() ? [
+                        ['label' => 'Inbox', 'icon' => 'chat', 'href' => route('chat.index')],
+                        ['label' => 'Buying', 'icon' => 'bag', 'href' => route('activity.buying')],
+                        ['label' => 'Selling', 'icon' => 'layout-grid', 'href' => route('listings.mine')],
+                    ] : []),
+                ]],
+            ]" class="card p-3" />
+
+            <button type="button" x-on:click="filtersOpen = !filtersOpen" class="btn btn-secondary btn-block justify-between lg:hidden" x-bind:aria-expanded="filtersOpen" aria-controls="marketplace-filters">
+                <span class="inline-flex items-center gap-2"><x-app-icon name="menu" class="h-4 w-4" /> Filters</span>
+                <x-app-icon name="chevron-down" class="h-4 w-4 transition-transform" x-bind:class="filtersOpen ? 'rotate-180' : ''" />
             </button>
 
-            <div x-show="open" x-cloak x-transition class="flex flex-col gap-4 pt-3 lg:flex-row lg:items-center lg:justify-between lg:pt-0">
-                <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Condition">
-                    <span class="mr-1 text-sm font-medium text-slate-700">Condition:</span>
-                    @foreach (\App\Models\Listing::CONDITIONS as $key => $label)
-                        <button type="button" wire:key="condition-{{ $key }}" wire:click="setCondition('{{ $key }}')" @class(['chip min-h-9 px-3 py-1.5', 'chip-active' => $conditionFilter === $key]) aria-pressed="{{ $conditionFilter === $key ? 'true' : 'false' }}">
-                            {{ $label }}
-                        </button>
-                    @endforeach
+            <div id="marketplace-filters" x-show="filtersOpen" x-cloak x-transition class="card mt-3 space-y-5 p-5 lg:mt-0">
+                <div>
+                    <label for="filter-category" class="form-label">Category</label>
+                    <select id="filter-category" wire:change="selectCategory($event.target.value)" class="form-input">
+                        <option value="" @selected(is_null($selectedCategory))>All categories</option>
+                        @foreach ($categories as $category)
+                            <option value="{{ $category->id }}" @selected($selectedCategory === $category->id)>{{ $category->name }} ({{ $category->listings_count }})</option>
+                        @endforeach
+                    </select>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <label for="sort" class="text-sm font-medium text-slate-700">Sort by</label>
-                    <select id="sort" wire:model.live="sortBy" class="form-input min-h-10 w-auto py-2">
+                <div>
+                    <label for="filter-condition" class="form-label">Condition</label>
+                    <select id="filter-condition" wire:model.live="conditionFilter" class="form-input">
+                        <option value="">Any condition</option>
+                        @foreach (\App\Models\Listing::CONDITIONS as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label for="filter-sort" class="form-label">Sort by</label>
+                    <select id="filter-sort" wire:model.live="sortBy" class="form-input">
                         <option value="latest">Newest first</option>
                         <option value="price_asc">Price: low to high</option>
                         <option value="price_desc">Price: high to low</option>
                     </select>
                 </div>
-            </div>
-        </div>
-    </section>
 
+                <label class="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-slate-800">
+                    <input type="checkbox" wire:model.live="hotDealsOnly" class="h-5 w-5 rounded border-slate-400 text-brand-700 focus:ring-brand-700" />
+                    <span>🔥 Hot deals only</span>
+                </label>
+
+                @if ($hasActiveFilters)
+                    <button type="button" wire:click="clearFilters" class="btn btn-secondary btn-sm btn-block">
+                        <x-app-icon name="x" class="h-4 w-4" /> Clear filters
+                    </button>
+                @endif
+            </div>
+        </aside>
+
+        <div class="min-w-0 flex-1 space-y-6 sm:space-y-8">
     @if ($popularWithYou->isNotEmpty())
         <section class="mt-6 sm:mt-8" aria-labelledby="popular-with-you-heading">
             <h2 id="popular-with-you-heading" class="mb-3 text-base font-bold text-ink">Popular with students like you</h2>
@@ -121,10 +183,13 @@
 
     <section class="mt-6" aria-live="polite" aria-busy="false">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <p class="text-sm text-slate-700">
-                <span class="font-semibold text-ink">{{ number_format($listings->total()) }}</span>
-                {{ \Illuminate\Support\Str::plural('item', $listings->total()) }} available
-            </p>
+            <div>
+                <h2 class="text-base font-bold text-ink">{{ $hasActiveFilters ? 'Results' : "Today's picks" }}</h2>
+                <p class="text-sm text-slate-700">
+                    <span class="font-semibold text-ink">{{ number_format($listings->total()) }}</span>
+                    {{ \Illuminate\Support\Str::plural('item', $listings->total()) }} available
+                </p>
+            </div>
             @if ($hasActiveFilters)
                 <button type="button" wire:click="clearFilters" class="btn btn-secondary btn-sm">
                     <x-app-icon name="x" class="h-4 w-4" /> Clear filters
@@ -132,7 +197,7 @@
             @endif
         </div>
 
-        <div wire:loading.delay class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" role="status" aria-label="Loading listings">
+        <div wire:loading.delay class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4" role="status" aria-label="Loading listings">
             @for ($i = 0; $i < 8; $i++)
                 <x-listing-card-skeleton />
             @endfor
@@ -140,7 +205,7 @@
 
         <div wire:loading.delay.remove>
             @if ($listings->count() > 0)
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
                     @foreach ($listings as $listing)
                         <x-listing-card :listing="$listing" wire:key="listing-{{ $listing->id }}" />
                     @endforeach
@@ -169,4 +234,6 @@
             @endif
         </div>
     </section>
+        </div>
+    </div>
 </div>

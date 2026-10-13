@@ -2,6 +2,7 @@
 
 use App\Livewire\Marketplace\ListingShow;
 use App\Models\Listing;
+use App\Models\ListingEvent;
 use App\Models\ListingView;
 use App\Models\User;
 use Livewire\Livewire;
@@ -15,6 +16,25 @@ it('records a view when a signed-in student opens a listing', function () {
     Livewire::actingAs($viewer)->test(ListingShow::class, ['listing' => $listing]);
 
     expect(ListingView::where('listing_id', $listing->id)->where('viewer_id', $viewer->id)->count())->toBe(1);
+});
+
+it('also writes a unified listing_events row for the view', function () {
+    $listing = Listing::factory()->create();
+    $viewer = User::factory()->create();
+
+    Livewire::actingAs($viewer)->test(ListingShow::class, ['listing' => $listing]);
+
+    expect(ListingEvent::where('listing_id', $listing->id)->where('user_id', $viewer->id)->where('type', ListingEvent::TYPE_VIEW)->count())->toBe(1);
+});
+
+it('does not duplicate the listing_events row when the view is throttled', function () {
+    $listing = Listing::factory()->create();
+    $viewer = User::factory()->create();
+
+    Livewire::actingAs($viewer)->test(ListingShow::class, ['listing' => $listing]);
+    Livewire::actingAs($viewer)->test(ListingShow::class, ['listing' => $listing]);
+
+    expect(ListingEvent::where('listing_id', $listing->id)->where('type', ListingEvent::TYPE_VIEW)->count())->toBe(1);
 });
 
 it('never counts the seller viewing their own listing', function () {
