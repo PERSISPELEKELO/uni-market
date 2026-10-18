@@ -99,17 +99,10 @@
 
     <div class="mt-6 flex flex-col gap-6 sm:mt-8 lg:flex-row lg:items-start" x-data="{ filtersOpen: window.innerWidth >= 1024 }">
         <aside class="space-y-5 lg:w-64 lg:flex-shrink-0">
-            <x-app-sidebar :groups="[
-                ['items' => [
-                    ['label' => 'Browse all', 'icon' => 'home', 'href' => route('listings.index'), 'active' => true],
-                    ...(auth()->check() ? [
-                        ['label' => 'Inbox', 'icon' => 'chat', 'href' => route('chat.index')],
-                        ['label' => 'Buying', 'icon' => 'bag', 'href' => route('activity.buying')],
-                        ['label' => 'Selling', 'icon' => 'layout-grid', 'href' => route('listings.mine')],
-                    ] : []),
-                ]],
-            ]" class="card p-3" />
-
+            {{-- Nav links (Browse/Inbox/Buying/Selling) removed - they now
+                 live in the top bar (desktop) and bottom tab bar (mobile),
+                 so this sidebar is filters-only, as the icon nav redesign
+                 intends. --}}
             <button type="button" x-on:click="filtersOpen = !filtersOpen" class="btn btn-secondary btn-block justify-between lg:hidden" x-bind:aria-expanded="filtersOpen" aria-controls="marketplace-filters">
                 <span class="inline-flex items-center gap-2"><x-app-icon name="menu" class="h-4 w-4" /> Filters</span>
                 <x-app-icon name="chevron-down" class="h-4 w-4 transition-transform" x-bind:class="filtersOpen ? 'rotate-180' : ''" />
