@@ -2,6 +2,9 @@
 
 namespace App\Livewire\Account;
 
+use App\Models\ListingEvent;
+use App\Models\ListingView;
+use App\Models\SearchLog;
 use App\Services\AuditLoggerService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -191,6 +194,36 @@ class Profile extends Component
 
         $this->reset('current_password', 'new_password', 'new_password_confirmation');
         $this->dispatch('notify', type: 'success', message: 'Your password has been changed.');
+    }
+
+    public function togglePersonalizeRecommendations(): void
+    {
+        $user = Auth::user();
+        $user->update(['personalize_recommendations' => ! $user->personalize_recommendations]);
+
+        $this->dispatch('notify', type: 'success', message: $user->personalize_recommendations
+            ? 'Your recommendations will now be personalised to your activity.'
+            : 'Your recommendations are no longer personalised - you\'ll see the same trending and new items as everyone else.');
+    }
+
+    /**
+     * Deletes this student's own browsing signal (views, searches, the
+     * unified listing_events log) - never another student's. Saved items
+     * and transaction history are left untouched since those aren't
+     * "browsing history" and clearing them would be destructive in a way
+     * the user didn't ask for.
+     */
+    public function clearBrowsingHistory(): void
+    {
+        $user = Auth::user();
+
+        ListingView::where('viewer_id', $user->id)->delete();
+        ListingEvent::where('user_id', $user->id)->delete();
+        SearchLog::where('user_id', $user->id)->delete();
+
+        app(AuditLoggerService::class)->recordAction($user, 'BROWSING_HISTORY_CLEARED', 'User', (string) $user->id, []);
+
+        $this->dispatch('notify', type: 'success', message: 'Your browsing history has been cleared.');
     }
 
     public function render()

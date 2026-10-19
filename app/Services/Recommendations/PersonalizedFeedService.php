@@ -25,6 +25,15 @@ use Illuminate\Support\Collection;
  * There is no seller-blocking/reporting concept in the app to exclude
  * reported sellers by, so that part of the brief isn't implemented -
  * nothing to build it from without inventing a new feature.
+ *
+ * recommendedForYou() deliberately does NOT also blend in "popular with
+ * students in the same year/school" - that demographic signal already has
+ * its own home-page carousel (BuyerInsightsService::popularListings(), the
+ * "Popular with students like you" section, suppressed the same way below
+ * config('insights.min_group_size')). Folding it into this carousel too
+ * would make the "Recommended for you" reason label misleading (it reads as
+ * personal activity, not a demographic average) and would just duplicate
+ * what the other carousel already shows.
  */
 class PersonalizedFeedService
 {

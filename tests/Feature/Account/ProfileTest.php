@@ -1,6 +1,10 @@
 <?php
 
 use App\Livewire\Account\Profile;
+use App\Models\Listing;
+use App\Models\ListingEvent;
+use App\Models\ListingView;
+use App\Models\SearchLog;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -274,14 +278,53 @@ describe('changing the password', function () {
     });
 });
 
+describe('privacy', function () {
+    it('turns recommendation personalisation on and off', function () {
+        $user = User::factory()->create(['personalize_recommendations' => true]);
+
+        Livewire::actingAs($user)->test(Profile::class)
+            ->call('togglePersonalizeRecommendations');
+
+        expect($user->fresh()->personalize_recommendations)->toBeFalse();
+
+        Livewire::actingAs($user->fresh())->test(Profile::class)
+            ->call('togglePersonalizeRecommendations');
+
+        expect($user->fresh()->personalize_recommendations)->toBeTrue();
+    });
+
+    it('clears a student\'s own browsing history without touching anyone else\'s', function () {
+        $user = User::factory()->create();
+        $otherStudent = User::factory()->create();
+        $listing = Listing::factory()->create();
+
+        ListingView::create(['listing_id' => $listing->id, 'viewer_id' => $user->id, 'session_hash' => 'h1', 'viewed_at' => now()]);
+        ListingView::create(['listing_id' => $listing->id, 'viewer_id' => $otherStudent->id, 'session_hash' => 'h2', 'viewed_at' => now()]);
+        ListingEvent::create(['listing_id' => $listing->id, 'user_id' => $user->id, 'type' => ListingEvent::TYPE_VIEW, 'created_at' => now()]);
+        ListingEvent::create(['listing_id' => $listing->id, 'user_id' => $otherStudent->id, 'type' => ListingEvent::TYPE_VIEW, 'created_at' => now()]);
+        SearchLog::create(['user_id' => $user->id, 'term' => 'calculator', 'results_count' => 3]);
+        SearchLog::create(['user_id' => $otherStudent->id, 'term' => 'calculator', 'results_count' => 3]);
+
+        Livewire::actingAs($user)->test(Profile::class)->call('clearBrowsingHistory');
+
+        expect(ListingView::where('viewer_id', $user->id)->count())->toBe(0)
+            ->and(ListingEvent::where('user_id', $user->id)->count())->toBe(0)
+            ->and(SearchLog::where('user_id', $user->id)->count())->toBe(0)
+            ->and(ListingView::where('viewer_id', $otherStudent->id)->count())->toBe(1)
+            ->and(ListingEvent::where('user_id', $otherStudent->id)->count())->toBe(1)
+            ->and(SearchLog::where('user_id', $otherStudent->id)->count())->toBe(1);
+    });
+});
+
 describe('account sections', function () {
-    it('shows the verification, security and reputation sections on one page', function () {
+    it('shows the verification, security, privacy and reputation sections on one page', function () {
         $user = User::factory()->pendingStudentVerification()->create();
 
         $this->actingAs($user)->get(route('account'))
             ->assertOk()
             ->assertSee('id="verification"', false)
             ->assertSee('id="security"', false)
+            ->assertSee('id="privacy"', false)
             ->assertSee('id="reputation"', false)
             ->assertSee('Student ID document')
             ->assertSee('Change password')

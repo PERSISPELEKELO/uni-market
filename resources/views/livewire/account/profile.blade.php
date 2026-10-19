@@ -223,6 +223,45 @@
                 </form>
             </section>
 
+            <section id="privacy" class="border-t border-slate-200 pt-6">
+                <h2 class="mb-3 text-lg font-bold text-ink">Privacy</h2>
+                <div class="card space-y-5 p-5 sm:p-6">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-sm font-semibold text-ink">Personalise my recommendations</p>
+                            <p class="text-sm text-slate-600">
+                                Use your own views, saves and searches to tailor "Recommended for you" and "Similar items". Turn this off to see the same trending and new items as everyone else.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            wire:click="togglePersonalizeRecommendations"
+                            role="switch"
+                            aria-checked="{{ $user->personalize_recommendations ? 'true' : 'false' }}"
+                            aria-label="Personalise my recommendations"
+                            class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors {{ $user->personalize_recommendations ? 'bg-brand-600' : 'bg-slate-300' }}"
+                        >
+                            <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform {{ $user->personalize_recommendations ? 'translate-x-5' : 'translate-x-0.5' }}"></span>
+                        </button>
+                    </div>
+
+                    <div class="flex items-start justify-between gap-4 border-t border-slate-100 pt-5">
+                        <div>
+                            <p class="text-sm font-semibold text-ink">Clear my browsing history</p>
+                            <p class="text-sm text-slate-600">Removes what we've recorded about the listings you've viewed and searched for. This doesn't affect your saved items or past transactions.</p>
+                        </div>
+                        <button
+                            type="button"
+                            wire:click="clearBrowsingHistory"
+                            wire:confirm="Clear your browsing history? This can't be undone."
+                            class="btn btn-danger-outline btn-sm whitespace-nowrap"
+                        >
+                            Clear history
+                        </button>
+                    </div>
+                </div>
+            </section>
+
             <section id="reputation" class="border-t border-slate-200 pt-6">
                 <h2 class="mb-3 text-lg font-bold text-ink">Reputation &amp; data export</h2>
                 <div class="card space-y-4 p-5 sm:p-6">
