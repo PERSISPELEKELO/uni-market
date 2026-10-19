@@ -249,6 +249,44 @@
         </div>
     </div>
 
+    @unless ($isOwner)
+        {{-- Sticky mobile action bar: price + the exact same primary action
+             already in the Seller card above (same wire:click targets, no
+             duplicated state logic) so price and the primary action are
+             visible without scrolling, per the "clear CTA" redesign. Sits
+             just above the global bottom tab bar rather than replacing it. --}}
+        <div class="fixed inset-x-0 bottom-14 z-30 border-t border-slate-200 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur md:hidden dark:border-slate-300 dark:bg-slate-200/95">
+            <div class="flex items-center gap-3">
+                <div class="min-w-0 flex-1">
+                    <p class="truncate text-lg font-bold text-ink">K{{ number_format($listing->price, 2) }}</p>
+                    @if ($listing->isHotDeal())
+                        <p class="text-xs text-slate-500 line-through">K{{ number_format($listing->previous_price, 2) }}</p>
+                    @endif
+                </div>
+
+                @if ($listing->status === 'active')
+                    <button type="button" wire:click="contactSeller" class="btn btn-secondary min-h-11 min-w-11 flex-shrink-0 px-3" aria-label="Message seller" title="Message seller">
+                        <x-app-icon name="chat" class="h-5 w-5" />
+                    </button>
+
+                    @if ($hasReserved)
+                        <span class="btn btn-secondary pointer-events-none flex-shrink-0">Reserved</span>
+                    @else
+                        <button type="button" wire:click="reserve" wire:loading.attr="disabled" wire:target="reserve" class="btn btn-primary flex-shrink-0">
+                            <span wire:loading.remove wire:target="reserve">{{ auth()->check() ? 'Reserve this item' : 'Log in to reserve' }}</span>
+                            <span wire:loading wire:target="reserve">Reserving...</span>
+                        </button>
+                    @endif
+                @else
+                    <span class="btn btn-secondary pointer-events-none flex-shrink-0">
+                        {{ $listing->status === 'sold' ? 'Sold' : 'Not available' }}
+                    </span>
+                @endif
+            </div>
+        </div>
+        <div class="h-20 md:hidden" aria-hidden="true"></div>
+    @endunless
+
     <div
         x-show="lightboxOpen"
         x-cloak

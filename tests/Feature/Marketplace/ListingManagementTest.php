@@ -8,9 +8,11 @@ use App\Models\Listing;
 use App\Models\Reservation;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Notifications\NewListingPosted;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -72,6 +74,40 @@ describe('creating a listing', function () {
         collect($listing->images)->each(fn (string $path) => Storage::disk('public')->assertExists($path));
 
         $component->assertRedirect(route('listings.show', $listing));
+    });
+
+    it('notifies students subscribed to new-listing alerts, but never the poster themselves', function () {
+        Notification::fake();
+
+        $seller = User::factory()->create();
+        $subscriber = User::factory()->create(['notify_new_listings' => true]);
+        User::factory()->create(['notify_new_listings' => false]); // not subscribed
+        $category = Category::factory()->create();
+
+        $component = Livewire::actingAs($seller)->test(CreateListing::class);
+        fillListingForm($component, validListingData($category, [
+            'form.images' => [fakePhoto('front.png')],
+        ]))->call('save');
+
+        $listing = Listing::firstOrFail();
+
+        Notification::assertSentTo($subscriber, NewListingPosted::class);
+        Notification::assertNotSentTo($seller, NewListingPosted::class);
+        Notification::assertCount(1);
+    });
+
+    it('does not notify anyone when a listing is only saved as a draft', function () {
+        Notification::fake();
+
+        User::factory()->create(['notify_new_listings' => true]);
+        $category = Category::factory()->create();
+
+        $component = Livewire::actingAs(User::factory()->create())->test(CreateListing::class);
+        fillListingForm($component, validListingData($category, [
+            'form.images' => [fakePhoto('front.png')],
+        ]))->call('saveAsDraft');
+
+        Notification::assertNothingSent();
     });
 
     it('shows a helpful message for every missing required field', function () {

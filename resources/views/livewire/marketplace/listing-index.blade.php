@@ -42,7 +42,9 @@
                     </a>
                 </div>
 
-                @if ($heroStats)
+                {{-- Only shown once every figure is genuinely meaningful -
+                     a page full of zeros looks unfinished, not trustworthy. --}}
+                @if ($heroStats && $heroStats['students'] >= 10 && $heroStats['listings'] >= 10 && $heroStats['sales'] >= 10)
                     <dl class="mt-8 grid grid-cols-3 gap-4 border-t border-white/15 pt-6">
                         <div>
                             <dt class="text-2xl font-bold sm:text-3xl">{{ number_format($heroStats['students']) }}+</dt>
@@ -336,9 +338,18 @@
                     @else
                         <h2 class="mt-3 text-base font-semibold text-ink">Nothing for sale yet</h2>
                         <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">Be the first to list an item on the campus marketplace.</p>
-                        <a href="{{ auth()->check() ? route('listings.create') : route('register') }}" class="btn btn-primary mt-4">
-                            {{ auth()->check() ? 'Sell an item' : 'Create an account to sell' }}
-                        </a>
+                        <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+                            <a href="{{ auth()->check() ? route('listings.create') : route('register') }}" class="btn btn-primary">
+                                {{ auth()->check() ? 'Sell an item' : 'Create an account to sell' }}
+                            </a>
+                            <button type="button" wire:click="toggleNotifyNewListings" class="btn btn-secondary">
+                                @if (auth()->user()?->notify_new_listings)
+                                    <x-app-icon name="check-circle" class="h-4 w-4" /> You'll be notified
+                                @else
+                                    <x-app-icon name="bell" class="h-4 w-4" /> Get notified when items arrive
+                                @endif
+                            </button>
+                        </div>
                     @endif
                 </div>
             @endif

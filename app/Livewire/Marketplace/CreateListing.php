@@ -4,8 +4,11 @@ namespace App\Livewire\Marketplace;
 
 use App\Livewire\Concerns\ManagesListingForm;
 use App\Models\Listing;
+use App\Models\User;
+use App\Notifications\NewListingPosted;
 use App\Services\AuditLoggerService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
@@ -61,8 +64,25 @@ class CreateListing extends Component
                 ->with('success', 'Saved as a draft - publish it from My Listings whenever you are ready.');
         }
 
+        $this->notifySubscribedStudents($listing);
+
         return redirect()->route('listings.show', $listing)
             ->with('success', 'Your listing is live on the campus marketplace!');
+    }
+
+    /**
+     * Students who opted in via the marketplace's "Get notified when items
+     * arrive" button - never the poster themselves.
+     */
+    private function notifySubscribedStudents(Listing $listing): void
+    {
+        $subscribers = User::where('notify_new_listings', true)
+            ->where('id', '!=', Auth::id())
+            ->get();
+
+        if ($subscribers->isNotEmpty()) {
+            Notification::send($subscribers, new NewListingPosted($listing));
+        }
     }
 
     public function render()

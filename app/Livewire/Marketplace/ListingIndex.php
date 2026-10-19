@@ -148,6 +148,29 @@ class ListingIndex extends Component
         $this->resetPage();
     }
 
+    /**
+     * The marketplace empty state's "Get notified when items arrive"
+     * secondary CTA - a guest is sent to log in first (per the brief: "only
+     * ask guests to log in when they click"), a signed-in student just
+     * flips the flag that CreateListing::persist() checks when a new
+     * listing goes live.
+     */
+    public function toggleNotifyNewListings()
+    {
+        if (! Auth::check()) {
+            return redirect()->guest(route('login'));
+        }
+
+        $user = Auth::user();
+        $user->update(['notify_new_listings' => ! $user->notify_new_listings]);
+
+        $this->dispatch('notify', type: 'success', message: $user->notify_new_listings
+            ? "You'll be notified when new items are listed."
+            : 'You will no longer be notified about new listings.');
+
+        return null;
+    }
+
     public function render()
     {
         $condition = array_key_exists($this->conditionFilter, Listing::CONDITIONS) ? $this->conditionFilter : '';

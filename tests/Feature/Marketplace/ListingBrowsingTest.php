@@ -13,10 +13,10 @@ use Livewire\Livewire;
 beforeEach(fn () => $this->withoutVite());
 
 describe('browsing', function () {
-    it('shows real headline stats in the hero to a guest, but not to a signed-in student', function () {
-        User::factory()->count(2)->create(['role' => 'student']);
-        Listing::factory()->create();
-        Transaction::factory()->create(['status' => 'COMPLETED']);
+    it('shows real headline stats in the hero to a guest once every figure clears the floor, but not to a signed-in student', function () {
+        User::factory()->count(10)->create(['role' => 'student']);
+        Listing::factory()->count(10)->create();
+        Transaction::factory()->count(10)->create(['status' => 'COMPLETED']);
 
         $this->get(route('listings.index'))
             ->assertSee('Students')
@@ -26,6 +26,35 @@ describe('browsing', function () {
         $this->actingAs(User::factory()->create())
             ->get(route('listings.index'))
             ->assertDontSee('Completed sales');
+    });
+
+    it('hides the hero stats row entirely while any figure is still below the floor, rather than showing zeros', function () {
+        User::factory()->count(2)->create(['role' => 'student']);
+        Listing::factory()->create();
+        Transaction::factory()->create(['status' => 'COMPLETED']);
+
+        $this->get(route('listings.index'))
+            ->assertDontSee('Active listings')
+            ->assertDontSee('Completed sales');
+    });
+
+    it('toggles the new-listing notification opt-in for a signed-in student', function () {
+        $student = User::factory()->create(['notify_new_listings' => false]);
+
+        Livewire::actingAs($student)->test(ListingIndex::class)
+            ->call('toggleNotifyNewListings')
+            ->assertSet('search', ''); // component still renders fine after the toggle
+
+        expect($student->fresh()->notify_new_listings)->toBeTrue();
+
+        Livewire::actingAs($student)->test(ListingIndex::class)->call('toggleNotifyNewListings');
+        expect($student->fresh()->notify_new_listings)->toBeFalse();
+    });
+
+    it('sends a guest to log in instead of toggling the notification opt-in', function () {
+        Livewire::test(ListingIndex::class)
+            ->call('toggleNotifyNewListings')
+            ->assertRedirect(route('login'));
     });
 
     it('shows the reservation count on a listing card, and hides it when there are none', function () {
@@ -270,6 +299,18 @@ describe('viewing a listing', function () {
         $this->get(route('listings.show', 99999))
             ->assertNotFound()
             ->assertSee('We could not find that page');
+    });
+
+    it('shows a sticky mobile action bar with the price and primary action to a buyer, but not to the seller', function () {
+        $seller = User::factory()->create();
+        $buyer = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id, 'price' => 300]);
+
+        $response = $this->actingAs($buyer)->get(route('listings.show', $listing))->assertSee('Reserve this item');
+        expect(substr_count($response->getContent(), 'K300.00'))->toBeGreaterThanOrEqual(2); // main card + sticky bar
+
+        $ownerResponse = $this->actingAs($seller)->get(route('listings.show', $listing))->assertSee('This is your listing.');
+        expect(substr_count($ownerResponse->getContent(), 'K300.00'))->toBe(1); // sticky bar hidden for the owner
     });
 
     it('hides suspended listings from everyone except their seller', function () {
