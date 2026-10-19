@@ -94,6 +94,11 @@ class Listing extends Model
         return $this->hasMany(ListingEvent::class);
     }
 
+    public function similarities(): HasMany
+    {
+        return $this->hasMany(ListingSimilarity::class)->orderByDesc('score');
+    }
+
     public function savedBy(): HasMany
     {
         return $this->hasMany(SavedListing::class);

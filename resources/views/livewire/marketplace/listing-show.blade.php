@@ -228,6 +228,10 @@
                 @endif
             </x-section>
 
+            <x-listing-carousel title="Similar items" :items="$similarItems" key-prefix="similar" rec-section="similar_items" />
+
+            <x-listing-carousel title="Students also viewed" :items="$studentsAlsoViewed" key-prefix="also-viewed" rec-section="students_also_viewed" />
+
             @if ($frequentlyBoughtWith->isNotEmpty())
                 <x-section title="Students who bought this category also bought" class="card p-5 sm:p-6">
                     <ul class="space-y-2">

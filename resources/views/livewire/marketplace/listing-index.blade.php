@@ -244,27 +244,24 @@
         </aside>
 
         <div class="min-w-0 flex-1 space-y-6 sm:space-y-8">
-    @if ($popularWithYou->isNotEmpty())
-        <section class="mt-6 sm:mt-8" aria-labelledby="popular-with-you-heading">
-            <h2 id="popular-with-you-heading" class="mb-3 text-base font-bold text-ink">Popular with students like you</h2>
-            <div class="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-                @foreach ($popularWithYou as $listing)
-                    <x-listing-card :listing="$listing" wire:key="popular-{{ $listing->id }}" class="w-64 flex-shrink-0 sm:w-72" />
-                @endforeach
-            </div>
-        </section>
+    <x-listing-carousel title="Recommended for you" :items="$recommendedForYou" key-prefix="recommended" rec-section="recommended_for_you" description="Based on what you've been looking at recently." />
+
+    @if ($becauseYouViewed)
+        <x-listing-carousel
+            title="Because you viewed &quot;{{ \Illuminate\Support\Str::limit($becauseYouViewed['listing']->title, 40) }}&quot;"
+            :items="$becauseYouViewed['items']"
+            key-prefix="because-you-viewed"
+            rec-section="because_you_viewed"
+        />
     @endif
 
-    @if ($sellingFast->isNotEmpty())
-        <section class="mt-6 sm:mt-8" aria-labelledby="selling-fast-heading">
-            <h2 id="selling-fast-heading" class="mb-3 text-base font-bold text-ink">Selling fast</h2>
-            <div class="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-                @foreach ($sellingFast as $listing)
-                    <x-listing-card :listing="$listing" wire:key="selling-fast-{{ $listing->id }}" class="w-64 flex-shrink-0 sm:w-72" />
-                @endforeach
-            </div>
-        </section>
-    @endif
+    <x-listing-carousel title="Popular with students like you" :items="$popularWithYou" key-prefix="popular" />
+
+    <x-listing-carousel title="Trending this week" :items="$trending" key-prefix="trending" rec-section="trending" description="Real views in the last 24 hours." />
+
+    <x-listing-carousel title="Good deals" :items="$goodDeals" key-prefix="good-deals" rec-section="good_deals" description="Priced below the typical price for their category and condition." />
+
+    <x-listing-carousel title="Just listed" :items="$justListed" key-prefix="just-listed" rec-section="just_listed" />
 
     <section class="mt-6" aria-live="polite" aria-busy="false">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-2">

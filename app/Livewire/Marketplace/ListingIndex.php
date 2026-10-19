@@ -4,10 +4,12 @@ namespace App\Livewire\Marketplace;
 
 use App\Models\Category;
 use App\Models\Listing;
+use App\Models\RecommendationEvent;
 use App\Models\SearchLog;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Insights\BuyerInsightsService;
+use App\Services\Recommendations\PersonalizedFeedService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -34,6 +36,13 @@ class ListingIndex extends Component
     public string $priceMin = '';
 
     public string $priceMax = '';
+
+    /**
+     * Guards recommendation-impression logging to once per page load -
+     * render() runs again on every filter/search interaction, and an
+     * impression is only ever genuinely "shown" the first time.
+     */
+    public bool $recommendationImpressionsLogged = false;
 
     /**
      * How many of the busiest categories show as chips before the rest
@@ -199,18 +208,74 @@ class ListingIndex extends Component
 
         $hasActiveFilters = $this->search !== '' || $this->selectedCategory !== null || $condition !== '' || $sortBy !== 'latest' || $this->hotDealsOnly || $priceMin !== null || $priceMax !== null;
 
+        $feed = app(PersonalizedFeedService::class);
+        $user = Auth::user();
+
+        // Carousels are only shown on the unfiltered homepage - once someone
+        // is filtering, the main grid below already shows matching results.
+        $recommendedForYou = $hasActiveFilters ? collect() : $feed->recommendedForYou($user);
+        $becauseYouViewed = $hasActiveFilters ? null : $feed->becauseYouViewed($user);
+        $trending = $hasActiveFilters ? collect() : $feed->trending();
+        $goodDeals = $hasActiveFilters ? collect() : $feed->goodDeals();
+        $justListed = $hasActiveFilters ? collect() : $feed->justListed();
+
+        if (! $hasActiveFilters) {
+            $this->logImpressionsOnce([
+                RecommendationEvent::SECTION_RECOMMENDED_FOR_YOU => $recommendedForYou,
+                RecommendationEvent::SECTION_BECAUSE_YOU_VIEWED => $becauseYouViewed['items'] ?? collect(),
+                RecommendationEvent::SECTION_TRENDING => $trending,
+                RecommendationEvent::SECTION_GOOD_DEALS => $goodDeals,
+                RecommendationEvent::SECTION_JUST_LISTED => $justListed,
+            ]);
+        }
+
         return view('livewire.marketplace.listing-index', [
             'listings' => $listings,
             'categories' => $categories,
             'topCategories' => $this->topCategories($categories),
             'hasActiveFilters' => $hasActiveFilters,
-            // Carousels are only shown on the unfiltered homepage - once someone
-            // is filtering, the main grid below already shows matching results.
             'hotDeals' => $hasActiveFilters ? collect() : Listing::active()->hotDeals()->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])->latest('price_dropped_at')->limit(8)->get(),
-            'sellingFast' => $hasActiveFilters ? collect() : $this->sellingFast(),
-            'popularWithYou' => ($hasActiveFilters || ! Auth::check()) ? collect() : app(BuyerInsightsService::class)->popularListings(Auth::user()),
+            'popularWithYou' => ($hasActiveFilters || ! Auth::check()) ? collect() : app(BuyerInsightsService::class)->popularListings($user),
+            'recommendedForYou' => $recommendedForYou,
+            'becauseYouViewed' => $becauseYouViewed,
+            'trending' => $trending,
+            'goodDeals' => $goodDeals,
+            'justListed' => $justListed,
             'heroStats' => Auth::check() ? null : $this->heroStats(),
         ])->layout('layouts.app', ['title' => 'Campus Marketplace - UniMarket']);
+    }
+
+    /**
+     * @param  array<string, Collection<int, Listing>>  $sections
+     */
+    private function logImpressionsOnce(array $sections): void
+    {
+        if ($this->recommendationImpressionsLogged) {
+            return;
+        }
+
+        $this->recommendationImpressionsLogged = true;
+        $userId = Auth::id();
+        $sessionHash = hash('sha256', session()->getId());
+        $now = now();
+
+        $rows = [];
+        foreach ($sections as $section => $items) {
+            foreach ($items as $listing) {
+                $rows[] = [
+                    'listing_id' => $listing->id,
+                    'user_id' => $userId,
+                    'session_hash' => $sessionHash,
+                    'section' => $section,
+                    'type' => RecommendationEvent::TYPE_IMPRESSION,
+                    'created_at' => $now,
+                ];
+            }
+        }
+
+        if ($rows !== []) {
+            RecommendationEvent::insert($rows);
+        }
     }
 
     /**
@@ -238,26 +303,6 @@ class ListingIndex extends Component
         }
 
         return $categories->sortByDesc('listings_count')->take(self::TOP_CATEGORY_COUNT)->values();
-    }
-
-    /**
-     * Active listings genuinely getting more attention than most right now
-     * (real view counts from the last 7 days, never a fabricated "trending"
-     * label) - hidden entirely rather than shown with zero signal.
-     *
-     * @return Collection<int, Listing>
-     */
-    private function sellingFast(): Collection
-    {
-        return Listing::active()
-            ->withCount(['views' => fn ($query) => $query->where('viewed_at', '>=', now()->subDays(7))])
-            ->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])
-            ->orderByDesc('views_count')
-            ->latest()
-            ->limit(8)
-            ->get()
-            ->filter(fn (Listing $listing) => $listing->views_count > 0)
-            ->values();
     }
 
     /**

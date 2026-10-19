@@ -6,8 +6,10 @@ use App\Models\Category;
 use App\Models\Listing;
 use App\Models\ListingEvent;
 use App\Models\ListingView;
+use App\Models\RecommendationEvent;
 use App\Models\Reservation;
 use App\Services\Insights\FrequentlyBoughtTogetherService;
+use App\Services\Recommendations\CoOccurrenceService;
 use App\Services\ReservationService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -17,9 +19,21 @@ use Livewire\Component;
 
 class ListingShow extends Component
 {
+    private const RECOMMENDATION_SECTIONS = [
+        RecommendationEvent::SECTION_RECOMMENDED_FOR_YOU,
+        RecommendationEvent::SECTION_BECAUSE_YOU_VIEWED,
+        RecommendationEvent::SECTION_TRENDING,
+        RecommendationEvent::SECTION_GOOD_DEALS,
+        RecommendationEvent::SECTION_JUST_LISTED,
+        RecommendationEvent::SECTION_SIMILAR_ITEMS,
+        RecommendationEvent::SECTION_STUDENTS_ALSO_VIEWED,
+    ];
+
     public Listing $listing;
 
     public int $activeImageIndex = 0;
+
+    public bool $recommendationImpressionsLogged = false;
 
     public function mount(Listing $listing): void
     {
@@ -28,6 +42,31 @@ class ListingShow extends Component
         $this->listing = $listing->load(['seller', 'category']);
 
         $this->recordView();
+        $this->recordRecommendationClick();
+    }
+
+    /**
+     * Attributes a click back to whichever recommendation carousel it came
+     * from, via the ?rec= tag x-listing-card adds to a recommended item's
+     * link (see RecommendationEvent) - an ordinary browse-grid click has
+     * no tag and logs nothing here.
+     */
+    private function recordRecommendationClick(): void
+    {
+        $section = request()->query('rec');
+
+        if (! is_string($section) || ! in_array($section, self::RECOMMENDATION_SECTIONS, true)) {
+            return;
+        }
+
+        RecommendationEvent::create([
+            'listing_id' => $this->listing->id,
+            'user_id' => Auth::id(),
+            'session_hash' => hash('sha256', session()->getId()),
+            'section' => $section,
+            'type' => RecommendationEvent::TYPE_CLICK,
+            'created_at' => now(),
+        ]);
     }
 
     /**
@@ -147,13 +186,62 @@ class ListingShow extends Component
             ? $this->listing->activeReservations()->get()
             : collect();
 
+        $similarItems = Listing::active()
+            ->whereIn('id', $this->listing->similarities()->pluck('similar_listing_id'))
+            ->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])
+            ->get()
+            ->sortByDesc(fn (Listing $l) => $this->listing->similarities->firstWhere('similar_listing_id', $l->id)?->score ?? 0)
+            ->values();
+
+        $studentsAlsoViewed = app(CoOccurrenceService::class)->alsoViewed($this->listing);
+
+        $this->logRecommendationImpressionsOnce([
+            RecommendationEvent::SECTION_SIMILAR_ITEMS => $similarItems,
+            RecommendationEvent::SECTION_STUDENTS_ALSO_VIEWED => $studentsAlsoViewed,
+        ]);
+
         return view('livewire.marketplace.listing-show', [
             'reservationCount' => $this->listing->reservations()->active()->count(),
             'hasReserved' => $this->listing->hasActiveReservationFrom(Auth::user()),
             'activeReservations' => $activeReservations,
             'recentViewCount' => $this->listing->views()->where('viewed_at', '>=', now()->subDays(7))->count(),
             'frequentlyBoughtWith' => $this->frequentlyBoughtWith(),
+            'similarItems' => $similarItems,
+            'studentsAlsoViewed' => $studentsAlsoViewed,
         ])->layout('layouts.app', ['title' => $this->listing->title.' - UniMarket']);
+    }
+
+    /**
+     * @param  array<string, Collection<int, Listing>>  $sections
+     */
+    private function logRecommendationImpressionsOnce(array $sections): void
+    {
+        if ($this->recommendationImpressionsLogged) {
+            return;
+        }
+
+        $this->recommendationImpressionsLogged = true;
+        $userId = Auth::id();
+        $sessionHash = hash('sha256', session()->getId());
+        $now = now();
+
+        $rows = [];
+        foreach ($sections as $section => $items) {
+            foreach ($items as $listing) {
+                $rows[] = [
+                    'listing_id' => $listing->id,
+                    'user_id' => $userId,
+                    'session_hash' => $sessionHash,
+                    'section' => $section,
+                    'type' => RecommendationEvent::TYPE_IMPRESSION,
+                    'created_at' => $now,
+                ];
+            }
+        }
+
+        if ($rows !== []) {
+            RecommendationEvent::insert($rows);
+        }
     }
 
     /**

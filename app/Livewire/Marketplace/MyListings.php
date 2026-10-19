@@ -7,6 +7,7 @@ use App\Models\ListingEvent;
 use App\Models\Message;
 use App\Models\Reservation;
 use App\Services\AuditLoggerService;
+use App\Services\Recommendations\ContentSimilarityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
@@ -52,6 +53,7 @@ class MyListings extends Component
         $listing->update(['status' => Listing::STATUS_ACTIVE]);
 
         app(AuditLoggerService::class)->log('LISTING_PUBLISHED', 'Listing', $listing->id, ['title' => $listing->title], Auth::user());
+        app(ContentSimilarityService::class)->refreshFor($listing);
 
         $this->dispatch('notify', type: 'success', message: 'Your listing is now live.');
     }

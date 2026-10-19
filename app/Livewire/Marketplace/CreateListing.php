@@ -7,6 +7,7 @@ use App\Models\Listing;
 use App\Models\User;
 use App\Notifications\NewListingPosted;
 use App\Services\AuditLoggerService;
+use App\Services\Recommendations\ContentSimilarityService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -64,6 +65,7 @@ class CreateListing extends Component
                 ->with('success', 'Saved as a draft - publish it from My Listings whenever you are ready.');
         }
 
+        app(ContentSimilarityService::class)->refreshFor($listing);
         $this->notifySubscribedStudents($listing);
 
         return redirect()->route('listings.show', $listing)
