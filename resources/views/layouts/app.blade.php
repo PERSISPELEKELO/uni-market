@@ -228,6 +228,14 @@
                     <x-app-icon name="moon" class="block h-5 w-5 dark:hidden" />
                     <span>Toggle dark mode</span>
                 </button>
+                <button
+                    type="button"
+                    class="nav-link flex w-full items-center gap-2 py-3 text-left"
+                    x-on:click="$dispatch('open-help-panel'); mobileOpen = false"
+                >
+                    <x-app-icon name="help-circle" class="h-5 w-5" />
+                    <span>Help</span>
+                </button>
                 @auth
                     <div class="mt-2 border-t border-slate-100 pt-3">
                         <div class="flex items-center gap-2.5 px-3">
@@ -449,6 +457,8 @@
             @endauth
         </div>
     </nav>
+
+    @livewire('help-panel')
 
     @livewireScripts
 </body>
