@@ -303,6 +303,11 @@
                 <button type="button" wire:click="clearFilters" class="text-sm font-medium text-brand-800 hover:underline dark:text-brand-300">
                     Clear all
                 </button>
+                @if ($search !== '' || $selectedCategory || ($conditionFilter !== '' && array_key_exists($conditionFilter, \App\Models\Listing::CONDITIONS)))
+                    <button type="button" wire:click="saveSearch" class="chip">
+                        <x-app-icon name="bell" class="h-3.5 w-3.5" /> Save this search
+                    </button>
+                @endif
             </div>
         @endif
 

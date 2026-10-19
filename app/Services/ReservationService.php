@@ -11,7 +11,9 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\ListingReserved;
 use App\Notifications\ReservationSelected;
+use App\Notifications\SavedListingAboutToBeReserved;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use InvalidArgumentException;
 
 /**
@@ -70,7 +72,28 @@ class ReservationService
             report($exception);
         }
 
+        $this->notifyOtherSavers($listing, $buyer);
+
         return $reservation;
+    }
+
+    /**
+     * Lets everyone else who saved this listing know it's getting
+     * interest - never the buyer who just reserved it themselves.
+     */
+    private function notifyOtherSavers(Listing $listing, User $buyer): void
+    {
+        $savers = $listing->savedBy()->with('user')->where('user_id', '!=', $buyer->id)->get()->pluck('user')->filter();
+
+        if ($savers->isEmpty()) {
+            return;
+        }
+
+        try {
+            Notification::send($savers, new SavedListingAboutToBeReserved($listing));
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     /**

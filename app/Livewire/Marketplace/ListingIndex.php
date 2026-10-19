@@ -5,6 +5,7 @@ namespace App\Livewire\Marketplace;
 use App\Models\Category;
 use App\Models\Listing;
 use App\Models\RecommendationEvent;
+use App\Models\SavedSearch;
 use App\Models\SearchLog;
 use App\Models\Transaction;
 use App\Models\User;
@@ -178,6 +179,48 @@ class ListingIndex extends Component
             : 'You will no longer be notified about new listings.');
 
         return null;
+    }
+
+    /**
+     * Saves the student's current search/category/condition as a standing
+     * alert - SavedSearchMatchFound (via saved-searches:notify-matches)
+     * tells them when something new matches it. A no-op if there's nothing
+     * to save, or if they've already saved this exact combination.
+     */
+    public function saveSearch()
+    {
+        if (! Auth::check()) {
+            return redirect()->guest(route('login'));
+        }
+
+        $term = trim($this->search) !== '' ? trim($this->search) : null;
+        $condition = array_key_exists($this->conditionFilter, Listing::CONDITIONS) ? $this->conditionFilter : null;
+
+        if ($term === null && $this->selectedCategory === null && $condition === null) {
+            return null;
+        }
+
+        $existing = SavedSearch::where('user_id', Auth::id())
+            ->where('term', $term)
+            ->where('category_id', $this->selectedCategory)
+            ->where('condition', $condition)
+            ->exists();
+
+        if ($existing) {
+            $this->dispatch('notify', type: 'success', message: "You've already saved this search.");
+
+            return;
+        }
+
+        SavedSearch::create([
+            'user_id' => Auth::id(),
+            'term' => $term,
+            'category_id' => $this->selectedCategory,
+            'condition' => $condition,
+            'created_at' => now(),
+        ]);
+
+        $this->dispatch('notify', type: 'success', message: "Saved. We'll let you know when something new matches.");
     }
 
     public function render()
