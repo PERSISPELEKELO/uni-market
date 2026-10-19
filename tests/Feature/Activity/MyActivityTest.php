@@ -227,3 +227,13 @@ it('sorts the per-listing performance table by the clicked column and flips dire
     $component->call('sortListingsBy', 'clicks')
         ->assertSeeInOrder(['Quiet item', 'Popular item']);
 });
+
+it('shows a "why isn\'t it selling?" hint on the per-listing performance table', function () {
+    $seller = User::factory()->create();
+    Listing::factory()->create(['user_id' => $seller->id, 'title' => 'Ignored item', 'created_at' => now()->subDays(10)]);
+
+    Livewire::actingAs($seller)->test(MyActivity::class)
+        ->call('setTab', 'insights')
+        ->call('setInsightsSidebarView', 'selling')
+        ->assertSee('No views yet');
+});

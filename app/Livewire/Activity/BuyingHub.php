@@ -9,6 +9,7 @@ use App\Models\ListingEvent;
 use App\Models\SavedListing;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Insights\BuyerInsightsService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -36,6 +37,7 @@ class BuyingHub extends Component
             'alerts' => $this->priceDropAlerts($user),
             'following' => $this->following($user),
             'activeListingCount' => $user->listings()->active()->count(),
+            'buyerTotals' => app(BuyerInsightsService::class)->totals($user),
         ])->layout('layouts.app', ['title' => 'Buying - UniMarket']);
     }
 

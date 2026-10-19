@@ -9,6 +9,12 @@
         </a>
     </div>
 
+    <section class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Buying overview">
+        <x-stat-card label="Items bought" :number="$buyerTotals['total_items']" icon="bag" />
+        <x-stat-card label="Total spent" :number="$buyerTotals['total_spent']" prefix="K" :decimals="2" icon="upload" />
+        <x-stat-card label="Average per item" :number="$buyerTotals['average_spend']" prefix="K" :decimals="2" icon="chart-bar" />
+    </section>
+
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
         <aside class="lg:col-span-3">
             <x-app-sidebar :groups="[

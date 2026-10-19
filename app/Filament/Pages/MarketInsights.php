@@ -35,7 +35,7 @@ class MarketInsights extends Page
 
     public ?string $selectedCategory = null;
 
-    private const SECTIONS = ['overview', 'marketplace', 'growth', 'trust', 'listings'];
+    private const SECTIONS = ['overview', 'marketplace', 'growth', 'trust', 'listings', 'recommendations'];
 
     /**
      * @return array<string, string>
@@ -96,6 +96,9 @@ class MarketInsights extends Page
             'listings' => [
                 'funnel' => $this->funnelChart($service->listingFunnel($this->period)),
                 'peak-days' => $this->peakChart($service->peakTimes($this->period)['days'], 'day'),
+            ],
+            'recommendations' => [
+                'recommendation-ctr' => $this->recommendationCtrChart($service->recommendationClickThroughRate($this->period)),
             ],
             default => [
                 'value-over-time' => $this->lineChart($service->valueOverTime($this->period), 'week', 'value', 'Value (K)'),
@@ -204,6 +207,26 @@ class MarketInsights extends Page
                 'backgroundColor' => ChartPalette::take(count($rows)),
             ]],
         ];
+    }
+
+    /**
+     * @param  array<int, array{section: string, impressions: int, clicks: int, ctr: float}>  $rows
+     */
+    private function recommendationCtrChart(array $rows): array
+    {
+        return [
+            'labels' => array_column($rows, 'section'),
+            'datasets' => [[
+                'label' => 'Click-through rate (%)',
+                'data' => array_column($rows, 'ctr'),
+                'backgroundColor' => ChartPalette::take(count($rows)),
+            ]],
+        ];
+    }
+
+    public function recommendationClickThroughRate(): array
+    {
+        return app(MarketInsightsService::class)->recommendationClickThroughRate($this->period);
     }
 
     public function totals(): array

@@ -9,6 +9,7 @@ use App\Models\Dispute;
 use App\Models\Listing;
 use App\Models\ListingView;
 use App\Models\Rating;
+use App\Models\RecommendationEvent;
 use App\Models\Reservation;
 use App\Models\SearchLog;
 use App\Models\Transaction;
@@ -366,6 +367,53 @@ class MarketInsightsService
 
             return ['days' => $days, 'hours' => $hours];
         });
+    }
+
+    /**
+     * Click-through rate per recommendation carousel section - a real count
+     * of logged impressions and clicks (RecommendationEvent), never a
+     * fabricated number, for the dissertation evaluation this was built
+     * for. A section with zero impressions this period is left out rather
+     * than shown as a misleading 0%.
+     *
+     * @return array<int, array{section: string, impressions: int, clicks: int, ctr: float}>
+     */
+    public function recommendationClickThroughRate(string $period = '30d'): array
+    {
+        return InsightsCache::remember("market:recommendation-ctr:{$period}", function () use ($period) {
+            [$start, $end] = $this->periodBoundaries($period);
+
+            $impressions = RecommendationEvent::where('type', RecommendationEvent::TYPE_IMPRESSION)
+                ->whereBetween('created_at', [$start, $end])
+                ->get()
+                ->countBy('section');
+
+            $clicks = RecommendationEvent::where('type', RecommendationEvent::TYPE_CLICK)
+                ->whereBetween('created_at', [$start, $end])
+                ->get()
+                ->countBy('section');
+
+            return $impressions->keys()
+                ->map(function (string $section) use ($impressions, $clicks) {
+                    $impressionCount = $impressions->get($section, 0);
+                    $clickCount = $clicks->get($section, 0);
+
+                    return [
+                        'section' => $this->recommendationSectionLabel($section),
+                        'impressions' => $impressionCount,
+                        'clicks' => $clickCount,
+                        'ctr' => $impressionCount > 0 ? round(($clickCount / $impressionCount) * 100, 1) : 0.0,
+                    ];
+                })
+                ->sortByDesc('impressions')
+                ->values()
+                ->all();
+        });
+    }
+
+    private function recommendationSectionLabel(string $section): string
+    {
+        return ucfirst(str_replace('_', ' ', $section));
     }
 
     /**
