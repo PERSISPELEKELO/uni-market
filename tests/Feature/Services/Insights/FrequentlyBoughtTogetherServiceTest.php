@@ -5,6 +5,7 @@ use App\Models\Listing;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Insights\FrequentlyBoughtTogetherService;
+use Illuminate\Support\Collection;
 
 beforeEach(fn () => $this->service = app(FrequentlyBoughtTogetherService::class));
 
@@ -87,4 +88,53 @@ it('only returns pairs that genuinely involve the requested category', function 
 
     expect($pairs)->toHaveCount(1)
         ->and(collect($pairs)->first())->toMatchArray(['category_a' => 'Books', 'category_b' => 'Pens']);
+});
+
+describe('caching with a real serializing cache store', function () {
+    /**
+     * The `array` cache driver this suite uses by default keeps values as
+     * real in-memory PHP objects, so a cached Collection survives a second
+     * read perfectly - masking the real bug, which only appears once a
+     * value is genuinely serialized and unserialized. `database` forces
+     * that round trip, the same way production's CACHE_STORE does.
+     */
+    beforeEach(fn () => config(['cache.default' => 'database']));
+
+    it('returns a correct, equal Collection on a second (from-cache) call, not a broken object', function () {
+        config(['insights.min_group_size' => 5]);
+        $books = Category::factory()->create(['name' => 'Books', 'slug' => 'books']);
+        $pens = Category::factory()->create(['name' => 'Pens', 'slug' => 'pens']);
+
+        foreach (range(1, 5) as $_) {
+            $buyer = User::factory()->create();
+            boughtFrom($buyer, $books);
+            boughtFrom($buyer, $pens);
+        }
+
+        $first = $this->service->forCategory('books');
+        $second = $this->service->forCategory('books');
+
+        expect($first)->toBeInstanceOf(Collection::class)
+            ->and($second)->toBeInstanceOf(Collection::class)
+            ->and($second->toArray())->toBe($first->toArray())
+            ->and($second->first()['category_a'])->toBe('Books');
+    });
+
+    it('also survives a second call for the all-categories pairing', function () {
+        config(['insights.min_group_size' => 5]);
+        $books = Category::factory()->create(['name' => 'Books']);
+        $pens = Category::factory()->create(['name' => 'Pens']);
+
+        foreach (range(1, 5) as $_) {
+            $buyer = User::factory()->create();
+            boughtFrom($buyer, $books);
+            boughtFrom($buyer, $pens);
+        }
+
+        $first = $this->service->topPairs();
+        $second = $this->service->topPairs();
+
+        expect($second)->toBeInstanceOf(Collection::class)
+            ->and($second->toArray())->toBe($first->toArray());
+    });
 });

@@ -285,11 +285,13 @@ class ListingIndex extends Component
 
         // Carousels are only shown on the unfiltered homepage - once someone
         // is filtering, the main grid below already shows matching results.
-        $recommendedForYou = $hasActiveFilters ? collect() : $feed->recommendedForYou($user);
-        $becauseYouViewed = $hasActiveFilters ? null : $feed->becauseYouViewed($user);
-        $trending = $hasActiveFilters ? collect() : $feed->trending();
-        $goodDeals = $hasActiveFilters ? collect() : $feed->goodDeals();
-        $justListed = $hasActiveFilters ? collect() : $feed->justListed();
+        // Each is wrapped so a failure in one recommendation section never
+        // takes down the whole home page - it just hides that section.
+        $recommendedForYou = $hasActiveFilters ? collect() : $this->safely(fn () => $feed->recommendedForYou($user), collect());
+        $becauseYouViewed = $hasActiveFilters ? null : $this->safely(fn () => $feed->becauseYouViewed($user), null);
+        $trending = $hasActiveFilters ? collect() : $this->safely(fn () => $feed->trending(), collect());
+        $goodDeals = $hasActiveFilters ? collect() : $this->safely(fn () => $feed->goodDeals(), collect());
+        $justListed = $hasActiveFilters ? collect() : $this->safely(fn () => $feed->justListed(), collect());
 
         if (! $hasActiveFilters) {
             $this->logImpressionsOnce([
@@ -306,8 +308,8 @@ class ListingIndex extends Component
             'categories' => $categories,
             'topCategories' => $this->topCategories($categories),
             'hasActiveFilters' => $hasActiveFilters,
-            'hotDeals' => $hasActiveFilters ? collect() : Listing::active()->hotDeals()->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])->latest('price_dropped_at')->limit(8)->get(),
-            'popularWithYou' => ($hasActiveFilters || ! Auth::check()) ? collect() : app(BuyerInsightsService::class)->popularListings($user),
+            'hotDeals' => $hasActiveFilters ? collect() : $this->safely(fn () => Listing::active()->hotDeals()->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])->latest('price_dropped_at')->limit(8)->get(), collect()),
+            'popularWithYou' => ($hasActiveFilters || ! Auth::check()) ? collect() : $this->safely(fn () => app(BuyerInsightsService::class)->popularListings($user), collect()),
             'recommendedForYou' => $recommendedForYou,
             'becauseYouViewed' => $becauseYouViewed,
             'trending' => $trending,
@@ -375,6 +377,23 @@ class ListingIndex extends Component
         }
 
         return $categories->sortByDesc('listings_count')->take(self::TOP_CATEGORY_COUNT)->values();
+    }
+
+    /**
+     * Runs an optional, non-essential section of the page (a recommendation
+     * carousel, hot deals, popular-with-you) and falls back instead of
+     * taking the whole marketplace page down with it - a broken
+     * recommendation is just a hidden carousel, never a 500.
+     */
+    private function safely(\Closure $callback, mixed $fallback): mixed
+    {
+        try {
+            return $callback();
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return $fallback;
+        }
     }
 
     /**

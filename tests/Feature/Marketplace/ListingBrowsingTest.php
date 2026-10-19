@@ -298,6 +298,19 @@ describe('browsing', function () {
 });
 
 describe('viewing a listing', function () {
+    it('returns 200 on the same listing page every time, not just the first (regression: cached Collections surviving a real serialize round trip)', function () {
+        // The `array` cache driver never actually serializes anything, which
+        // is exactly why this bug (a cached Collection coming back from a
+        // second request as __PHP_Incomplete_Class and crashing the page)
+        // never showed up with this suite's default cache store.
+        config(['cache.default' => 'database']);
+        $listing = Listing::factory()->create();
+
+        $this->get(route('listings.show', ['listing' => $listing, 'rec' => 'just_listed']))->assertOk();
+        $this->get(route('listings.show', ['listing' => $listing, 'rec' => 'just_listed']))->assertOk();
+        $this->get(route('listings.show', ['listing' => $listing, 'rec' => 'just_listed']))->assertOk();
+    });
+
     it('shows the details a buyer needs without exposing the seller\'s student id', function () {
         $seller = User::factory()->create(['name' => 'Mwamba Bwalya', 'student_id' => '2024883912']);
         $listing = Listing::factory()->create([

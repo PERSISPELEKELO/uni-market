@@ -186,14 +186,14 @@ class ListingShow extends Component
             ? $this->listing->activeReservations()->get()
             : collect();
 
-        $similarItems = Listing::active()
+        $similarItems = $this->safely(fn () => Listing::active()
             ->whereIn('id', $this->listing->similarities()->pluck('similar_listing_id'))
             ->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])
             ->get()
             ->sortByDesc(fn (Listing $l) => $this->listing->similarities->firstWhere('similar_listing_id', $l->id)?->score ?? 0)
-            ->values();
+            ->values(), collect());
 
-        $studentsAlsoViewed = app(CoOccurrenceService::class)->alsoViewed($this->listing);
+        $studentsAlsoViewed = $this->safely(fn () => app(CoOccurrenceService::class)->alsoViewed($this->listing), collect());
 
         $this->logRecommendationImpressionsOnce([
             RecommendationEvent::SECTION_SIMILAR_ITEMS => $similarItems,
@@ -205,10 +205,27 @@ class ListingShow extends Component
             'hasReserved' => $this->listing->hasActiveReservationFrom(Auth::user()),
             'activeReservations' => $activeReservations,
             'recentViewCount' => $this->listing->views()->where('viewed_at', '>=', now()->subDays(7))->count(),
-            'frequentlyBoughtWith' => $this->frequentlyBoughtWith(),
+            'frequentlyBoughtWith' => $this->safely(fn () => $this->frequentlyBoughtWith(), collect()),
             'similarItems' => $similarItems,
             'studentsAlsoViewed' => $studentsAlsoViewed,
         ])->layout('layouts.app', ['title' => $this->listing->title.' - UniMarket']);
+    }
+
+    /**
+     * Runs an optional, non-essential section of the page (recommendations,
+     * "frequently bought together", similar items) and falls back to an
+     * empty result instead of taking the whole listing page down with it -
+     * a broken insight is just a hidden section, never a 500.
+     */
+    private function safely(\Closure $callback, mixed $fallback): mixed
+    {
+        try {
+            return $callback();
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return $fallback;
+        }
     }
 
     /**
