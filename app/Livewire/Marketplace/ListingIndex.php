@@ -31,12 +31,25 @@ class ListingIndex extends Component
 
     public bool $hotDealsOnly = false;
 
+    public string $priceMin = '';
+
+    public string $priceMax = '';
+
+    /**
+     * How many of the busiest categories show as chips before the rest
+     * fold into "More" - keeps the row to one scrollable line instead of
+     * wrapping across several.
+     */
+    private const TOP_CATEGORY_COUNT = 6;
+
     protected $queryString = [
         'search' => ['except' => ''],
         'selectedCategory' => ['except' => null, 'as' => 'category'],
         'conditionFilter' => ['except' => '', 'as' => 'condition'],
         'sortBy' => ['except' => 'latest'],
         'hotDealsOnly' => ['except' => false, 'as' => 'deals'],
+        'priceMin' => ['except' => '', 'as' => 'min'],
+        'priceMax' => ['except' => '', 'as' => 'max'],
     ];
 
     public function updatingSearch(): void
@@ -113,9 +126,25 @@ class ListingIndex extends Component
         $this->resetPage();
     }
 
+    public function updatedPriceMin(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPriceMax(): void
+    {
+        $this->resetPage();
+    }
+
+    public function clearPriceRange(): void
+    {
+        $this->reset('priceMin', 'priceMax');
+        $this->resetPage();
+    }
+
     public function clearFilters(): void
     {
-        $this->reset('search', 'selectedCategory', 'conditionFilter', 'sortBy', 'hotDealsOnly');
+        $this->reset('search', 'selectedCategory', 'conditionFilter', 'sortBy', 'hotDealsOnly', 'priceMin', 'priceMax');
         $this->resetPage();
     }
 
@@ -123,6 +152,8 @@ class ListingIndex extends Component
     {
         $condition = array_key_exists($this->conditionFilter, Listing::CONDITIONS) ? $this->conditionFilter : '';
         $sortBy = in_array($this->sortBy, self::SORTS, true) ? $this->sortBy : 'latest';
+        $priceMin = is_numeric($this->priceMin) ? (float) $this->priceMin : null;
+        $priceMax = is_numeric($this->priceMax) ? (float) $this->priceMax : null;
 
         $listings = Listing::query()
             ->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])
@@ -132,6 +163,8 @@ class ListingIndex extends Component
             ->when($this->selectedCategory, fn ($query, $categoryId) => $query->where('category_id', $categoryId))
             ->when($condition !== '', fn ($query) => $query->where('condition', $condition))
             ->when($this->hotDealsOnly, fn ($query) => $query->hotDeals())
+            ->when($priceMin !== null, fn ($query) => $query->where('price', '>=', $priceMin))
+            ->when($priceMax !== null, fn ($query) => $query->where('price', '<=', $priceMax))
             ->when($sortBy === 'price_asc', fn ($query) => $query->orderBy('price'))
             ->when($sortBy === 'price_desc', fn ($query) => $query->orderByDesc('price'))
             ->when($sortBy === 'latest', fn ($query) => $query->latest())
@@ -141,11 +174,12 @@ class ListingIndex extends Component
             ->orderBy('name')
             ->get();
 
-        $hasActiveFilters = $this->search !== '' || $this->selectedCategory !== null || $condition !== '' || $sortBy !== 'latest' || $this->hotDealsOnly;
+        $hasActiveFilters = $this->search !== '' || $this->selectedCategory !== null || $condition !== '' || $sortBy !== 'latest' || $this->hotDealsOnly || $priceMin !== null || $priceMax !== null;
 
         return view('livewire.marketplace.listing-index', [
             'listings' => $listings,
             'categories' => $categories,
+            'topCategories' => $this->topCategories($categories),
             'hasActiveFilters' => $hasActiveFilters,
             // Carousels are only shown on the unfiltered homepage - once someone
             // is filtering, the main grid below already shows matching results.
@@ -154,6 +188,33 @@ class ListingIndex extends Component
             'popularWithYou' => ($hasActiveFilters || ! Auth::check()) ? collect() : app(BuyerInsightsService::class)->popularListings(Auth::user()),
             'heroStats' => Auth::check() ? null : $this->heroStats(),
         ])->layout('layouts.app', ['title' => 'Campus Marketplace - UniMarket']);
+    }
+
+    /**
+     * The busiest categories (by active listing count), capped so the chip
+     * row stays to one scrollable line - everything else is reachable via
+     * the "More" chip instead of wrapping across several rows. Falls back
+     * to a fixed, sensible order when there's no listing data yet at all
+     * (a fresh install), rather than an arbitrary/alphabetical one.
+     *
+     * @param  Collection<int, Category>  $categories
+     * @return Collection<int, Category>
+     */
+    private function topCategories(Collection $categories): Collection
+    {
+        if ($categories->sum('listings_count') === 0) {
+            $fallbackOrder = [
+                'electronics-laptops', 'books-textbooks', 'clothing-fashion',
+                'phones-accessories', 'furniture', 'food-beverages',
+            ];
+
+            return collect($fallbackOrder)
+                ->map(fn (string $slug) => $categories->firstWhere('slug', $slug))
+                ->filter()
+                ->values();
+        }
+
+        return $categories->sortByDesc('listings_count')->take(self::TOP_CATEGORY_COUNT)->values();
     }
 
     /**

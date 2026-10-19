@@ -140,6 +140,56 @@ describe('browsing', function () {
         expect($listing->fresh()->isHotDeal())->toBeTrue();
     });
 
+    it('filters by a price range and can clear it independently of other filters', function () {
+        Listing::factory()->create(['title' => 'Cheap textbook', 'price' => 50]);
+        Listing::factory()->create(['title' => 'Mid-range laptop', 'price' => 500]);
+        Listing::factory()->create(['title' => 'Expensive macbook', 'price' => 9000]);
+
+        $component = Livewire::test(ListingIndex::class)
+            ->set('priceMin', '100')
+            ->set('priceMax', '1000')
+            ->assertSee('Mid-range laptop')
+            ->assertDontSee('Cheap textbook')
+            ->assertDontSee('Expensive macbook');
+
+        $component->call('clearPriceRange')
+            ->assertSet('priceMin', '')
+            ->assertSet('priceMax', '')
+            ->assertSee('Cheap textbook')
+            ->assertSee('Mid-range laptop')
+            ->assertSee('Expensive macbook');
+    });
+
+    it('ignores a non-numeric price range instead of erroring', function () {
+        Listing::factory()->create(['title' => 'Only item', 'price' => 50]);
+
+        Livewire::test(ListingIndex::class)
+            ->set('priceMin', 'not-a-number')
+            ->assertSee('Only item');
+    });
+
+    it('shows only the busiest categories as chips, capped at six, with the rest reachable via "More"', function () {
+        // The canonical 15 categories already exist (seeded by migration,
+        // see 2026_09_28_153539) - no need to create any for this test.
+        $busiest = Category::where('slug', 'books-textbooks')->first();
+        Listing::factory()->count(5)->create(['category_id' => $busiest->id]);
+
+        Livewire::test(ListingIndex::class)
+            ->assertViewHas('topCategories', fn ($topCategories) => $topCategories->count() === 6 && $topCategories->first()->id === $busiest->id)
+            ->assertViewHas('categories', fn ($allCategories) => $allCategories->count() === 15);
+    });
+
+    it('falls back to a fixed category order when there are no listings at all yet', function () {
+        // The canonical 15 categories already exist (seeded by migration)
+        // and start with zero listings in a fresh test database - no setup
+        // needed to exercise the no-data fallback.
+        Livewire::test(ListingIndex::class)
+            ->assertViewHas('topCategories', function ($topCategories) {
+                return $topCategories->isNotEmpty()
+                    && $topCategories->first()->slug === 'electronics-laptops';
+            });
+    });
+
     it('sorts by price', function () {
         Listing::factory()->create(['title' => 'Cheap thing', 'price' => 10]);
         Listing::factory()->create(['title' => 'Pricey thing', 'price' => 900]);

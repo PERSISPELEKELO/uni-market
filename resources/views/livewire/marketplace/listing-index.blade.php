@@ -78,23 +78,111 @@
         </section>
     @endif
 
-    <section class="mt-6 sm:mt-8" aria-label="Filter listings">
-        <div class="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Categories">
-            <button type="button" wire:click="selectCategory(null)" @class(['chip', 'chip-active' => is_null($selectedCategory)]) aria-pressed="{{ is_null($selectedCategory) ? 'true' : 'false' }}">
-                All items
+    <section
+        class="mt-6 sm:mt-8"
+        aria-label="Filter by category"
+        x-data="{
+            canScrollLeft: false,
+            canScrollRight: false,
+            check() {
+                const el = this.$refs.chips;
+                this.canScrollLeft = el.scrollLeft > 4;
+                this.canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+            },
+        }"
+        x-init="$nextTick(() => check())"
+    >
+        <div class="relative">
+            <button
+                type="button"
+                x-show="canScrollLeft"
+                x-cloak
+                x-on:click="$refs.chips.scrollBy({ left: -200, behavior: 'smooth' })"
+                class="absolute -left-3 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm sm:flex dark:bg-slate-200"
+                aria-label="Scroll categories left"
+            >
+                <x-app-icon name="chevron-left" class="h-4 w-4" />
             </button>
-            <button type="button" wire:click="toggleHotDeals" @class(['chip', 'chip-active' => $hotDealsOnly]) aria-pressed="{{ $hotDealsOnly ? 'true' : 'false' }}">
-                🔥 Hot Deals
+            <button
+                type="button"
+                x-show="canScrollRight"
+                x-cloak
+                x-on:click="$refs.chips.scrollBy({ left: 200, behavior: 'smooth' })"
+                class="absolute -right-3 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm sm:flex dark:bg-slate-200"
+                aria-label="Scroll categories right"
+            >
+                <x-app-icon name="chevron-right" class="h-4 w-4" />
             </button>
-            @foreach ($categories as $category)
-                <button type="button" wire:key="category-{{ $category->id }}" wire:click="selectCategory({{ $category->id }})" @class(['chip', 'chip-active' => $selectedCategory === $category->id]) aria-pressed="{{ $selectedCategory === $category->id ? 'true' : 'false' }}">
-                    <span aria-hidden="true">{{ $category->emoji() }}</span>
-                    <span>{{ $category->name }}</span>
-                    <span class="text-xs opacity-80">({{ $category->listings_count }})</span>
-                </button>
-            @endforeach
-        </div>
 
+            <div x-ref="chips" x-on:scroll.debounce.100ms="check()" class="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0" role="group" aria-label="Categories">
+                <button type="button" wire:click="selectCategory(null)" @class(['chip flex-shrink-0', 'chip-active' => is_null($selectedCategory)]) aria-pressed="{{ is_null($selectedCategory) ? 'true' : 'false' }}">
+                    All
+                </button>
+                @foreach ($topCategories as $category)
+                    <button type="button" wire:key="category-{{ $category->id }}" wire:click="selectCategory({{ $category->id }})" @class(['chip flex-shrink-0', 'chip-active' => $selectedCategory === $category->id]) aria-pressed="{{ $selectedCategory === $category->id ? 'true' : 'false' }}">
+                        <span aria-hidden="true">{{ $category->emoji() }}</span>
+                        <span>{{ $category->name }}</span>
+                        @if ($category->listings_count > 0)
+                            <span class="badge badge-neutral px-1.5 py-0 text-[10px]">{{ $category->listings_count }}</span>
+                        @endif
+                    </button>
+                @endforeach
+
+                <div class="relative flex-shrink-0" x-data="{ moreOpen: false }">
+                    <button type="button" x-on:click="moreOpen = true" class="chip" aria-haspopup="true" x-bind:aria-expanded="moreOpen">
+                        More <x-app-icon name="chevron-down" class="h-3.5 w-3.5" />
+                    </button>
+
+                    {{-- Mobile: full bottom sheet --}}
+                    <div x-show="moreOpen" x-cloak class="fixed inset-0 z-50 sm:hidden" role="dialog" aria-modal="true" aria-label="All categories">
+                        <div class="absolute inset-0 bg-black/40" x-on:click="moreOpen = false"></div>
+                        <div x-show="moreOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0" class="absolute inset-x-0 bottom-0 max-h-[75vh] overflow-y-auto rounded-t-2xl bg-white p-4 dark:bg-slate-200">
+                            <div class="mb-3 flex items-center justify-between">
+                                <h2 class="text-base font-bold text-ink">All categories</h2>
+                                <button type="button" x-on:click="moreOpen = false" class="-m-2 p-2" aria-label="Close">
+                                    <x-app-icon name="x" class="h-5 w-5" />
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-3 gap-3">
+                                @foreach ($categories as $category)
+                                    <button
+                                        type="button"
+                                        wire:key="more-mobile-{{ $category->id }}"
+                                        wire:click="selectCategory({{ $category->id }})"
+                                        x-on:click="moreOpen = false"
+                                        @class(['flex flex-col items-center gap-1 rounded-xl border p-3 text-center', 'border-brand-700 bg-brand-50 dark:bg-brand-500/10' => $selectedCategory === $category->id, 'border-slate-200' => $selectedCategory !== $category->id])
+                                    >
+                                        <span class="text-2xl" aria-hidden="true">{{ $category->emoji() }}</span>
+                                        <span class="text-xs font-medium text-ink">{{ $category->name }}</span>
+                                        @if ($category->listings_count > 0)
+                                            <span class="text-[10px] text-slate-500">{{ $category->listings_count }}</span>
+                                        @endif
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Desktop: anchored popover --}}
+                    <div x-show="moreOpen" x-cloak x-on:click.outside="moreOpen = false" x-transition class="absolute left-0 top-full z-50 mt-2 hidden w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-lg sm:block dark:bg-slate-200">
+                        <div class="grid grid-cols-3 gap-2">
+                            @foreach ($categories as $category)
+                                <button
+                                    type="button"
+                                    wire:key="more-desktop-{{ $category->id }}"
+                                    wire:click="selectCategory({{ $category->id }})"
+                                    x-on:click="moreOpen = false"
+                                    @class(['flex flex-col items-center gap-1 rounded-lg border p-2 text-center hover:bg-slate-50', 'border-brand-700 bg-brand-50 dark:bg-brand-500/10' => $selectedCategory === $category->id, 'border-slate-200' => $selectedCategory !== $category->id])
+                                >
+                                    <span class="text-xl" aria-hidden="true">{{ $category->emoji() }}</span>
+                                    <span class="text-xs font-medium text-ink">{{ $category->name }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
 
     <div class="mt-6 flex flex-col gap-6 sm:mt-8 lg:flex-row lg:items-start" x-data="{ filtersOpen: window.innerWidth >= 1024 }">
@@ -109,16 +197,7 @@
             </button>
 
             <div id="marketplace-filters" x-show="filtersOpen" x-cloak x-transition class="card mt-3 space-y-5 p-5 lg:mt-0">
-                <div>
-                    <label for="filter-category" class="form-label">Category</label>
-                    <select id="filter-category" wire:change="selectCategory($event.target.value)" class="form-input">
-                        <option value="" @selected(is_null($selectedCategory))>All categories</option>
-                        @foreach ($categories as $category)
-                            <option value="{{ $category->id }}" @selected($selectedCategory === $category->id)>{{ $category->name }} ({{ $category->listings_count }})</option>
-                        @endforeach
-                    </select>
-                </div>
-
+                {{-- Category has its own chip row above - no duplicate control here. --}}
                 <div>
                     <label for="filter-condition" class="form-label">Condition</label>
                     <select id="filter-condition" wire:model.live="conditionFilter" class="form-input">
@@ -127,6 +206,17 @@
                             <option value="{{ $key }}">{{ $label }}</option>
                         @endforeach
                     </select>
+                </div>
+
+                <div>
+                    <span class="form-label">Price range (K)</span>
+                    <div class="flex items-center gap-2">
+                        <label for="filter-price-min" class="sr-only">Minimum price</label>
+                        <input id="filter-price-min" type="number" inputmode="decimal" min="0" step="0.01" wire:model.live.debounce.500ms="priceMin" placeholder="Min" class="form-input" />
+                        <span class="text-slate-400">–</span>
+                        <label for="filter-price-max" class="sr-only">Maximum price</label>
+                        <input id="filter-price-max" type="number" inputmode="decimal" min="0" step="0.01" wire:model.live.debounce.500ms="priceMax" placeholder="Max" class="form-input" />
+                    </div>
                 </div>
 
                 <div>
@@ -183,12 +273,39 @@
                     {{ \Illuminate\Support\Str::plural('item', $listings->total()) }} available
                 </p>
             </div>
-            @if ($hasActiveFilters)
-                <button type="button" wire:click="clearFilters" class="btn btn-secondary btn-sm">
-                    <x-app-icon name="x" class="h-4 w-4" /> Clear filters
-                </button>
-            @endif
         </div>
+
+        @if ($hasActiveFilters)
+            <div class="mb-4 flex flex-wrap items-center gap-2" aria-label="Active filters">
+                @if ($selectedCategory)
+                    <span class="chip chip-active">
+                        {{ $categories->firstWhere('id', $selectedCategory)?->name }}
+                        <button type="button" wire:click="selectCategory(null)" aria-label="Remove category filter"><x-app-icon name="x" class="h-3.5 w-3.5" /></button>
+                    </span>
+                @endif
+                @if ($conditionFilter !== '' && array_key_exists($conditionFilter, \App\Models\Listing::CONDITIONS))
+                    <span class="chip chip-active">
+                        {{ \App\Models\Listing::CONDITIONS[$conditionFilter] }}
+                        <button type="button" wire:click="$set('conditionFilter', '')" aria-label="Remove condition filter"><x-app-icon name="x" class="h-3.5 w-3.5" /></button>
+                    </span>
+                @endif
+                @if ($hotDealsOnly)
+                    <span class="chip chip-active">
+                        🔥 Hot deals
+                        <button type="button" wire:click="toggleHotDeals" aria-label="Remove hot deals filter"><x-app-icon name="x" class="h-3.5 w-3.5" /></button>
+                    </span>
+                @endif
+                @if ($priceMin !== '' || $priceMax !== '')
+                    <span class="chip chip-active">
+                        K{{ $priceMin !== '' ? $priceMin : '0' }}–K{{ $priceMax !== '' ? $priceMax : '∞' }}
+                        <button type="button" wire:click="clearPriceRange" aria-label="Remove price filter"><x-app-icon name="x" class="h-3.5 w-3.5" /></button>
+                    </span>
+                @endif
+                <button type="button" wire:click="clearFilters" class="text-sm font-medium text-brand-800 hover:underline dark:text-brand-300">
+                    Clear all
+                </button>
+            </div>
+        @endif
 
         <div wire:loading.delay class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4" role="status" aria-label="Loading listings">
             @for ($i = 0; $i < 8; $i++)
