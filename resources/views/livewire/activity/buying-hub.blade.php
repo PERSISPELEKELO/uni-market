@@ -38,7 +38,7 @@
                         <ul class="divide-y divide-accent-100">
                             @foreach ($alerts as $alert)
                                 <li class="flex items-center gap-3 py-2.5">
-                                    <x-listing-image :src="$alert->listing->cover_image_url" :alt="$alert->listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
+                                    <x-listing-image :src="$alert->listing->cover_thumbnail_url" :alt="$alert->listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
                                     <div class="min-w-0 flex-1">
                                         <a href="{{ route('listings.show', $alert->listing) }}" class="block truncate text-sm font-medium text-ink hover:text-brand-800 dark:hover:text-brand-300">{{ $alert->listing->title }}</a>
                                         <p class="text-xs text-slate-600">
@@ -61,7 +61,7 @@
                     <ul class="divide-y divide-slate-100">
                         @foreach ($recentActivity as $listing)
                             <li class="flex items-center gap-3 py-2.5">
-                                <x-listing-image :src="$listing->cover_image_url" :alt="$listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
+                                <x-listing-image :src="$listing->cover_thumbnail_url" :alt="$listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
                                 <div class="min-w-0 flex-1">
                                     <a href="{{ route('listings.show', $listing) }}" class="block truncate text-sm font-medium text-ink hover:text-brand-800 dark:hover:text-brand-300">{{ $listing->title }}</a>
                                     <p class="text-xs text-slate-600">{{ $listing->category->name }} &middot; K{{ number_format($listing->price, 2) }}</p>
@@ -80,7 +80,7 @@
                     <ul class="divide-y divide-slate-100">
                         @foreach ($saved as $item)
                             <li class="flex items-center gap-3 py-2.5">
-                                <x-listing-image :src="$item->listing->cover_image_url" :alt="$item->listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
+                                <x-listing-image :src="$item->listing->cover_thumbnail_url" :alt="$item->listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
                                 <div class="min-w-0 flex-1">
                                     <a href="{{ route('listings.show', $item->listing) }}" class="block truncate text-sm font-medium text-ink hover:text-brand-800 dark:hover:text-brand-300">{{ $item->listing->title }}</a>
                                     <p class="text-xs text-slate-600">{{ $item->listing->category->name }} &middot; K{{ number_format($item->listing->price, 2) }}</p>

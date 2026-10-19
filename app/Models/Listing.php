@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ListingImageService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -225,6 +226,26 @@ class Listing extends Model
     protected function coverImageUrl(): Attribute
     {
         return Attribute::get(fn (): ?string => $this->image_urls[0] ?? null);
+    }
+
+    /**
+     * The resized thumbnail for the first photo - this is what
+     * x-listing-card loads everywhere a listing appears as a small card
+     * (the marketplace grid, carousels, search results), never the full
+     * original. Falls back to the original when no thumbnail exists yet
+     * (e.g. a photo uploaded before thumbnail generation existed).
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function coverThumbnailUrl(): Attribute
+    {
+        return Attribute::get(function (): ?string {
+            $firstImage = ($this->images ?? [])[0] ?? null;
+
+            return $firstImage !== null
+                ? app(ListingImageService::class)->thumbnailUrlFor($firstImage)
+                : null;
+        });
     }
 
     /**

@@ -4,8 +4,8 @@ namespace App\Livewire\Forms;
 
 use App\Models\Listing;
 use App\Models\User;
+use App\Services\ListingImageService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\Form;
@@ -121,7 +121,7 @@ class ListingForm extends Form
         try {
             return $seller->listings()->create($this->listingAttributes($paths) + ['status' => $status]);
         } catch (\Throwable $exception) {
-            Storage::disk('public')->delete($paths);
+            app(ListingImageService::class)->delete($paths);
 
             throw $exception;
         }
@@ -144,12 +144,12 @@ class ListingForm extends Form
                 $this->listingAttributes($paths) + $this->priceDropAttributes($previousPrice, $newPrice)
             ));
         } catch (\Throwable $exception) {
-            Storage::disk('public')->delete(array_diff($paths, $originalImages));
+            app(ListingImageService::class)->delete(array_diff($paths, $originalImages));
 
             throw $exception;
         }
 
-        Storage::disk('public')->delete(array_diff($originalImages, $paths));
+        app(ListingImageService::class)->delete(array_diff($originalImages, $paths));
 
         return $listing;
     }
@@ -197,8 +197,10 @@ class ListingForm extends Form
      */
     private function storeNewImages(): array
     {
+        $imageService = app(ListingImageService::class);
+
         return collect($this->images)
-            ->map(fn (TemporaryUploadedFile $image): string => $image->store('listings', 'public'))
+            ->map(fn (TemporaryUploadedFile $image): string => $imageService->store($image))
             ->values()
             ->all();
     }

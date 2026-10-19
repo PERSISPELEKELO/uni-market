@@ -311,7 +311,7 @@
             </div>
         @endif
 
-        <div wire:loading.delay class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4" role="status" aria-label="Loading listings">
+        <div wire:loading.delay class="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5" role="status" aria-label="Loading listings">
             @for ($i = 0; $i < 8; $i++)
                 <x-listing-card-skeleton />
             @endfor
@@ -319,14 +319,20 @@
 
         <div wire:loading.delay.remove>
             @if ($listings->count() > 0)
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     @foreach ($listings as $listing)
                         <x-listing-card :listing="$listing" wire:key="listing-{{ $listing->id }}" />
                     @endforeach
                 </div>
 
-                <div class="mt-8">
-                    {{ $listings->links() }}
+                <div class="mt-8 flex flex-col items-center gap-3">
+                    @if ($listings->hasMorePages())
+                        <button type="button" wire:click="loadMore" wire:loading.attr="disabled" wire:target="loadMore" class="btn btn-secondary">
+                            <span wire:loading.remove wire:target="loadMore">Load more</span>
+                            <span wire:loading wire:target="loadMore">Loading...</span>
+                        </button>
+                    @endif
+                    <p class="text-xs text-slate-500">Showing {{ $listings->count() }} of {{ $listings->total() }}</p>
                 </div>
             @else
                 <div class="card px-6 py-12 text-center">

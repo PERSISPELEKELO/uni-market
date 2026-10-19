@@ -24,6 +24,12 @@ class ListingIndex extends Component
 
     private const SORTS = ['latest', 'price_asc', 'price_desc'];
 
+    private const INITIAL_PER_PAGE = 12;
+
+    private const PER_PAGE_INCREMENT = 12;
+
+    public int $perPage = self::INITIAL_PER_PAGE;
+
     public string $search = '';
 
     public ?int $selectedCategory = null;
@@ -61,6 +67,29 @@ class ListingIndex extends Component
         'priceMin' => ['except' => '', 'as' => 'min'],
         'priceMax' => ['except' => '', 'as' => 'max'],
     ];
+
+    /**
+     * Overrides WithPagination's resetPage() so that every existing call
+     * site that resets the page on a filter change (search, category,
+     * condition, sort, etc.) also collapses the "Load more" grid back to
+     * its first page - otherwise a filter change while several pages were
+     * loaded would silently keep showing far more items than intended.
+     */
+    public function resetPage($pageName = 'page'): void
+    {
+        $this->setPage(1, $pageName);
+        $this->perPage = self::INITIAL_PER_PAGE;
+    }
+
+    /**
+     * "Load more" instead of numbered pagination links - grows the page
+     * size rather than navigating to a separate page, so items already on
+     * screen stay in place.
+     */
+    public function loadMore(): void
+    {
+        $this->perPage += self::PER_PAGE_INCREMENT;
+    }
 
     public function updatingSearch(): void
     {
@@ -243,7 +272,7 @@ class ListingIndex extends Component
             ->when($sortBy === 'price_asc', fn ($query) => $query->orderBy('price'))
             ->when($sortBy === 'price_desc', fn ($query) => $query->orderByDesc('price'))
             ->when($sortBy === 'latest', fn ($query) => $query->latest())
-            ->paginate(12);
+            ->paginate($this->perPage);
 
         $categories = Category::withCount(['listings' => fn ($query) => $query->active()])
             ->orderBy('name')

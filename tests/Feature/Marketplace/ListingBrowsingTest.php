@@ -248,6 +248,30 @@ describe('browsing', function () {
             ->assertViewHas('listings', fn ($listings) => $listings->count() === 3);
     });
 
+    it('grows the grid with "Load more" instead of navigating to a numbered page', function () {
+        Listing::factory()->count(30)->create();
+
+        $component = Livewire::test(ListingIndex::class)
+            ->assertViewHas('listings', fn ($listings) => $listings->count() === 12)
+            ->call('loadMore')
+            ->assertViewHas('listings', fn ($listings) => $listings->count() === 24);
+
+        $component->call('loadMore')
+            ->assertViewHas('listings', fn ($listings) => $listings->count() === 30);
+    });
+
+    it('collapses "Load more" back to the first page when a filter changes', function () {
+        $category = Category::where('slug', 'books-textbooks')->first();
+        Listing::factory()->count(30)->create(['category_id' => $category->id, 'condition' => 'good']);
+        Listing::factory()->count(5)->create(['category_id' => $category->id, 'condition' => 'new']);
+
+        Livewire::test(ListingIndex::class)
+            ->call('loadMore')
+            ->assertViewHas('listings', fn ($listings) => $listings->count() === 24)
+            ->set('conditionFilter', 'new')
+            ->assertViewHas('listings', fn ($listings) => $listings->count() === 5);
+    });
+
     it('shows an inviting empty state when nothing is for sale', function () {
         $this->get(route('listings.index'))->assertOk()->assertSee('Nothing for sale yet');
     });
