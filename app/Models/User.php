@@ -48,6 +48,8 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'student_verification_reviewed_at',
         'student_verification_reviewed_by',
         'student_verification_rejection_reason',
+        'student_verification_reminder_24h_sent_at',
+        'student_verification_reminder_3d_sent_at',
         'suspended_at',
         'suspended_by',
         'suspension_reason',
@@ -357,6 +359,8 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
             'personalize_recommendations' => 'boolean',
             'student_verification_submitted_at' => 'datetime',
             'student_verification_reviewed_at' => 'datetime',
+            'student_verification_reminder_24h_sent_at' => 'datetime',
+            'student_verification_reminder_3d_sent_at' => 'datetime',
             'suspended_at' => 'datetime',
             'intake_year' => 'integer',
         ];

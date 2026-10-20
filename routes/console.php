@@ -17,3 +17,4 @@ Schedule::command('recommendations:refresh-similarity')->daily();
 Schedule::command('saved-listings:notify-price-drops')->daily();
 Schedule::command('saved-searches:notify-matches')->daily();
 Schedule::command('verification:prune-documents')->daily();
+Schedule::command('verification:send-reminders')->daily();

@@ -3,7 +3,11 @@
 use App\Livewire\Account\StudentVerification;
 use App\Models\StudentVerificationDocument;
 use App\Models\User;
+use App\Notifications\NewStudentVerificationSubmission;
+use App\Notifications\StudentVerificationSubmitted;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -247,5 +251,64 @@ describe('viewing a submitted document', function () {
         $document = StudentVerificationDocument::factory()->create();
 
         $this->get(route('verification.documents.show', $document))->assertRedirect(route('login'));
+    });
+});
+
+describe('notifications on submission', function () {
+    it('tells the student their document was received and is under review', function () {
+        Notification::fake();
+        $user = User::factory()->pendingStudentVerification()->create();
+
+        Livewire::actingAs($user)->test(StudentVerification::class)
+            ->set('document', fakeIdPhoto())
+            ->set('confirmedOwnCard', true)
+            ->call('submit');
+
+        Notification::assertSentTo($user, StudentVerificationSubmitted::class);
+    });
+
+    it('alerts admin and governance staff when no one has opened the review queue recently', function () {
+        Notification::fake();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $governance = User::factory()->create(['role' => 'governance_committee']);
+        $user = User::factory()->pendingStudentVerification()->create();
+
+        Livewire::actingAs($user)->test(StudentVerification::class)
+            ->set('document', fakeIdPhoto())
+            ->set('confirmedOwnCard', true)
+            ->call('submit');
+
+        Notification::assertSentTo($admin, NewStudentVerificationSubmission::class);
+        Notification::assertSentTo($governance, NewStudentVerificationSubmission::class);
+    });
+
+    it('does not alert staff when an admin opened the queue within the last hour', function () {
+        Notification::fake();
+        Cache::put(StudentVerification::QUEUE_LAST_VIEWED_CACHE_KEY, now(), now()->addHour());
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->pendingStudentVerification()->create();
+
+        Livewire::actingAs($user)->test(StudentVerification::class)
+            ->set('document', fakeIdPhoto())
+            ->set('confirmedOwnCard', true)
+            ->call('submit');
+
+        Notification::assertNothingSentTo($admin);
+    });
+
+    it('never sends more than one staff alert per hour, even with several submissions', function () {
+        Notification::fake();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        foreach ([1, 2] as $attempt) {
+            $user = User::factory()->pendingStudentVerification()->create();
+
+            Livewire::actingAs($user)->test(StudentVerification::class)
+                ->set('document', fakeIdPhoto("id-{$attempt}.jpg"))
+                ->set('confirmedOwnCard', true)
+                ->call('submit');
+        }
+
+        Notification::assertSentToTimes($admin, NewStudentVerificationSubmission::class, 1);
     });
 });

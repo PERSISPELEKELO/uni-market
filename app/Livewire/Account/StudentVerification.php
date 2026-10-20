@@ -4,10 +4,14 @@ namespace App\Livewire\Account;
 
 use App\Models\StudentVerificationDocument;
 use App\Models\User;
+use App\Notifications\NewStudentVerificationSubmission;
+use App\Notifications\StudentVerificationSubmitted;
 use App\Services\AuditLoggerService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -20,6 +24,15 @@ class StudentVerification extends Component
     use WithFileUploads;
 
     private const MAX_SUBMISSIONS_PER_HOUR = 5;
+
+    /**
+     * Cache keys shared with ListStudentVerificationDocuments::mount(),
+     * which bumps QUEUE_LAST_VIEWED_CACHE_KEY every time any admin opens the
+     * review queue - the signal this class checks before alerting anyone.
+     */
+    public const QUEUE_LAST_VIEWED_CACHE_KEY = 'student-verification:queue-last-viewed-at';
+
+    private const ADMIN_ALERT_THROTTLE_CACHE_KEY = 'student-verification:admin-alert-sent-at';
 
     /**
      * The shorter side of the photo must be at least this many pixels -
@@ -102,9 +115,41 @@ class StudentVerification extends Component
             $user
         );
 
+        // A notification delivery problem must never make the student think
+        // their submission failed - it has already been committed above.
+        try {
+            $user->notify(new StudentVerificationSubmitted);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
+        $this->notifyAdminsIfQueueUnattended($document);
+
         $this->document = null;
         $this->confirmedOwnCard = false;
         $this->dispatch('notify', type: 'success', message: "Document submitted. We'll review it within 24 hours.");
+    }
+
+    /**
+     * Pings admin/governance staff only when no one has opened the review
+     * queue in the last hour, and at most once an hour overall - a single
+     * busy afternoon of submissions should never send more than one email.
+     */
+    private function notifyAdminsIfQueueUnattended(StudentVerificationDocument $document): void
+    {
+        if (Cache::has(self::QUEUE_LAST_VIEWED_CACHE_KEY) || Cache::has(self::ADMIN_ALERT_THROTTLE_CACHE_KEY)) {
+            return;
+        }
+
+        Cache::put(self::ADMIN_ALERT_THROTTLE_CACHE_KEY, now(), now()->addHour());
+
+        $staff = User::whereIn('role', ['admin', 'governance_committee'])->get();
+
+        try {
+            Notification::send($staff, new NewStudentVerificationSubmission($document));
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     /**
