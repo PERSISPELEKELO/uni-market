@@ -5,6 +5,7 @@ namespace App\Livewire\Account;
 use App\Models\ListingEvent;
 use App\Models\ListingView;
 use App\Models\SearchLog;
+use App\Models\User;
 use App\Services\AuditLoggerService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -97,7 +98,10 @@ class Profile extends Component
             'school.in' => 'Please select one of the listed schools.',
         ]);
 
-        Auth::user()->update([
+        $user = Auth::user();
+        $nameChanged = $this->name !== $user->name;
+
+        $user->update([
             'name' => $this->name,
             'phone_number' => $this->phone_number,
             'bio' => $this->bio,
@@ -107,6 +111,24 @@ class Profile extends Component
             'school' => $this->school,
             'gender' => $this->gender,
         ]);
+
+        // A verified student's photo was approved against their OLD name -
+        // a changed name needs an admin to re-check it, so an approval
+        // doesn't silently keep covering for whoever is on the account now.
+        if ($nameChanged && $user->student_verification_status === User::STUDENT_VERIFICATION_VERIFIED) {
+            $user->forceFill([
+                'student_verification_status' => User::STUDENT_VERIFICATION_PENDING,
+                'student_verification_reviewed_at' => null,
+                'student_verification_reviewed_by' => null,
+                'student_verification_rejection_reason' => null,
+            ])->save();
+
+            app(AuditLoggerService::class)->recordAction($user, 'STUDENT_VERIFICATION_RESET_NAME_CHANGED', 'User', (string) $user->id, []);
+
+            $this->dispatch('notify', type: 'success', message: 'Your details have been saved. Since your name changed, your student verification needs another review.');
+
+            return;
+        }
 
         $this->dispatch('notify', type: 'success', message: 'Your details have been saved.');
     }

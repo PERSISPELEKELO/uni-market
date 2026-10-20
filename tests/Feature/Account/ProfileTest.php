@@ -49,6 +49,42 @@ describe('updating details', function () {
         expect($user->fresh()->name)->toBe('Mwamba Bwalya')->and($user->fresh()->phone_number)->toBe('+260971234567');
     });
 
+    it('resets a verified student back to pending review when they change their name', function () {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create([
+            'student_verification_status' => User::STUDENT_VERIFICATION_VERIFIED,
+            'student_verification_reviewed_at' => now(),
+            'student_verification_reviewed_by' => $admin->id,
+        ]);
+
+        Livewire::actingAs($user)->test(Profile::class)
+            ->set('name', 'A Different Name')
+            ->call('updateProfile')
+            ->assertHasNoErrors();
+
+        $fresh = $user->fresh();
+        expect($fresh->name)->toBe('A Different Name')
+            ->and($fresh->student_verification_status)->toBe(User::STUDENT_VERIFICATION_PENDING)
+            ->and($fresh->student_verification_reviewed_at)->toBeNull()
+            ->and($fresh->student_verification_reviewed_by)->toBeNull();
+    });
+
+    it('leaves a verified student alone when they save details without changing their name', function () {
+        $user = User::factory()->create([
+            'student_verification_status' => User::STUDENT_VERIFICATION_VERIFIED,
+            'student_verification_reviewed_at' => now(),
+        ]);
+
+        Livewire::actingAs($user)->test(Profile::class)
+            ->set('bio', 'Still the same person')
+            ->call('updateProfile')
+            ->assertHasNoErrors();
+
+        $fresh = $user->fresh();
+        expect($fresh->student_verification_status)->toBe(User::STUDENT_VERIFICATION_VERIFIED)
+            ->and($fresh->student_verification_reviewed_at)->not->toBeNull();
+    });
+
     it('lets a member keep their own phone number but not take someone else\'s', function () {
         $user = User::factory()->create(['phone_number' => '+260971111111']);
         User::factory()->create(['phone_number' => '+260972222222']);
@@ -326,7 +362,7 @@ describe('account sections', function () {
             ->assertSee('id="security"', false)
             ->assertSee('id="privacy"', false)
             ->assertSee('id="reputation"', false)
-            ->assertSee('Student ID document')
+            ->assertSee('Student ID photo')
             ->assertSee('Change password')
             ->assertSee('Export reputation &amp; history', false)
             ->assertSee(route('reputation.export'), false);
