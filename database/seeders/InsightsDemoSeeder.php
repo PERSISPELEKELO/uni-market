@@ -108,7 +108,7 @@ class InsightsDemoSeeder extends Seeder
             return User::create([
                 'name' => fake()->unique()->name(),
                 'email' => fake()->unique()->safeEmail(),
-                'student_id' => (string) fake()->unique()->numberBetween(2020100000, 2026999999),
+                'student_id' => (string) fake()->unique()->numberBetween(2000000, 2999999),
                 'phone_number' => null,
                 'password' => Hash::make('password123'),
                 'role' => 'student',
