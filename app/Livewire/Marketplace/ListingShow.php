@@ -118,6 +118,11 @@ class ListingShow extends Component
                 ->with('status', 'Please log in to reserve this item.');
         }
 
+        if (Auth::user()->isAwaitingEmailVerification()) {
+            return redirect()->route('verification.notice')
+                ->with('status', 'Please verify your email address before reserving an item.');
+        }
+
         try {
             $reservations->reserve($this->listing, Auth::user());
         } catch (InvalidArgumentException $exception) {
@@ -161,6 +166,11 @@ class ListingShow extends Component
         if (! Auth::check()) {
             return redirect()->guest(route('login'))
                 ->with('status', 'Please log in to message the seller.');
+        }
+
+        if (Auth::user()->isAwaitingEmailVerification()) {
+            return redirect()->route('verification.notice')
+                ->with('status', 'Please verify your email address before messaging a seller.');
         }
 
         if ($this->listing->isOwnedBy(Auth::user())) {

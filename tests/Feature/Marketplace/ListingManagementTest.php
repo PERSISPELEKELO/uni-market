@@ -42,6 +42,40 @@ function fillListingForm($component, array $data)
 }
 
 describe('creating a listing', function () {
+    it('shows a "get verified to sell" screen instead of the form to a student who is not yet student-verified', function () {
+        $user = User::factory()->pendingStudentVerification()->create();
+
+        Livewire::actingAs($user)->test(CreateListing::class)
+            ->assertSee('Only verified ZUT students can sell')
+            ->assertSee('Upload my student ID')
+            ->assertDontSee('Your listing title');
+    });
+
+    it('shows an email-verification prompt instead of the form to an email-unverified student', function () {
+        $user = User::factory()->unverified()->create();
+
+        Livewire::actingAs($user)->test(CreateListing::class)
+            ->assertSee('Verify your email to continue')
+            ->assertDontSee('Your listing title');
+    });
+
+    it('refuses to actually save a listing from an unverified student even if the save action is called directly', function () {
+        $user = User::factory()->pendingStudentVerification()->create();
+        $category = Category::factory()->create();
+
+        Livewire::actingAs($user)->test(CreateListing::class)
+            ->set('form.category_id', $category->id)
+            ->set('form.title', 'Calculus 9th Edition textbook')
+            ->set('form.description', 'Clean copy with light highlighting in chapter three.')
+            ->set('form.price', '250.00')
+            ->set('form.condition', 'good')
+            ->set('form.images', [fakePhoto('front.png')])
+            ->call('save')
+            ->assertForbidden();
+
+        expect(Listing::count())->toBe(0);
+    });
+
     it('live-previews the listing as it is filled out', function () {
         $category = Category::factory()->create(['name' => 'Books & Textbooks']);
 

@@ -36,6 +36,10 @@ class ReservationService
      */
     public function reserve(Listing $listing, User $buyer): Reservation
     {
+        if ($buyer->isAwaitingEmailVerification()) {
+            throw new InvalidArgumentException('Please verify your email address before reserving an item.');
+        }
+
         if ($listing->isOwnedBy($buyer)) {
             throw new InvalidArgumentException('You cannot reserve your own listing.');
         }

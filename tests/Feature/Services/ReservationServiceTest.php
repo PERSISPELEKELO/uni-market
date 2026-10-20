@@ -41,6 +41,16 @@ it('returns the existing reservation on a second call instead of creating a dupl
     Notification::assertSentToTimes($listing->seller, ListingReserved::class, 1);
 });
 
+it('refuses to let an email-unverified student reserve an item', function () {
+    $buyer = User::factory()->unverified()->create();
+    $listing = Listing::factory()->create();
+
+    expect(fn () => app(ReservationService::class)->reserve($listing, $buyer))
+        ->toThrow(InvalidArgumentException::class, 'verify your email');
+
+    expect(Reservation::count())->toBe(0);
+});
+
 it('refuses to reserve your own listing or an inactive one', function () {
     $seller = User::factory()->create();
     $ownListing = Listing::factory()->create(['user_id' => $seller->id]);

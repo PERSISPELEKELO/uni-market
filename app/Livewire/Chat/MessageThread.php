@@ -106,6 +106,12 @@ class MessageThread extends Component
 
     public function sendMessage(): void
     {
+        if (Auth::user()->isAwaitingEmailVerification()) {
+            $this->addError('newMessage', 'Please verify your email address before messaging other students.');
+
+            return;
+        }
+
         $this->newMessage = trim($this->newMessage);
 
         $this->validate(

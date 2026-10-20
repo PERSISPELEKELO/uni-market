@@ -414,6 +414,26 @@ describe('reserving an item', function () {
         expect(Reservation::count())->toBe(0);
     });
 
+    it('sends an email-unverified student to verify their email instead of reserving', function () {
+        $buyer = User::factory()->unverified()->create();
+        $listing = Listing::factory()->create();
+
+        Livewire::actingAs($buyer)->test(ListingShow::class, ['listing' => $listing])
+            ->call('reserve')
+            ->assertRedirect(route('verification.notice'));
+
+        expect(Reservation::count())->toBe(0);
+    });
+
+    it('sends an email-unverified student to verify their email instead of messaging the seller', function () {
+        $buyer = User::factory()->unverified()->create();
+        $listing = Listing::factory()->create();
+
+        Livewire::actingAs($buyer)->test(ListingShow::class, ['listing' => $listing])
+            ->call('contactSeller')
+            ->assertRedirect(route('verification.notice'));
+    });
+
     it('reserves an available item for a buyer without starting a transaction or hiding the listing', function () {
         $listing = Listing::factory()->create(['price' => 300]);
         $buyer = User::factory()->create();

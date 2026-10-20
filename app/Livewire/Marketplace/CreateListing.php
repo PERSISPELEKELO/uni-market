@@ -9,6 +9,7 @@ use App\Notifications\NewListingPosted;
 use App\Services\AuditLoggerService;
 use App\Services\Recommendations\ContentSimilarityService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -17,9 +18,16 @@ class CreateListing extends Component
 {
     use ManagesListingForm;
 
+    /**
+     * No hard gate here - an unverified student still opens this page, but
+     * render() shows a "get verified to sell" screen instead of the listing
+     * form. persist() re-checks the real policy before ever saving, so the
+     * server-side rule is enforced the same way regardless of what the page
+     * happened to render.
+     */
     public function mount(): void
     {
-        $this->authorize('create', Listing::class);
+        //
     }
 
     public function save()
@@ -91,6 +99,7 @@ class CreateListing extends Component
     {
         return view('livewire.marketplace.create-listing', [
             'categories' => $this->categories(),
+            'canSell' => Gate::allows('create', Listing::class),
         ])->layout('layouts.app', ['title' => 'Sell an Item - UniMarket']);
     }
 }
