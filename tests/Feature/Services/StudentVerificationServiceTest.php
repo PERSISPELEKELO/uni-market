@@ -89,3 +89,14 @@ it('logs only the reason code, never the free-text reason, in the audit trail', 
         ->and($log->payload)->not->toHaveKey('reason')
         ->and(json_encode($log->payload))->not->toContain("doesn't match your registered name");
 });
+
+it('never logs the student\'s full student number when approving', function () {
+    $document = submission();
+    $document->user->update(['student_id' => '2048195']);
+
+    app(StudentVerificationService::class)->approve($document, reviewer());
+
+    $log = AuditLog::where('action', 'STUDENT_VERIFICATION_APPROVED')->latest('id')->first();
+
+    expect(json_encode($log->payload))->not->toContain('2048195');
+});

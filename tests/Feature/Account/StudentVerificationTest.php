@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Account\StudentVerification;
+use App\Models\AuditLog;
 use App\Models\StudentVerificationDocument;
 use App\Models\User;
 use App\Notifications\NewStudentVerificationSubmission;
@@ -294,6 +295,19 @@ describe('notifications on submission', function () {
             ->call('submit');
 
         Notification::assertNothingSentTo($admin);
+    });
+
+    it('never logs the student\'s full student number when a document is submitted', function () {
+        $user = User::factory()->pendingStudentVerification()->create(['student_id' => '2048196']);
+
+        Livewire::actingAs($user)->test(StudentVerification::class)
+            ->set('document', fakeIdPhoto())
+            ->set('confirmedOwnCard', true)
+            ->call('submit');
+
+        $log = AuditLog::where('action', 'STUDENT_VERIFICATION_SUBMITTED')->latest('id')->first();
+
+        expect(json_encode($log->payload))->not->toContain('2048196');
     });
 
     it('never sends more than one staff alert per hour, even with several submissions', function () {
