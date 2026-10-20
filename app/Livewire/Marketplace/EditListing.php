@@ -5,6 +5,7 @@ namespace App\Livewire\Marketplace;
 use App\Livewire\Concerns\ManagesListingForm;
 use App\Models\Listing;
 use App\Services\AuditLoggerService;
+use App\Services\Recommendations\ContentSimilarityService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -49,6 +50,8 @@ class EditListing extends Component
             ],
             Auth::user()
         );
+
+        app(ContentSimilarityService::class)->refreshFor($this->listing);
 
         return redirect()->route('listings.show', $this->listing)
             ->with('success', 'Your changes have been saved.');

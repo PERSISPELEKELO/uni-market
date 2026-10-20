@@ -30,7 +30,7 @@ it('registers members without the verified badge and emails them a verification 
         ->set('first_name', 'Chileshe')
         ->set('last_name', 'Mwansa')
         ->set('email', 'chileshe@example.com')
-        ->set('student_id', '2024198273')
+        ->set('student_id', '2041987')
         ->set('intake_year', now()->year)
         ->set('school', 'ict')
         ->set('password', 'Sunshine123')

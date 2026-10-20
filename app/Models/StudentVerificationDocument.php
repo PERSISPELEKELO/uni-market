@@ -29,9 +29,38 @@ class StudentVerificationDocument extends Model
 
     public const PATH_PREFIX = 'verification-documents';
 
+    /**
+     * Standard reasons an admin can pick when rejecting a document - kept as
+     * short codes (rather than free text) so the audit log never has to
+     * store whatever an admin happened to type.
+     *
+     * @var array<string, string>
+     */
+    public const REJECTION_REASONS = [
+        'blurry_or_unclear' => 'The photo is too blurry or unclear to read.',
+        'card_not_fully_visible' => 'The whole card is not visible in the photo.',
+        'wrong_side' => 'This shows the back, not the front, of the card.',
+        'name_mismatch' => "The name on the card doesn't match your registered name.",
+        'number_mismatch' => "The student number on the card doesn't match your registered number.",
+        'not_own_card' => "This doesn't appear to be your own student ID card.",
+        'other' => 'Other',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    public const RESUBMISSION_REASONS = [
+        'blurry_or_unclear' => 'Please upload a clearer photo - this one is too blurry to read.',
+        'card_not_fully_visible' => 'Please make sure the whole card is visible in the photo.',
+        'wrong_side' => 'Please upload a photo of the front of your card.',
+        'glare_or_lighting' => 'Please retake the photo in better lighting and without glare.',
+        'other' => 'Other',
+    ];
+
     protected $fillable = [
         'user_id',
         'file_path',
+        'file_deleted_at',
         'original_filename',
         'mime_type',
         'size_bytes',
@@ -45,6 +74,7 @@ class StudentVerificationDocument extends Model
     protected $casts = [
         'submitted_at' => 'datetime',
         'reviewed_at' => 'datetime',
+        'file_deleted_at' => 'datetime',
         'size_bytes' => 'integer',
     ];
 
@@ -61,5 +91,10 @@ class StudentVerificationDocument extends Model
     public function isPending(): bool
     {
         return $this->status === self::STATUS_PENDING;
+    }
+
+    public function isFileDeleted(): bool
+    {
+        return $this->file_deleted_at !== null;
     }
 }

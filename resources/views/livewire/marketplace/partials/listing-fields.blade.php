@@ -2,9 +2,25 @@
 @php
     $photoCount = count($form->existing_images) + count($form->images);
     $previewCategory = $categories->firstWhere('id', (int) $form->category_id);
-    $previewPhotoUrl = count($form->existing_images) > 0
-        ? asset('storage/'.$form->existing_images[0])
-        : (count($form->images) > 0 && $form->images[0]->isPreviewable() ? $form->images[0]->temporaryUrl() : null);
+
+    // One lookup keyed by the same stable tokens photoOrder uses, so the
+    // ordered list below (and the live preview's main photo) can resolve
+    // either an existing stored photo or a newly-picked, not-yet-saved one
+    // the same way.
+    $photoMeta = [];
+    foreach ($form->existing_images as $index => $path) {
+        $photoMeta[$path] = ['url' => asset('storage/'.$path), 'type' => 'existing', 'index' => $index];
+    }
+    foreach ($form->images as $index => $image) {
+        $photoMeta['new:'.$image->getFilename()] = [
+            'url' => $image->isPreviewable() ? $image->temporaryUrl() : null,
+            'type' => 'new',
+            'index' => $index,
+        ];
+    }
+
+    $mainToken = $form->photoOrder[0] ?? null;
+    $previewPhotoUrl = $mainToken ? ($photoMeta[$mainToken]['url'] ?? null) : null;
 @endphp
 
 <div class="space-y-8">
@@ -107,20 +123,6 @@
             <span class="ml-1 font-normal text-slate-600">({{ $photoCount }} of {{ \App\Livewire\Forms\ListingForm::MAX_IMAGES }})</span>
         </p>
 
-        @if (count($form->existing_images) > 0)
-            <ul class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                @foreach ($form->existing_images as $index => $path)
-                    <li class="relative">
-                        <x-listing-image :src="asset('storage/'.$path)" :alt="'Current photo '.($index + 1)" class="aspect-square w-full rounded-lg border border-slate-200" />
-                        <button type="button" wire:click="removeExistingPhoto({{ $index }})" class="btn btn-danger btn-sm absolute right-1 top-1 min-h-8 min-w-8 rounded-full px-1.5 py-1.5" title="Remove photo {{ $index + 1 }}">
-                            <x-app-icon name="x" class="h-4 w-4" />
-                            <span class="sr-only">Remove current photo {{ $index + 1 }}</span>
-                        </button>
-                    </li>
-                @endforeach
-            </ul>
-        @endif
-
         @if ($photoCount < \App\Livewire\Forms\ListingForm::MAX_IMAGES)
             <label
                 for="photos"
@@ -162,19 +164,66 @@
         <x-form-error name="form.images" />
         <x-form-error name="form.images.*" />
 
-        @if (count($form->images) > 0)
-            <ul class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                @foreach ($form->images as $index => $image)
-                    <li class="relative">
-                        @if ($image->isPreviewable())
-                            <x-listing-image :src="$image->temporaryUrl()" :lazy="false" :alt="'New photo '.($index + 1)" class="aspect-square w-full rounded-lg border border-slate-200" />
+        @if (count($form->photoOrder) > 0)
+            <p class="mt-4 text-xs text-slate-600">Drag to reorder. The first photo is your main photo and appears on the listing card.</p>
+
+            <ul class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4" x-data="{ dragToken: null }">
+                @foreach ($form->photoOrder as $position => $token)
+                    @continue(! isset($photoMeta[$token]))
+                    @php $meta = $photoMeta[$token]; @endphp
+                    <li
+                        wire:key="photo-{{ $token }}"
+                        data-token="{{ $token }}"
+                        draggable="true"
+                        x-on:dragstart="dragToken = $el.dataset.token"
+                        x-on:dragover.prevent
+                        x-on:drop.prevent="
+                            if (dragToken && dragToken !== $el.dataset.token) {
+                                const tokens = Array.from($el.parentElement.children).map(li => li.dataset.token);
+                                const from = tokens.indexOf(dragToken);
+                                const to = tokens.indexOf($el.dataset.token);
+                                tokens.splice(from, 1);
+                                tokens.splice(to, 0, dragToken);
+                                $wire.reorderPhotos(tokens);
+                            }
+                            dragToken = null;
+                        "
+                        class="relative cursor-move"
+                    >
+                        @if ($meta['url'])
+                            <x-listing-image :src="$meta['url']" :lazy="false" :alt="($position === 0 ? 'Main photo' : 'Photo '.($position + 1))" class="aspect-square w-full rounded-lg border border-slate-200" />
                         @else
                             <x-listing-image class="aspect-square w-full rounded-lg border border-slate-200" />
                         @endif
-                        <button type="button" wire:click="removeNewPhoto({{ $index }})" class="btn btn-danger btn-sm absolute right-1 top-1 min-h-8 min-w-8 rounded-full px-1.5 py-1.5" title="Remove photo {{ $index + 1 }}">
-                            <x-app-icon name="x" class="h-4 w-4" />
-                            <span class="sr-only">Remove new photo {{ $index + 1 }}</span>
+
+                        @if ($position === 0)
+                            <span class="badge badge-brand absolute left-1 top-1 shadow-sm">Main photo</span>
+                        @endif
+
+                        <button
+                            type="button"
+                            wire:click="{{ $meta['type'] === 'existing' ? 'removeExistingPhoto('.$meta['index'].')' : 'removeNewPhoto('.$meta['index'].')' }}"
+                            class="btn btn-danger btn-sm absolute right-1 top-1 min-h-8 min-w-8 rounded-full px-1.5 py-1.5"
+                            title="Remove this photo"
+                        >
+                            <x-app-icon name="x" class="h-4 w-4" /><span class="sr-only">Remove this photo</span>
                         </button>
+
+                        <div class="absolute inset-x-1 bottom-1 flex items-center justify-between gap-1">
+                            <div class="flex gap-1">
+                                <button type="button" wire:click="movePhotoLeft('{{ $token }}')" @if($position === 0) disabled @endif class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white disabled:opacity-30" title="Move left" aria-label="Move photo left">
+                                    <x-app-icon name="arrow-left" class="h-3.5 w-3.5" />
+                                </button>
+                                <button type="button" wire:click="movePhotoRight('{{ $token }}')" @if($position === count($form->photoOrder) - 1) disabled @endif class="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white disabled:opacity-30" title="Move right" aria-label="Move photo right">
+                                    <x-app-icon name="arrow-right" class="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                            @if ($position !== 0)
+                                <button type="button" wire:click="setMainPhoto('{{ $token }}')" class="rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold text-white" title="Set as main photo">
+                                    Set as main
+                                </button>
+                            @endif
+                        </div>
                     </li>
                 @endforeach
             </ul>

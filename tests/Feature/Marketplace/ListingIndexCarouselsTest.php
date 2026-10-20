@@ -3,39 +3,39 @@
 use App\Livewire\Marketplace\ListingIndex;
 use App\Models\Category;
 use App\Models\Listing;
-use App\Models\ListingView;
+use App\Models\ListingEvent;
 use App\Models\Transaction;
 use App\Models\User;
 use Livewire\Livewire;
 
 beforeEach(fn () => $this->withoutVite());
 
-describe('selling fast', function () {
-    it('shows an active listing that has real recent views', function () {
+describe('trending this week', function () {
+    it('shows an active listing that has real views in the last 24 hours', function () {
         $listing = Listing::factory()->create(['title' => 'Viewed Textbook']);
-        ListingView::create(['listing_id' => $listing->id, 'session_hash' => hash('sha256', 'session-1'), 'viewed_at' => now()->subDay()]);
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => ListingEvent::TYPE_VIEW, 'created_at' => now()->subHours(2)]);
 
-        Livewire::test(ListingIndex::class)->assertSee('Selling fast')->assertSee('Viewed Textbook');
+        Livewire::test(ListingIndex::class)->assertSee('Trending this week')->assertSee('Viewed Textbook');
     });
 
     it('never shows an active listing with zero recent views', function () {
         Listing::factory()->create(['title' => 'Never Viewed Item']);
 
-        Livewire::test(ListingIndex::class)->assertDontSee('Selling fast');
+        Livewire::test(ListingIndex::class)->assertDontSee('Trending this week');
     });
 
-    it('ignores views older than 7 days', function () {
+    it('ignores views older than 24 hours', function () {
         $listing = Listing::factory()->create(['title' => 'Old View Item']);
-        ListingView::create(['listing_id' => $listing->id, 'session_hash' => hash('sha256', 'session-2'), 'viewed_at' => now()->subDays(10)]);
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => ListingEvent::TYPE_VIEW, 'created_at' => now()->subHours(30)]);
 
-        Livewire::test(ListingIndex::class)->assertDontSee('Selling fast');
+        Livewire::test(ListingIndex::class)->assertDontSee('Trending this week');
     });
 
     it('hides the carousel once a filter is active', function () {
         $listing = Listing::factory()->create(['title' => 'Viewed Textbook']);
-        ListingView::create(['listing_id' => $listing->id, 'session_hash' => hash('sha256', 'session-3'), 'viewed_at' => now()->subDay()]);
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => ListingEvent::TYPE_VIEW, 'created_at' => now()->subHours(2)]);
 
-        Livewire::test(ListingIndex::class)->set('search', 'something')->assertDontSee('Selling fast');
+        Livewire::test(ListingIndex::class)->set('search', 'something')->assertDontSee('Trending this week');
     });
 });
 

@@ -163,7 +163,7 @@ class MyActivity extends Component
 
     private function sortedListingPerformance(SellerInsightsService $sellerInsights): Collection
     {
-        $rows = $sellerInsights->perListingStats(Auth::user());
+        $rows = $sellerInsights->sellingHints(Auth::user());
 
         if ($this->selectedCategory !== null) {
             $rows = $rows->filter(fn (array $row) => $row['listing']->category->name === $this->selectedCategory);

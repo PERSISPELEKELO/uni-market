@@ -13,10 +13,10 @@ use Livewire\Livewire;
 beforeEach(fn () => $this->withoutVite());
 
 describe('browsing', function () {
-    it('shows real headline stats in the hero to a guest, but not to a signed-in student', function () {
-        User::factory()->count(2)->create(['role' => 'student']);
-        Listing::factory()->create();
-        Transaction::factory()->create(['status' => 'COMPLETED']);
+    it('shows real headline stats in the hero to a guest once every figure clears the floor, but not to a signed-in student', function () {
+        User::factory()->count(10)->create(['role' => 'student']);
+        Listing::factory()->count(10)->create();
+        Transaction::factory()->count(10)->create(['status' => 'COMPLETED']);
 
         $this->get(route('listings.index'))
             ->assertSee('Students')
@@ -26,6 +26,35 @@ describe('browsing', function () {
         $this->actingAs(User::factory()->create())
             ->get(route('listings.index'))
             ->assertDontSee('Completed sales');
+    });
+
+    it('hides the hero stats row entirely while any figure is still below the floor, rather than showing zeros', function () {
+        User::factory()->count(2)->create(['role' => 'student']);
+        Listing::factory()->create();
+        Transaction::factory()->create(['status' => 'COMPLETED']);
+
+        $this->get(route('listings.index'))
+            ->assertDontSee('Active listings')
+            ->assertDontSee('Completed sales');
+    });
+
+    it('toggles the new-listing notification opt-in for a signed-in student', function () {
+        $student = User::factory()->create(['notify_new_listings' => false]);
+
+        Livewire::actingAs($student)->test(ListingIndex::class)
+            ->call('toggleNotifyNewListings')
+            ->assertSet('search', ''); // component still renders fine after the toggle
+
+        expect($student->fresh()->notify_new_listings)->toBeTrue();
+
+        Livewire::actingAs($student)->test(ListingIndex::class)->call('toggleNotifyNewListings');
+        expect($student->fresh()->notify_new_listings)->toBeFalse();
+    });
+
+    it('sends a guest to log in instead of toggling the notification opt-in', function () {
+        Livewire::test(ListingIndex::class)
+            ->call('toggleNotifyNewListings')
+            ->assertRedirect(route('login'));
     });
 
     it('shows the reservation count on a listing card, and hides it when there are none', function () {
@@ -140,6 +169,56 @@ describe('browsing', function () {
         expect($listing->fresh()->isHotDeal())->toBeTrue();
     });
 
+    it('filters by a price range and can clear it independently of other filters', function () {
+        Listing::factory()->create(['title' => 'Cheap textbook', 'price' => 50]);
+        Listing::factory()->create(['title' => 'Mid-range laptop', 'price' => 500]);
+        Listing::factory()->create(['title' => 'Expensive macbook', 'price' => 9000]);
+
+        $component = Livewire::test(ListingIndex::class)
+            ->set('priceMin', '100')
+            ->set('priceMax', '1000')
+            ->assertSee('Mid-range laptop')
+            ->assertDontSee('Cheap textbook')
+            ->assertDontSee('Expensive macbook');
+
+        $component->call('clearPriceRange')
+            ->assertSet('priceMin', '')
+            ->assertSet('priceMax', '')
+            ->assertSee('Cheap textbook')
+            ->assertSee('Mid-range laptop')
+            ->assertSee('Expensive macbook');
+    });
+
+    it('ignores a non-numeric price range instead of erroring', function () {
+        Listing::factory()->create(['title' => 'Only item', 'price' => 50]);
+
+        Livewire::test(ListingIndex::class)
+            ->set('priceMin', 'not-a-number')
+            ->assertSee('Only item');
+    });
+
+    it('shows only the busiest categories as chips, capped at six, with the rest reachable via "More"', function () {
+        // The canonical 15 categories already exist (seeded by migration,
+        // see 2026_09_28_153539) - no need to create any for this test.
+        $busiest = Category::where('slug', 'books-textbooks')->first();
+        Listing::factory()->count(5)->create(['category_id' => $busiest->id]);
+
+        Livewire::test(ListingIndex::class)
+            ->assertViewHas('topCategories', fn ($topCategories) => $topCategories->count() === 6 && $topCategories->first()->id === $busiest->id)
+            ->assertViewHas('categories', fn ($allCategories) => $allCategories->count() === 15);
+    });
+
+    it('falls back to a fixed category order when there are no listings at all yet', function () {
+        // The canonical 15 categories already exist (seeded by migration)
+        // and start with zero listings in a fresh test database - no setup
+        // needed to exercise the no-data fallback.
+        Livewire::test(ListingIndex::class)
+            ->assertViewHas('topCategories', function ($topCategories) {
+                return $topCategories->isNotEmpty()
+                    && $topCategories->first()->slug === 'electronics-laptops';
+            });
+    });
+
     it('sorts by price', function () {
         Listing::factory()->create(['title' => 'Cheap thing', 'price' => 10]);
         Listing::factory()->create(['title' => 'Pricey thing', 'price' => 900]);
@@ -169,6 +248,30 @@ describe('browsing', function () {
             ->assertViewHas('listings', fn ($listings) => $listings->count() === 3);
     });
 
+    it('grows the grid with "Load more" instead of navigating to a numbered page', function () {
+        Listing::factory()->count(30)->create();
+
+        $component = Livewire::test(ListingIndex::class)
+            ->assertViewHas('listings', fn ($listings) => $listings->count() === 12)
+            ->call('loadMore')
+            ->assertViewHas('listings', fn ($listings) => $listings->count() === 24);
+
+        $component->call('loadMore')
+            ->assertViewHas('listings', fn ($listings) => $listings->count() === 30);
+    });
+
+    it('collapses "Load more" back to the first page when a filter changes', function () {
+        $category = Category::where('slug', 'books-textbooks')->first();
+        Listing::factory()->count(30)->create(['category_id' => $category->id, 'condition' => 'good']);
+        Listing::factory()->count(5)->create(['category_id' => $category->id, 'condition' => 'new']);
+
+        Livewire::test(ListingIndex::class)
+            ->call('loadMore')
+            ->assertViewHas('listings', fn ($listings) => $listings->count() === 24)
+            ->set('conditionFilter', 'new')
+            ->assertViewHas('listings', fn ($listings) => $listings->count() === 5);
+    });
+
     it('shows an inviting empty state when nothing is for sale', function () {
         $this->get(route('listings.index'))->assertOk()->assertSee('Nothing for sale yet');
     });
@@ -195,6 +298,19 @@ describe('browsing', function () {
 });
 
 describe('viewing a listing', function () {
+    it('returns 200 on the same listing page every time, not just the first (regression: cached Collections surviving a real serialize round trip)', function () {
+        // The `array` cache driver never actually serializes anything, which
+        // is exactly why this bug (a cached Collection coming back from a
+        // second request as __PHP_Incomplete_Class and crashing the page)
+        // never showed up with this suite's default cache store.
+        config(['cache.default' => 'database']);
+        $listing = Listing::factory()->create();
+
+        $this->get(route('listings.show', ['listing' => $listing, 'rec' => 'just_listed']))->assertOk();
+        $this->get(route('listings.show', ['listing' => $listing, 'rec' => 'just_listed']))->assertOk();
+        $this->get(route('listings.show', ['listing' => $listing, 'rec' => 'just_listed']))->assertOk();
+    });
+
     it('shows the details a buyer needs without exposing the seller\'s student id', function () {
         $seller = User::factory()->create(['name' => 'Mwamba Bwalya', 'student_id' => '2024883912']);
         $listing = Listing::factory()->create([
@@ -220,6 +336,18 @@ describe('viewing a listing', function () {
         $this->get(route('listings.show', 99999))
             ->assertNotFound()
             ->assertSee('We could not find that page');
+    });
+
+    it('shows a sticky mobile action bar with the price and primary action to a buyer, but not to the seller', function () {
+        $seller = User::factory()->create();
+        $buyer = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id, 'price' => 300]);
+
+        $response = $this->actingAs($buyer)->get(route('listings.show', $listing))->assertSee('Reserve this item');
+        expect(substr_count($response->getContent(), 'K300.00'))->toBeGreaterThanOrEqual(2); // main card + sticky bar
+
+        $ownerResponse = $this->actingAs($seller)->get(route('listings.show', $listing))->assertSee('This is your listing.');
+        expect(substr_count($ownerResponse->getContent(), 'K300.00'))->toBe(2); // main card + the gallery viewer's details panel; sticky bar hidden for the owner
     });
 
     it('hides suspended listings from everyone except their seller', function () {
@@ -284,6 +412,26 @@ describe('reserving an item', function () {
             ->assertRedirect(route('login'));
 
         expect(Reservation::count())->toBe(0);
+    });
+
+    it('sends an email-unverified student to verify their email instead of reserving', function () {
+        $buyer = User::factory()->unverified()->create();
+        $listing = Listing::factory()->create();
+
+        Livewire::actingAs($buyer)->test(ListingShow::class, ['listing' => $listing])
+            ->call('reserve')
+            ->assertRedirect(route('verification.notice'));
+
+        expect(Reservation::count())->toBe(0);
+    });
+
+    it('sends an email-unverified student to verify their email instead of messaging the seller', function () {
+        $buyer = User::factory()->unverified()->create();
+        $listing = Listing::factory()->create();
+
+        Livewire::actingAs($buyer)->test(ListingShow::class, ['listing' => $listing])
+            ->call('contactSeller')
+            ->assertRedirect(route('verification.notice'));
     });
 
     it('reserves an available item for a buyer without starting a transaction or hiding the listing', function () {

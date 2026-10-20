@@ -9,6 +9,12 @@
         </a>
     </div>
 
+    <section class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Buying overview">
+        <x-stat-card label="Items bought" :number="$buyerTotals['total_items']" icon="bag" />
+        <x-stat-card label="Total spent" :number="$buyerTotals['total_spent']" prefix="K" :decimals="2" icon="upload" />
+        <x-stat-card label="Average per item" :number="$buyerTotals['average_spend']" prefix="K" :decimals="2" icon="chart-bar" />
+    </section>
+
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
         <aside class="lg:col-span-3">
             <x-app-sidebar :groups="[
@@ -32,7 +38,7 @@
                         <ul class="divide-y divide-accent-100">
                             @foreach ($alerts as $alert)
                                 <li class="flex items-center gap-3 py-2.5">
-                                    <x-listing-image :src="$alert->listing->cover_image_url" :alt="$alert->listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
+                                    <x-listing-image :src="$alert->listing->cover_thumbnail_url" :alt="$alert->listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
                                     <div class="min-w-0 flex-1">
                                         <a href="{{ route('listings.show', $alert->listing) }}" class="block truncate text-sm font-medium text-ink hover:text-brand-800 dark:hover:text-brand-300">{{ $alert->listing->title }}</a>
                                         <p class="text-xs text-slate-600">
@@ -55,7 +61,7 @@
                     <ul class="divide-y divide-slate-100">
                         @foreach ($recentActivity as $listing)
                             <li class="flex items-center gap-3 py-2.5">
-                                <x-listing-image :src="$listing->cover_image_url" :alt="$listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
+                                <x-listing-image :src="$listing->cover_thumbnail_url" :alt="$listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
                                 <div class="min-w-0 flex-1">
                                     <a href="{{ route('listings.show', $listing) }}" class="block truncate text-sm font-medium text-ink hover:text-brand-800 dark:hover:text-brand-300">{{ $listing->title }}</a>
                                     <p class="text-xs text-slate-600">{{ $listing->category->name }} &middot; K{{ number_format($listing->price, 2) }}</p>
@@ -74,7 +80,7 @@
                     <ul class="divide-y divide-slate-100">
                         @foreach ($saved as $item)
                             <li class="flex items-center gap-3 py-2.5">
-                                <x-listing-image :src="$item->listing->cover_image_url" :alt="$item->listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
+                                <x-listing-image :src="$item->listing->cover_thumbnail_url" :alt="$item->listing->title" class="h-12 w-12 flex-shrink-0 rounded-lg" />
                                 <div class="min-w-0 flex-1">
                                     <a href="{{ route('listings.show', $item->listing) }}" class="block truncate text-sm font-medium text-ink hover:text-brand-800 dark:hover:text-brand-300">{{ $item->listing->title }}</a>
                                     <p class="text-xs text-slate-600">{{ $item->listing->category->name }} &middot; K{{ number_format($item->listing->price, 2) }}</p>

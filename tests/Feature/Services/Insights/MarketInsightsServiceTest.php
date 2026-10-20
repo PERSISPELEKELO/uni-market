@@ -3,6 +3,7 @@
 use App\Models\Category;
 use App\Models\Dispute;
 use App\Models\Listing;
+use App\Models\RecommendationEvent;
 use App\Models\SearchLog;
 use App\Models\Transaction;
 use App\Models\User;
@@ -147,4 +148,31 @@ it('ranks top listings by completed sale value within the period', function () {
 
     expect($top[0]['listing']->title)->toBe('Expensive Item')
         ->and($top[0]['amount'])->toBe(5000.0);
+});
+
+describe('recommendation click-through rate', function () {
+    it('computes a real click-through rate per section from logged events', function () {
+        $listing = Listing::factory()->create();
+
+        foreach (range(1, 4) as $_) {
+            RecommendationEvent::create(['listing_id' => $listing->id, 'section' => RecommendationEvent::SECTION_TRENDING, 'type' => RecommendationEvent::TYPE_IMPRESSION, 'created_at' => now()]);
+        }
+        RecommendationEvent::create(['listing_id' => $listing->id, 'section' => RecommendationEvent::SECTION_TRENDING, 'type' => RecommendationEvent::TYPE_CLICK, 'created_at' => now()]);
+
+        $rows = $this->service->recommendationClickThroughRate('30d');
+        $trending = collect($rows)->firstWhere('section', 'Trending');
+
+        expect($trending['impressions'])->toBe(4)
+            ->and($trending['clicks'])->toBe(1)
+            ->and($trending['ctr'])->toBe(25.0);
+    });
+
+    it('leaves out a section with no impressions in the period rather than showing a misleading 0%', function () {
+        $listing = Listing::factory()->create();
+        RecommendationEvent::create(['listing_id' => $listing->id, 'section' => RecommendationEvent::SECTION_TRENDING, 'type' => RecommendationEvent::TYPE_IMPRESSION, 'created_at' => now()->subDays(60)]);
+
+        $rows = $this->service->recommendationClickThroughRate('30d');
+
+        expect(collect($rows)->firstWhere('section', 'Trending'))->toBeNull();
+    });
 });

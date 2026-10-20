@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\StudentVerificationDocument;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Observers\ListingObserver;
 use App\Observers\TransactionObserver;
 use App\Policies\AppealPolicy;
 use App\Policies\AuditLogPolicy;
@@ -52,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
         Password::defaults(fn () => Password::min(8)->letters()->numbers());
 
         Transaction::observe(TransactionObserver::class);
+        Listing::observe(ListingObserver::class);
 
         ViewFacade::composer('layouts.app', function (View $view): void {
             $view->with('unreadMessageCount', $this->unreadMessageCount());

@@ -36,7 +36,8 @@ it('lets a member with a verified email submit their student id document', funct
     $user = User::factory()->pendingStudentVerification()->create();
 
     Livewire::actingAs($user)->test(StudentVerification::class)
-        ->set('document', fakePhoto('id-card.jpg'))
+        ->set('document', fakeIdPhoto('id-card.jpg'))
+        ->set('confirmedOwnCard', true)
         ->call('submit')
         ->assertHasNoErrors()
         ->assertDispatched('notify', type: 'success');
@@ -59,7 +60,8 @@ it('never stores the document on the public disk', function () {
     $user = User::factory()->pendingStudentVerification()->create();
 
     Livewire::actingAs($user)->test(StudentVerification::class)
-        ->set('document', fakePhoto('id-card.jpg'))
+        ->set('document', fakeIdPhoto('id-card.jpg'))
+        ->set('confirmedOwnCard', true)
         ->call('submit');
 
     $document = StudentVerificationDocument::firstOrFail();
@@ -74,14 +76,14 @@ it('requires a document and rejects the wrong file type or an oversized file', f
 
     $component->call('submit')
         ->assertHasErrors('document')
-        ->assertSee('Please choose your student ID document to upload.');
+        ->assertSee('Please choose your student ID photo to upload.');
 
     $component->set('document', UploadedFile::fake()->create('id.exe', 100, 'application/octet-stream'))
         ->call('submit')
         ->assertHasErrors('document')
-        ->assertSee('Please upload a JPG, PNG or PDF file.');
+        ->assertSee('Please upload a JPG, PNG or WebP photo.');
 
-    $component->set('document', UploadedFile::fake()->create('id.pdf', 6000, 'application/pdf'))
+    $component->set('document', UploadedFile::fake()->create('id.jpg', 6000, 'image/jpeg'))
         ->call('submit')
         ->assertHasErrors('document')
         ->assertSee('The file must be 5 MB or smaller.');
@@ -89,15 +91,64 @@ it('requires a document and rejects the wrong file type or an oversized file', f
     expect(StudentVerificationDocument::count())->toBe(0);
 });
 
-it('accepts a pdf document', function () {
+it('rejects a pdf document', function () {
     $user = User::factory()->pendingStudentVerification()->create();
 
     Livewire::actingAs($user)->test(StudentVerification::class)
         ->set('document', UploadedFile::fake()->create('id.pdf', 500, 'application/pdf'))
+        ->set('confirmedOwnCard', true)
+        ->call('submit')
+        ->assertHasErrors('document')
+        ->assertSee('Please upload a JPG, PNG or WebP photo.');
+
+    expect(StudentVerificationDocument::count())->toBe(0);
+});
+
+it('rejects a photo smaller than the minimum dimensions', function () {
+    $user = User::factory()->pendingStudentVerification()->create();
+
+    Livewire::actingAs($user)->test(StudentVerification::class)
+        ->set('document', fakePhoto('tiny.png'))
+        ->set('confirmedOwnCard', true)
+        ->call('submit')
+        ->assertHasErrors('document')
+        ->assertSee('Your photo is too small');
+
+    expect(StudentVerificationDocument::count())->toBe(0);
+});
+
+it('requires confirming this is the student\'s own id card', function () {
+    $user = User::factory()->pendingStudentVerification()->create();
+
+    Livewire::actingAs($user)->test(StudentVerification::class)
+        ->set('document', fakeIdPhoto())
+        ->call('submit')
+        ->assertHasErrors('confirmedOwnCard')
+        ->assertSee('Please confirm this is your own student ID card.');
+
+    expect(StudentVerificationDocument::count())->toBe(0);
+});
+
+it('strips exif metadata, including gps location, from the stored photo', function () {
+    $user = User::factory()->pendingStudentVerification()->create();
+    $upload = fakeIdPhotoWithExif();
+
+    // Sanity-check the fixture itself genuinely carries an EXIF segment, so
+    // a pass below can only mean the storage pipeline actually stripped it -
+    // not that the fixture never had any to begin with. (The exif extension
+    // isn't available in every environment, so this checks for the raw
+    // "Exif\0\0" marker rather than calling exif_read_data().)
+    expect(file_get_contents($upload->getRealPath()))->toContain("Exif\0\0");
+
+    Livewire::actingAs($user)->test(StudentVerification::class)
+        ->set('document', $upload)
+        ->set('confirmedOwnCard', true)
         ->call('submit')
         ->assertHasNoErrors();
 
-    expect(StudentVerificationDocument::count())->toBe(1);
+    $storedBytes = Storage::disk('local')->get(StudentVerificationDocument::firstOrFail()->file_path);
+
+    expect($storedBytes)->not->toContain("Exif\0\0");
 });
 
 it('does not allow a second submission while one is already pending', function () {
@@ -134,7 +185,8 @@ it('lets a member resubmit after rejection and keeps the rejected attempt in the
         ->assertSee('The photo was too blurry to read.');
 
     Livewire::actingAs($user)->test(StudentVerification::class)
-        ->set('document', fakePhoto('id-card-clear.jpg'))
+        ->set('document', fakeIdPhoto('id-card-clear.jpg'))
+        ->set('confirmedOwnCard', true)
         ->call('submit')
         ->assertHasNoErrors();
 
@@ -149,7 +201,9 @@ it('limits how many documents can be submitted in an hour', function () {
 
     foreach (range(1, 5) as $attempt) {
         $user->forceFill(['student_verification_status' => User::STUDENT_VERIFICATION_REJECTED])->save();
-        $component->set('document', fakePhoto("id-{$attempt}.jpg"))->call('submit');
+        $component->set('document', fakeIdPhoto("id-{$attempt}.jpg"))
+            ->set('confirmedOwnCard', true)
+            ->call('submit');
     }
 
     $user->forceFill(['student_verification_status' => User::STUDENT_VERIFICATION_REJECTED])->save();

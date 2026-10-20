@@ -2,10 +2,12 @@
 
 use App\Models\Listing;
 use App\Models\Reservation;
+use App\Models\SavedListing;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\ListingReserved;
 use App\Notifications\ReservationSelected;
+use App\Notifications\SavedListingAboutToBeReserved;
 use App\Services\ReservationService;
 use Illuminate\Support\Facades\Notification;
 
@@ -39,6 +41,16 @@ it('returns the existing reservation on a second call instead of creating a dupl
     Notification::assertSentToTimes($listing->seller, ListingReserved::class, 1);
 });
 
+it('refuses to let an email-unverified student reserve an item', function () {
+    $buyer = User::factory()->unverified()->create();
+    $listing = Listing::factory()->create();
+
+    expect(fn () => app(ReservationService::class)->reserve($listing, $buyer))
+        ->toThrow(InvalidArgumentException::class, 'verify your email');
+
+    expect(Reservation::count())->toBe(0);
+});
+
 it('refuses to reserve your own listing or an inactive one', function () {
     $seller = User::factory()->create();
     $ownListing = Listing::factory()->create(['user_id' => $seller->id]);
@@ -63,6 +75,31 @@ it('lets several buyers reserve the same listing at once', function () {
 
     expect($listing->reservations()->active()->count())->toBe(3)
         ->and($listing->fresh()->status)->toBe('active');
+});
+
+it('tells other students who saved the listing that it is getting interest, but never the reserving buyer', function () {
+    Notification::fake();
+    $listing = Listing::factory()->create();
+    $buyer = User::factory()->create();
+    $otherSaver = User::factory()->create();
+    SavedListing::create(['user_id' => $buyer->id, 'listing_id' => $listing->id, 'price_at_save' => $listing->price, 'created_at' => now()]);
+    SavedListing::create(['user_id' => $otherSaver->id, 'listing_id' => $listing->id, 'price_at_save' => $listing->price, 'created_at' => now()]);
+
+    app(ReservationService::class)->reserve($listing, $buyer);
+
+    Notification::assertSentTo($otherSaver, SavedListingAboutToBeReserved::class);
+    Notification::assertNotSentTo($buyer, SavedListingAboutToBeReserved::class);
+});
+
+it('does not send a saved-listing notification when no one else saved the listing', function () {
+    Notification::fake();
+    $listing = Listing::factory()->create();
+    $buyer = User::factory()->create();
+
+    app(ReservationService::class)->reserve($listing, $buyer);
+
+    Notification::assertNotSentTo($listing->seller, SavedListingAboutToBeReserved::class);
+    Notification::assertNotSentTo($buyer, SavedListingAboutToBeReserved::class);
 });
 
 describe('selecting a buyer', function () {

@@ -8,9 +8,11 @@ use App\Models\Listing;
 use App\Models\Reservation;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Notifications\NewListingPosted;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -40,6 +42,40 @@ function fillListingForm($component, array $data)
 }
 
 describe('creating a listing', function () {
+    it('shows a "get verified to sell" screen instead of the form to a student who is not yet student-verified', function () {
+        $user = User::factory()->pendingStudentVerification()->create();
+
+        Livewire::actingAs($user)->test(CreateListing::class)
+            ->assertSee('Only verified ZUT students can sell')
+            ->assertSee('Upload my student ID')
+            ->assertDontSee('Your listing title');
+    });
+
+    it('shows an email-verification prompt instead of the form to an email-unverified student', function () {
+        $user = User::factory()->unverified()->create();
+
+        Livewire::actingAs($user)->test(CreateListing::class)
+            ->assertSee('Verify your email to continue')
+            ->assertDontSee('Your listing title');
+    });
+
+    it('refuses to actually save a listing from an unverified student even if the save action is called directly', function () {
+        $user = User::factory()->pendingStudentVerification()->create();
+        $category = Category::factory()->create();
+
+        Livewire::actingAs($user)->test(CreateListing::class)
+            ->set('form.category_id', $category->id)
+            ->set('form.title', 'Calculus 9th Edition textbook')
+            ->set('form.description', 'Clean copy with light highlighting in chapter three.')
+            ->set('form.price', '250.00')
+            ->set('form.condition', 'good')
+            ->set('form.images', [fakePhoto('front.png')])
+            ->call('save')
+            ->assertForbidden();
+
+        expect(Listing::count())->toBe(0);
+    });
+
     it('live-previews the listing as it is filled out', function () {
         $category = Category::factory()->create(['name' => 'Books & Textbooks']);
 
@@ -72,6 +108,40 @@ describe('creating a listing', function () {
         collect($listing->images)->each(fn (string $path) => Storage::disk('public')->assertExists($path));
 
         $component->assertRedirect(route('listings.show', $listing));
+    });
+
+    it('notifies students subscribed to new-listing alerts, but never the poster themselves', function () {
+        Notification::fake();
+
+        $seller = User::factory()->create();
+        $subscriber = User::factory()->create(['notify_new_listings' => true]);
+        User::factory()->create(['notify_new_listings' => false]); // not subscribed
+        $category = Category::factory()->create();
+
+        $component = Livewire::actingAs($seller)->test(CreateListing::class);
+        fillListingForm($component, validListingData($category, [
+            'form.images' => [fakePhoto('front.png')],
+        ]))->call('save');
+
+        $listing = Listing::firstOrFail();
+
+        Notification::assertSentTo($subscriber, NewListingPosted::class);
+        Notification::assertNotSentTo($seller, NewListingPosted::class);
+        Notification::assertCount(1);
+    });
+
+    it('does not notify anyone when a listing is only saved as a draft', function () {
+        Notification::fake();
+
+        User::factory()->create(['notify_new_listings' => true]);
+        $category = Category::factory()->create();
+
+        $component = Livewire::actingAs(User::factory()->create())->test(CreateListing::class);
+        fillListingForm($component, validListingData($category, [
+            'form.images' => [fakePhoto('front.png')],
+        ]))->call('saveAsDraft');
+
+        Notification::assertNothingSent();
     });
 
     it('shows a helpful message for every missing required field', function () {

@@ -218,6 +218,7 @@
                                                     </button>
                                                 </th>
                                             @endforeach
+                                            <th class="py-1.5 text-left font-medium">Why isn't it selling?</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -230,6 +231,7 @@
                                                 <td class="py-1.5 text-right text-ink">{{ $row['reservations'] }}</td>
                                                 <td class="py-1.5 text-right text-ink">{{ $row['conversion_rate'] !== null ? $row['conversion_rate'].'%' : '—' }}</td>
                                                 <td class="py-1.5 text-right text-ink">{{ $row['days_listed'] }}</td>
+                                                <td class="max-w-[14rem] py-1.5 pl-3 text-xs text-slate-600">{{ $row['hint'] ?? '—' }}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>

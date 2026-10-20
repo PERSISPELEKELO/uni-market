@@ -29,14 +29,32 @@ class StudentVerificationService
         $this->apply($document, $reviewer, StudentVerificationDocument::STATUS_APPROVED, User::STUDENT_VERIFICATION_VERIFIED);
     }
 
-    public function reject(StudentVerificationDocument $document, User $reviewer, string $reason): void
+    public function reject(StudentVerificationDocument $document, User $reviewer, string $reasonCode, ?string $note = null): void
     {
-        $this->apply($document, $reviewer, StudentVerificationDocument::STATUS_REJECTED, User::STUDENT_VERIFICATION_REJECTED, $reason);
+        $message = $this->reasonMessage(StudentVerificationDocument::REJECTION_REASONS, $reasonCode, $note);
+
+        $this->apply($document, $reviewer, StudentVerificationDocument::STATUS_REJECTED, User::STUDENT_VERIFICATION_REJECTED, $message, $reasonCode);
     }
 
-    public function requestResubmission(StudentVerificationDocument $document, User $reviewer, string $reason): void
+    public function requestResubmission(StudentVerificationDocument $document, User $reviewer, string $reasonCode, ?string $note = null): void
     {
-        $this->apply($document, $reviewer, StudentVerificationDocument::STATUS_REJECTED, User::STUDENT_VERIFICATION_RESUBMISSION_REQUIRED, $reason);
+        $message = $this->reasonMessage(StudentVerificationDocument::RESUBMISSION_REASONS, $reasonCode, $note);
+
+        $this->apply($document, $reviewer, StudentVerificationDocument::STATUS_REJECTED, User::STUDENT_VERIFICATION_RESUBMISSION_REQUIRED, $message, $reasonCode);
+    }
+
+    /**
+     * @param  array<string, string>  $reasonList
+     */
+    private function reasonMessage(array $reasonList, string $reasonCode, ?string $note): string
+    {
+        $label = $reasonList[$reasonCode] ?? null;
+
+        if ($label === null || $reasonCode === 'other') {
+            return (string) $note;
+        }
+
+        return $note ? "{$label} {$note}" : $label;
     }
 
     /**
@@ -47,7 +65,8 @@ class StudentVerificationService
         User $reviewer,
         string $documentStatus,
         string $userStatus,
-        ?string $reason = null
+        ?string $reason = null,
+        ?string $reasonCode = null
     ): void {
         $document->loadMissing('user');
         $latest = $document->user->verificationDocuments()->latest('id')->first();
@@ -80,7 +99,10 @@ class StudentVerificationService
             $approved ? 'STUDENT_VERIFICATION_APPROVED' : 'STUDENT_VERIFICATION_REJECTED',
             'User',
             (string) $document->user_id,
-            ['document_id' => $document->id, 'outcome' => $userStatus, 'reason' => $reason]
+            // A reason CODE, never the free-text message or the student's
+            // full number - the message is for the student's notification
+            // and the account record, not the audit trail.
+            ['document_id' => $document->id, 'outcome' => $userStatus, 'reason_code' => $reasonCode]
         );
 
         // A notification delivery problem (e.g. mail server down) must never make the

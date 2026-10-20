@@ -4,8 +4,13 @@ namespace App\Livewire\Marketplace;
 
 use App\Livewire\Concerns\ManagesListingForm;
 use App\Models\Listing;
+use App\Models\User;
+use App\Notifications\NewListingPosted;
 use App\Services\AuditLoggerService;
+use App\Services\Recommendations\ContentSimilarityService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
@@ -13,9 +18,16 @@ class CreateListing extends Component
 {
     use ManagesListingForm;
 
+    /**
+     * No hard gate here - an unverified student still opens this page, but
+     * render() shows a "get verified to sell" screen instead of the listing
+     * form. persist() re-checks the real policy before ever saving, so the
+     * server-side rule is enforced the same way regardless of what the page
+     * happened to render.
+     */
     public function mount(): void
     {
-        $this->authorize('create', Listing::class);
+        //
     }
 
     public function save()
@@ -61,14 +73,33 @@ class CreateListing extends Component
                 ->with('success', 'Saved as a draft - publish it from My Listings whenever you are ready.');
         }
 
+        app(ContentSimilarityService::class)->refreshFor($listing);
+        $this->notifySubscribedStudents($listing);
+
         return redirect()->route('listings.show', $listing)
             ->with('success', 'Your listing is live on the campus marketplace!');
+    }
+
+    /**
+     * Students who opted in via the marketplace's "Get notified when items
+     * arrive" button - never the poster themselves.
+     */
+    private function notifySubscribedStudents(Listing $listing): void
+    {
+        $subscribers = User::where('notify_new_listings', true)
+            ->where('id', '!=', Auth::id())
+            ->get();
+
+        if ($subscribers->isNotEmpty()) {
+            Notification::send($subscribers, new NewListingPosted($listing));
+        }
     }
 
     public function render()
     {
         return view('livewire.marketplace.create-listing', [
             'categories' => $this->categories(),
+            'canSell' => Gate::allows('create', Listing::class),
         ])->layout('layouts.app', ['title' => 'Sell an Item - UniMarket']);
     }
 }

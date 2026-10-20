@@ -4,8 +4,8 @@ namespace App\Livewire\Forms;
 
 use App\Models\Listing;
 use App\Models\User;
+use App\Services\ListingImageService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\Form;
@@ -37,6 +37,20 @@ class ListingForm extends Form
      * @var array<int, TemporaryUploadedFile>
      */
     public array $images = [];
+
+    /**
+     * The seller's chosen display order across both existing and newly
+     * uploaded photos together - the first entry is always the main/cover
+     * photo. Each entry is a stable token: an existing photo's own stored
+     * path (unique per listing already), or "new:" plus a new upload's own
+     * unique temp filename - never a plain array index, since removing a
+     * photo re-indexes everything after it and would silently scramble the
+     * order otherwise. Kept in sync with existing_images/images by
+     * syncPhotoOrder() rather than trusted as free-standing client input.
+     *
+     * @var array<int, string>
+     */
+    public array $photoOrder = [];
 
     /**
      * @return array<string, array<int, mixed>>
@@ -98,30 +112,121 @@ class ListingForm extends Form
         $this->condition = $listing->condition;
         $this->existing_images = array_values($listing->images ?? []);
         $this->images = [];
+        $this->syncPhotoOrder();
     }
 
     public function removeExistingImage(int $index): void
     {
         unset($this->existing_images[$index]);
         $this->existing_images = array_values($this->existing_images);
+        $this->syncPhotoOrder();
     }
 
     public function removeNewImage(int $index): void
     {
         unset($this->images[$index]);
         $this->images = array_values($this->images);
+        $this->syncPhotoOrder();
+    }
+
+    /**
+     * Keeps photoOrder valid whenever existing_images/images change size:
+     * tokens that are no longer present (removed) are dropped, keeping the
+     * relative order of everything else exactly as the seller left it, and
+     * any token not seen before (a freshly added photo) is appended at the
+     * end - "new photos appear at the end" without disturbing anything
+     * already arranged.
+     */
+    public function syncPhotoOrder(): void
+    {
+        $validTokens = $this->currentPhotoTokens();
+
+        $this->photoOrder = array_values(array_intersect($this->photoOrder, $validTokens));
+        $this->photoOrder = array_merge($this->photoOrder, array_values(array_diff($validTokens, $this->photoOrder)));
+    }
+
+    /**
+     * Only ever reorders tokens that already belong to this listing's own
+     * current photos - the submitted order is checked against the exact
+     * same set syncPhotoOrder() computes server-side, so a request cannot
+     * smuggle in another listing's image path or invent a new one. A
+     * mismatched submission is silently ignored rather than applied.
+     *
+     * @param  array<int, string>  $order
+     */
+    public function reorderPhotos(array $order): void
+    {
+        $validTokens = $this->currentPhotoTokens();
+        $sortedOrder = $order;
+        $sortedValid = $validTokens;
+        sort($sortedOrder);
+        sort($sortedValid);
+
+        if ($sortedOrder !== $sortedValid) {
+            return;
+        }
+
+        $this->photoOrder = array_values($order);
+    }
+
+    public function setMainPhoto(string $token): void
+    {
+        if (! in_array($token, $this->photoOrder, true)) {
+            return;
+        }
+
+        $this->photoOrder = array_values(array_unique(array_merge([$token], $this->photoOrder)));
+    }
+
+    public function movePhotoLeft(string $token): void
+    {
+        $this->swapAdjacentPhotos($token, -1);
+    }
+
+    public function movePhotoRight(string $token): void
+    {
+        $this->swapAdjacentPhotos($token, 1);
+    }
+
+    private function swapAdjacentPhotos(string $token, int $direction): void
+    {
+        $position = array_search($token, $this->photoOrder, true);
+
+        if ($position === false) {
+            return;
+        }
+
+        $swapWith = $position + $direction;
+
+        if ($swapWith < 0 || $swapWith >= count($this->photoOrder)) {
+            return;
+        }
+
+        [$this->photoOrder[$position], $this->photoOrder[$swapWith]] = [$this->photoOrder[$swapWith], $this->photoOrder[$position]];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function currentPhotoTokens(): array
+    {
+        return array_merge(
+            array_values($this->existing_images),
+            collect($this->images)->map(fn (TemporaryUploadedFile $image): string => 'new:'.$image->getFilename())->values()->all()
+        );
     }
 
     public function store(User $seller, string $status = Listing::STATUS_ACTIVE): Listing
     {
         $this->validate();
+        $this->syncPhotoOrder();
 
-        $paths = $this->storeNewImages();
+        $paths = $this->orderedImagePaths($this->storeNewImages());
 
         try {
             return $seller->listings()->create($this->listingAttributes($paths) + ['status' => $status]);
         } catch (\Throwable $exception) {
-            Storage::disk('public')->delete($paths);
+            app(ListingImageService::class)->delete($paths);
 
             throw $exception;
         }
@@ -130,9 +235,10 @@ class ListingForm extends Form
     public function update(Listing $listing): Listing
     {
         $this->validate();
+        $this->syncPhotoOrder();
 
         $originalImages = $listing->images ?? [];
-        $paths = array_merge($this->existing_images, $this->storeNewImages());
+        $paths = $this->orderedImagePaths($this->storeNewImages());
 
         // The real, current price from the database - never the frontend -
         // is the only thing a price drop is ever measured against.
@@ -144,12 +250,12 @@ class ListingForm extends Form
                 $this->listingAttributes($paths) + $this->priceDropAttributes($previousPrice, $newPrice)
             ));
         } catch (\Throwable $exception) {
-            Storage::disk('public')->delete(array_diff($paths, $originalImages));
+            app(ListingImageService::class)->delete(array_diff($paths, $originalImages));
 
             throw $exception;
         }
 
-        Storage::disk('public')->delete(array_diff($originalImages, $paths));
+        app(ListingImageService::class)->delete(array_diff($originalImages, $paths));
 
         return $listing;
     }
@@ -193,12 +299,33 @@ class ListingForm extends Form
     }
 
     /**
-     * @return array<int, string>
+     * @return array<string, string> "new:" token => stored path
      */
     private function storeNewImages(): array
     {
-        return collect($this->images)
-            ->map(fn (TemporaryUploadedFile $image): string => $image->store('listings', 'public'))
+        $imageService = app(ListingImageService::class);
+        $stored = [];
+
+        foreach ($this->images as $image) {
+            /** @var TemporaryUploadedFile $image */
+            $stored['new:'.$image->getFilename()] = $imageService->store($image);
+        }
+
+        return $stored;
+    }
+
+    /**
+     * Resolves photoOrder's tokens into real stored paths, in the seller's
+     * chosen order - the first path is always the main/cover photo (see
+     * Listing::coverImageUrl()).
+     *
+     * @param  array<string, string>  $newlyStoredPaths  "new:" token => stored path
+     * @return array<int, string>
+     */
+    private function orderedImagePaths(array $newlyStoredPaths): array
+    {
+        return collect($this->photoOrder)
+            ->map(fn (string $token): string => str_starts_with($token, 'new:') ? $newlyStoredPaths[$token] : $token)
             ->values()
             ->all();
     }

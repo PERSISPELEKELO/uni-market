@@ -1,7 +1,7 @@
 <div class="relative" wire:poll.20s x-data="{ open: false }" x-on:click.outside="open = false" x-on:keydown.escape="open = false">
     <button
         type="button"
-        class="btn btn-secondary btn-sm relative min-h-11 min-w-11 px-2 sm:min-h-11"
+        class="relative inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 dark:hover:bg-slate-300"
         x-on:click="open = !open"
         x-bind:aria-expanded="open"
         aria-haspopup="true"

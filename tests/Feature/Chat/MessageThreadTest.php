@@ -22,6 +22,18 @@ it('returns 404 when the other person does not exist', function () {
     $this->actingAs(User::factory()->create())->get(route('chat.thread', ['receiver' => 99999]))->assertNotFound();
 });
 
+it('refuses to let an email-unverified student send a message', function () {
+    $buyer = User::factory()->unverified()->create();
+    $listing = Listing::factory()->create();
+
+    Livewire::actingAs($buyer)->test(MessageThread::class, ['receiver' => $listing->user_id, 'listing' => $listing->id])
+        ->set('newMessage', 'Is this still available?')
+        ->call('sendMessage')
+        ->assertHasErrors('newMessage');
+
+    expect(Message::count())->toBe(0);
+});
+
 it('sends a message about a listing', function () {
     $buyer = User::factory()->create();
     $listing = Listing::factory()->create();

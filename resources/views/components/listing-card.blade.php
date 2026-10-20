@@ -1,9 +1,16 @@
-@props(['listing'])
+@props(['listing', 'recSection' => null])
+
+@php
+    // Tags the link so ListingShow can attribute a click back to whichever
+    // recommendation carousel it came from (see RecommendationEvent) - a
+    // plain browse-grid card passes no recSection and gets a plain link.
+    $href = $recSection ? route('listings.show', ['listing' => $listing, 'rec' => $recSection]) : route('listings.show', $listing);
+@endphp
 
 <article {{ $attributes->class(['card card-hover group flex flex-col overflow-hidden']) }}>
     <div class="relative">
-        <a href="{{ route('listings.show', $listing) }}" class="block focus-visible:outline-offset-[-2px]" aria-label="{{ $listing->title }}, K{{ number_format($listing->price, 2) }}">
-            <x-listing-image :src="$listing->cover_image_url" :alt="$listing->title" class="aspect-[4/3] w-full" zoom>
+        <a href="{{ $href }}" class="block focus-visible:outline-offset-[-2px]" aria-label="{{ $listing->title }}, K{{ number_format($listing->price, 2) }}">
+            <x-listing-image :src="$listing->cover_thumbnail_url" :alt="$listing->title" class="aspect-[4/3] w-full" fit="contain" zoom>
                 <span class="badge badge-neutral absolute left-3 top-3 bg-white/95 shadow-sm dark:bg-slate-200/95">
                     {{ $listing->condition_label }}
                 </span>
@@ -32,7 +39,7 @@
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">{{ $listing->category->name }}</p>
 
         <h3 class="mt-1 text-base font-semibold text-ink">
-            <a href="{{ route('listings.show', $listing) }}" class="line-clamp-2 break-words hover:text-brand-800 dark:hover:text-brand-300">{{ $listing->title }}</a>
+            <a href="{{ $href }}" class="line-clamp-2 break-words hover:text-brand-800 dark:hover:text-brand-300">{{ $listing->title }}</a>
         </h3>
 
         @if ($listing->isHotDeal())

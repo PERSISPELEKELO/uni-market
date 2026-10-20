@@ -35,9 +35,15 @@ trait ManagesListingForm
             $this->form->validateOnly('images.*');
         } catch (ValidationException $exception) {
             $this->form->images = [];
+            $this->form->syncPhotoOrder();
 
             throw $exception;
         }
+
+        // A fresh batch of photos was just selected (or replaced) - bring
+        // photoOrder up to date so any newly added photos show up (at the
+        // end, per the brief) without disturbing an order already chosen.
+        $this->form->syncPhotoOrder();
     }
 
     public function removeNewPhoto(int $index): void
@@ -48,6 +54,29 @@ trait ManagesListingForm
     public function removeExistingPhoto(int $index): void
     {
         $this->form->removeExistingImage($index);
+    }
+
+    /**
+     * @param  array<int, string>  $order
+     */
+    public function reorderPhotos(array $order): void
+    {
+        $this->form->reorderPhotos($order);
+    }
+
+    public function setMainPhoto(string $token): void
+    {
+        $this->form->setMainPhoto($token);
+    }
+
+    public function movePhotoLeft(string $token): void
+    {
+        $this->form->movePhotoLeft($token);
+    }
+
+    public function movePhotoRight(string $token): void
+    {
+        $this->form->movePhotoRight($token);
     }
 
     /**

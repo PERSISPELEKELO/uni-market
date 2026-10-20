@@ -19,11 +19,13 @@ class SavedListing extends Model
         'user_id',
         'listing_id',
         'price_at_save',
+        'price_drop_notified_at',
         'created_at',
     ];
 
     protected $casts = [
         'price_at_save' => 'decimal:2',
+        'price_drop_notified_at' => 'datetime',
         'created_at' => 'datetime',
     ];
 

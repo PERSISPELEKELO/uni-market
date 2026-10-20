@@ -56,13 +56,13 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="flex min-h-screen flex-col">
+<body class="flex min-h-screen flex-col" x-data="{ mobileOpen: false }" x-on:keydown.escape.window="mobileOpen = false">
 
     <a href="#main-content" class="sr-only z-50 rounded-lg bg-white px-4 py-2 font-semibold text-brand-800 dark:bg-slate-200 dark:text-brand-300 shadow focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
         Skip to main content
     </a>
 
-    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur dark:bg-slate-200/95" x-data="{ mobileOpen: false }" x-on:keydown.escape.window="mobileOpen = false">
+    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur dark:bg-slate-200/95">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div class="flex h-16 items-center justify-between gap-2">
 
@@ -72,6 +72,9 @@
                         <span>UniMarket</span>
                     </a>
 
+                    {{-- Left side is logo + Home only - My Activity and
+                         Messages moved into the right-side icon group below,
+                         matching Facebook's layout. --}}
                     <nav class="hidden items-center gap-1 md:flex" aria-label="Main navigation">
                         <a
                             href="{{ route('listings.index') }}"
@@ -83,62 +86,88 @@
                             <x-app-icon name="home" class="h-5 w-5" />
                             <span class="sr-only">Home</span>
                         </a>
-                        @auth
-                            <a
-                                href="{{ route('activity.index') }}"
-                                @class(['relative inline-flex min-h-11 min-w-11 items-center justify-center border-b-2 border-transparent text-slate-600 transition-colors hover:text-brand-800', 'border-brand-700 text-brand-800' => request()->routeIs('activity.index', 'listings.mine', 'listings.edit', 'transactions.tracker')])
-                                @if(request()->routeIs('activity.index')) aria-current="page" @endif
-                                aria-label="My Activity"
-                                title="My Activity"
-                            >
-                                <x-app-icon name="layout-grid" class="h-5 w-5" />
-                                <span class="sr-only">My Activity</span>
-                            </a>
-                            <a
-                                href="{{ route('chat.index') }}"
-                                @class(['relative inline-flex min-h-11 min-w-11 items-center justify-center border-b-2 border-transparent text-slate-600 transition-colors hover:text-brand-800', 'border-brand-700 text-brand-800' => request()->routeIs('chat.*')])
-                                @if(request()->routeIs('chat.*')) aria-current="page" @endif
-                                aria-label="Messages"
-                                title="Messages"
-                            >
-                                <x-app-icon name="chat" class="h-5 w-5" />
-                                <span class="sr-only">Messages</span>
-                                @if ($unreadMessageCount > 0)
-                                    <span class="absolute -right-1 top-0 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-accent-700 px-1 text-[10px] font-bold text-white dark:border-slate-200">
-                                        {{ $unreadMessageCount > 9 ? '9+' : $unreadMessageCount }}<span class="sr-only"> unread</span>
-                                    </span>
-                                @endif
-                            </a>
-                        @endauth
                     </nav>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <button
-                        type="button"
-                        class="btn btn-secondary btn-sm min-h-11 min-w-11 px-2"
-                        x-data
-                        x-on:click="window.uniMarketTheme.toggle()"
-                        aria-label="Toggle dark mode"
-                        title="Toggle dark mode"
-                    >
-                        <x-app-icon name="sun" class="hidden h-5 w-5 dark:block" />
-                        <x-app-icon name="moon" class="block h-5 w-5 dark:hidden" />
-                    </button>
+                <form action="{{ route('listings.index') }}" method="GET" class="mx-4 hidden min-w-0 max-w-md flex-1 lg:flex">
+                    <label for="top-search" class="sr-only">Search listings</label>
+                    <div class="relative w-full">
+                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <x-app-icon name="search" class="h-4 w-4" />
+                        </span>
+                        <input
+                            id="top-search"
+                            type="search"
+                            name="search"
+                            value="{{ request('search') }}"
+                            placeholder="Search textbooks, laptops, dorm gear..."
+                            class="form-input min-h-10 pl-9 text-sm"
+                        />
+                    </div>
+                </form>
 
+                <div class="flex items-center gap-1.5">
                     @auth
-                        <a href="{{ route('listings.create') }}" class="btn btn-primary btn-sm min-h-11 min-w-11 px-2" title="Sell item" aria-label="Sell item">
+                        {{-- Right side, in order: Sell, My Activity grid menu,
+                             Messages, Notifications, Avatar - matching
+                             Facebook's layout. Every icon here is the same
+                             44x44 round button style; the theme toggle lives
+                             inside the avatar menu only, not duplicated here. --}}
+                        <a href="{{ route('listings.create') }}" class="hidden h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-brand-700 text-white transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 md:inline-flex" title="Sell item" aria-label="Sell item">
                             <x-app-icon name="plus" class="h-5 w-5" />
-                            <span class="sr-only">Sell item</span>
+                        </a>
+
+                        <div class="relative hidden md:block" x-data="{ gridMenuOpen: false }" x-on:click.outside="gridMenuOpen = false" x-on:keydown.escape="gridMenuOpen = false">
+                            <button
+                                type="button"
+                                class="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 dark:hover:bg-slate-300"
+                                x-on:click="gridMenuOpen = !gridMenuOpen"
+                                x-bind:aria-expanded="gridMenuOpen"
+                                aria-haspopup="true"
+                                aria-label="My Activity menu"
+                                title="My Activity"
+                            >
+                                <x-app-icon name="layout-grid" class="h-5 w-5" />
+                            </button>
+
+                            <div x-cloak x-show="gridMenuOpen" x-transition.opacity class="absolute right-0 mt-2 w-56 origin-top-right rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:bg-slate-200">
+                                <a href="{{ route('activity.buying') }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
+                                    <x-app-icon name="bag" class="h-5 w-5" /> Buying
+                                </a>
+                                <a href="{{ route('activity.index', ['tab' => 'selling']) }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
+                                    <x-app-icon name="layout-grid" class="h-5 w-5" /> Selling
+                                </a>
+                                <a href="{{ route('activity.buying') }}#saved" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
+                                    <x-app-icon name="bookmark" class="h-5 w-5" /> Saved
+                                </a>
+                                <a href="{{ route('activity.index', ['tab' => 'insights']) }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
+                                    <x-app-icon name="chart-bar" class="h-5 w-5" /> Insights
+                                </a>
+                            </div>
+                        </div>
+
+                        <a
+                            href="{{ route('chat.index') }}"
+                            @class(['relative inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 dark:hover:bg-slate-300', 'text-brand-800' => request()->routeIs('chat.*')])
+                            @if(request()->routeIs('chat.*')) aria-current="page" @endif
+                            aria-label="Messages"
+                            title="Messages"
+                        >
+                            <x-app-icon name="chat" class="h-5 w-5" />
+                            <span class="sr-only">Messages</span>
+                            @if ($unreadMessageCount > 0)
+                                <span class="absolute right-0.5 top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-accent-700 px-1 text-[10px] font-bold text-white dark:border-slate-200">
+                                    {{ $unreadMessageCount > 9 ? '9+' : $unreadMessageCount }}<span class="sr-only"> unread</span>
+                                </span>
+                            @endif
                         </a>
 
                         @livewire('notifications.bell')
 
-                        <div class="relative hidden md:block" x-data="{ menuOpen: false }" x-on:click.outside="menuOpen = false" x-on:keydown.escape="menuOpen = false">
-                            <button type="button" class="btn btn-secondary btn-sm min-h-11 min-w-11 px-2" x-on:click="menuOpen = !menuOpen" x-bind:aria-expanded="menuOpen" aria-haspopup="true" aria-label="Your account" title="{{ auth()->user()->name }}">
-                                <x-avatar :user="auth()->user()" class="h-6 w-6 text-xs" />
+                        <div class="relative" x-data="{ menuOpen: false }" x-on:click.outside="menuOpen = false" x-on:keydown.escape="menuOpen = false">
+                            <button type="button" class="flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 dark:hover:bg-slate-300" x-on:click="menuOpen = !menuOpen" x-bind:aria-expanded="menuOpen" aria-haspopup="true" aria-label="Your account" title="{{ auth()->user()->name }}">
+                                <x-avatar :user="auth()->user()" class="h-8 w-8 text-xs" />
                                 <span class="sr-only">{{ auth()->user()->name }}</span>
-                                <x-app-icon name="chevron-down" class="h-4 w-4" />
                             </button>
 
                             <div x-cloak x-show="menuOpen" x-transition.opacity class="absolute right-0 mt-2 w-64 origin-top-right rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:bg-slate-200">
@@ -161,6 +190,9 @@
                                 <a href="{{ route('appeals.mine') }}" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-800 hover:bg-slate-100">
                                     <x-app-icon name="flag" class="h-5 w-5" /> My appeals
                                 </a>
+                                <button type="button" x-on:click="menuOpen = false; $dispatch('open-help-panel')" class="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-800 hover:bg-slate-100">
+                                    <x-app-icon name="help-circle" class="h-5 w-5" /> Help
+                                </button>
                                 @livewire('account.theme-toggle')
                                 <form method="POST" action="{{ route('logout') }}" class="border-t border-slate-100 pt-1">
                                     @csrf
@@ -171,6 +203,20 @@
                             </div>
                         </div>
                     @else
+                        {{-- Guests have no avatar menu to hold the theme
+                             toggle, so it stays here as its own button
+                             rather than disappearing for them entirely. --}}
+                        <button
+                            type="button"
+                            class="hidden h-11 w-11 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 dark:hover:bg-slate-300 md:inline-flex"
+                            x-data
+                            x-on:click="window.uniMarketTheme.toggle()"
+                            aria-label="Toggle dark mode"
+                            title="Toggle dark mode"
+                        >
+                            <x-app-icon name="sun" class="hidden h-5 w-5 dark:block" />
+                            <x-app-icon name="moon" class="block h-5 w-5 dark:hidden" />
+                        </button>
                         <a href="{{ route('login') }}" class="nav-link">Log in</a>
                         <a href="{{ route('register') }}" class="btn btn-primary btn-sm hidden sm:inline-flex sm:min-h-11 sm:px-4 sm:text-sm">Join UniMarket</a>
                     @endauth
@@ -184,7 +230,7 @@
             </div>
         </div>
 
-        <nav id="mobile-menu" x-cloak x-show="mobileOpen" x-transition.opacity class="border-t border-slate-200 bg-white md:hidden dark:bg-slate-200" aria-label="Mobile navigation">
+        <nav id="mobile-menu" x-cloak x-show="mobileOpen" x-transition.opacity class="border-t border-slate-200 bg-white md:hidden dark:bg-slate-200" aria-label="Account menu">
             <div class="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 sm:px-6">
                 <button
                     type="button"
@@ -196,15 +242,15 @@
                     <x-app-icon name="moon" class="block h-5 w-5 dark:hidden" />
                     <span>Toggle dark mode</span>
                 </button>
-                <a href="{{ route('listings.index') }}" class="nav-link py-3">Browse</a>
+                <button
+                    type="button"
+                    class="nav-link flex w-full items-center gap-2 py-3 text-left"
+                    x-on:click="$dispatch('open-help-panel'); mobileOpen = false"
+                >
+                    <x-app-icon name="help-circle" class="h-5 w-5" />
+                    <span>Help</span>
+                </button>
                 @auth
-                    <a href="{{ route('activity.index') }}" class="nav-link py-3">My Activity</a>
-                    <a href="{{ route('chat.index') }}" class="nav-link flex items-center justify-between py-3">
-                        <span>Messages</span>
-                        @if ($unreadMessageCount > 0)
-                            <span class="badge border-accent-700 bg-accent-700 text-white">{{ $unreadMessageCount }}<span class="sr-only"> unread</span></span>
-                        @endif
-                    </a>
                     <div class="mt-2 border-t border-slate-100 pt-3">
                         <div class="flex items-center gap-2.5 px-3">
                             <x-avatar :user="auth()->user()" class="h-9 w-9 flex-shrink-0 text-sm" />
@@ -296,7 +342,7 @@
         @endif
     @endforeach
 
-    <main id="main-content" class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+    <main id="main-content" class="mx-auto w-full max-w-7xl flex-1 px-4 py-6 pb-24 sm:px-6 sm:py-8 md:pb-8 lg:px-8">
         {{ $slot }}
     </main>
 
@@ -327,7 +373,7 @@
             },
         }"
         x-on:notify.window="add($event.detail)"
-        class="pointer-events-none fixed inset-x-0 bottom-4 z-50 mx-auto flex max-w-md flex-col gap-2 px-4"
+        class="pointer-events-none fixed inset-x-0 bottom-20 z-50 mx-auto flex max-w-md flex-col gap-2 px-4 md:bottom-4"
         aria-live="polite"
     >
         <template x-for="toast in toasts" :key="toast.id">
@@ -340,6 +386,93 @@
             </div>
         </template>
     </div>
+
+    {{-- Mobile bottom tab bar. Desktop keeps the existing top-bar icon nav;
+         this only ever shows below md, and <main>/body padding below
+         accounts for its height so content is never hidden behind it. --}}
+    <nav
+        class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-slate-300 dark:bg-slate-200/95"
+        aria-label="Primary navigation"
+    >
+        <div class="grid grid-cols-5 items-stretch">
+            <a
+                href="{{ route('listings.index') }}"
+                @class(['flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500', 'text-brand-700' => request()->routeIs('listings.index', 'listings.show')])
+                @if (request()->routeIs('listings.index')) aria-current="page" @endif
+                aria-label="Home"
+            >
+                <x-app-icon name="home" class="h-5 w-5" />
+                <span class="text-[10px] font-medium">Home</span>
+            </a>
+
+            <a
+                href="{{ route('listings.index', ['search' => request('search')]) }}#search"
+                class="flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500"
+                aria-label="Search listings"
+            >
+                <x-app-icon name="search" class="h-5 w-5" />
+                <span class="text-[10px] font-medium">Search</span>
+            </a>
+
+            <div class="flex items-center justify-center">
+                @auth
+                    <a
+                        href="{{ route('listings.create') }}"
+                        class="flex h-14 w-14 -translate-y-3 items-center justify-center rounded-full bg-brand-700 text-white shadow-lg ring-4 ring-white transition-colors hover:bg-brand-800 dark:ring-slate-100"
+                        aria-label="Sell an item"
+                        title="Sell an item"
+                    >
+                        <x-app-icon name="plus" class="h-6 w-6" />
+                    </a>
+                @else
+                    <a
+                        href="{{ route('register') }}"
+                        class="flex h-14 w-14 -translate-y-3 items-center justify-center rounded-full bg-brand-700 text-white shadow-lg ring-4 ring-white transition-colors hover:bg-brand-800 dark:ring-slate-100"
+                        aria-label="Join UniMarket"
+                        title="Join UniMarket"
+                    >
+                        <x-app-icon name="plus" class="h-6 w-6" />
+                    </a>
+                @endauth
+            </div>
+
+            @auth
+                <a
+                    href="{{ route('activity.index') }}"
+                    @class(['flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500', 'text-brand-700' => request()->routeIs('activity.index', 'listings.mine', 'listings.edit', 'transactions.tracker')])
+                    @if (request()->routeIs('activity.index')) aria-current="page" @endif
+                    aria-label="My Activity"
+                >
+                    <x-app-icon name="layout-grid" class="h-5 w-5" />
+                    <span class="text-[10px] font-medium">Activity</span>
+                </a>
+
+                <button
+                    type="button"
+                    x-on:click="mobileOpen = !mobileOpen"
+                    x-bind:aria-expanded="mobileOpen"
+                    aria-controls="mobile-menu"
+                    @class(['flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500', 'text-brand-700' => request()->routeIs('account', 'profiles.show', 'appeals.mine')])
+                    aria-label="Profile menu"
+                >
+                    <x-avatar :user="auth()->user()" class="h-5 w-5 text-[9px]" />
+                    <span class="text-[10px] font-medium">Profile</span>
+                </button>
+            @else
+                <a href="{{ route('login') }}" class="flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500" aria-label="Log in">
+                    <x-app-icon name="user" class="h-5 w-5" />
+                    <span class="text-[10px] font-medium">Log in</span>
+                </a>
+
+                <a href="{{ route('how-it-works') }}" @class(['flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500', 'text-brand-700' => request()->routeIs('how-it-works')]) aria-label="How UniMarket works">
+                    <x-app-icon name="info" class="h-5 w-5" />
+                    <span class="text-[10px] font-medium">How it works</span>
+                </a>
+            @endauth
+        </div>
+    </nav>
+
+    @livewire('help-panel')
 
     @livewireScripts
 </body>
