@@ -188,6 +188,6 @@ class Register extends Component
         return view('livewire.auth.register', [
             'schools' => config('zut.schools'),
             'intakeYears' => range(now()->year, now()->year - 10),
-        ])->layout('layouts.app', ['title' => 'Create your account - UniMarket']);
+        ])->layout('layouts.guest', ['title' => 'Create your account - UniMarket']);
     }
 }

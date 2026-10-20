@@ -13,7 +13,7 @@ it('is publicly readable without an account', function () {
 });
 
 it('is linked from the footer', function () {
-    $this->get(route('listings.index'))->assertSee(route('how-it-works'), false);
+    $this->actingAs(User::factory()->create())->get(route('listings.index'))->assertSee(route('how-it-works'), false);
 });
 
 it('is reachable for signed-in students too', function () {

@@ -46,7 +46,7 @@ it('does not duplicate the theme toggle for a signed-in student', function () {
 });
 
 it('still gives a guest a way to toggle dark mode on desktop', function () {
-    $this->get(route('listings.index'))
+    $this->get(route('how-it-works'))
         ->assertOk()
         ->assertSee('Toggle dark mode');
 });

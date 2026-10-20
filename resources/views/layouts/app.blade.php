@@ -74,37 +74,43 @@
 
                     {{-- Left side is logo + Home only - My Activity and
                          Messages moved into the right-side icon group below,
-                         matching Facebook's layout. --}}
-                    <nav class="hidden items-center gap-1 md:flex" aria-label="Main navigation">
-                        <a
-                            href="{{ route('listings.index') }}"
-                            @class(['relative inline-flex min-h-11 min-w-11 items-center justify-center border-b-2 border-transparent text-slate-600 transition-colors hover:text-brand-800', 'border-brand-700 text-brand-800' => request()->routeIs('listings.index', 'listings.show')])
-                            @if(request()->routeIs('listings.index')) aria-current="page" @endif
-                            aria-label="Home"
-                            title="Home"
-                        >
-                            <x-app-icon name="home" class="h-5 w-5" />
-                            <span class="sr-only">Home</span>
-                        </a>
-                    </nav>
+                         matching Facebook's layout. Guests never see this
+                         nav: it only links to marketplace pages, which are
+                         all behind login now. --}}
+                    @auth
+                        <nav class="hidden items-center gap-1 md:flex" aria-label="Main navigation">
+                            <a
+                                href="{{ route('listings.index') }}"
+                                @class(['relative inline-flex min-h-11 min-w-11 items-center justify-center border-b-2 border-transparent text-slate-600 transition-colors hover:text-brand-800', 'border-brand-700 text-brand-800' => request()->routeIs('listings.index', 'listings.show')])
+                                @if(request()->routeIs('listings.index')) aria-current="page" @endif
+                                aria-label="Home"
+                                title="Home"
+                            >
+                                <x-app-icon name="home" class="h-5 w-5" />
+                                <span class="sr-only">Home</span>
+                            </a>
+                        </nav>
+                    @endauth
                 </div>
 
-                <form action="{{ route('listings.index') }}" method="GET" class="mx-4 hidden min-w-0 max-w-md flex-1 lg:flex">
-                    <label for="top-search" class="sr-only">Search listings</label>
-                    <div class="relative w-full">
-                        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                            <x-app-icon name="search" class="h-4 w-4" />
-                        </span>
-                        <input
-                            id="top-search"
-                            type="search"
-                            name="search"
-                            value="{{ request('search') }}"
-                            placeholder="Search textbooks, laptops, dorm gear..."
-                            class="form-input min-h-10 pl-9 text-sm"
-                        />
-                    </div>
-                </form>
+                @auth
+                    <form action="{{ route('listings.index') }}" method="GET" class="mx-4 hidden min-w-0 max-w-md flex-1 lg:flex">
+                        <label for="top-search" class="sr-only">Search listings</label>
+                        <div class="relative w-full">
+                            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                                <x-app-icon name="search" class="h-4 w-4" />
+                            </span>
+                            <input
+                                id="top-search"
+                                type="search"
+                                name="search"
+                                value="{{ request('search') }}"
+                                placeholder="Search textbooks, laptops, dorm gear..."
+                                class="form-input min-h-10 pl-9 text-sm"
+                            />
+                        </div>
+                    </form>
+                @endauth
 
                 <div class="flex items-center gap-1.5">
                     @auth
@@ -242,14 +248,16 @@
                     <x-app-icon name="moon" class="block h-5 w-5 dark:hidden" />
                     <span>Toggle dark mode</span>
                 </button>
-                <button
-                    type="button"
-                    class="nav-link flex w-full items-center gap-2 py-3 text-left"
-                    x-on:click="$dispatch('open-help-panel'); mobileOpen = false"
-                >
-                    <x-app-icon name="help-circle" class="h-5 w-5" />
-                    <span>Help</span>
-                </button>
+                @auth
+                    <button
+                        type="button"
+                        class="nav-link flex w-full items-center gap-2 py-3 text-left"
+                        x-on:click="$dispatch('open-help-panel'); mobileOpen = false"
+                    >
+                        <x-app-icon name="help-circle" class="h-5 w-5" />
+                        <span>Help</span>
+                    </button>
+                @endauth
                 @auth
                     <div class="mt-2 border-t border-slate-100 pt-3">
                         <div class="flex items-center gap-2.5 px-3">
@@ -389,33 +397,35 @@
 
     {{-- Mobile bottom tab bar. Desktop keeps the existing top-bar icon nav;
          this only ever shows below md, and <main>/body padding below
-         accounts for its height so content is never hidden behind it. --}}
-    <nav
-        class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-slate-300 dark:bg-slate-200/95"
-        aria-label="Primary navigation"
-    >
-        <div class="grid grid-cols-5 items-stretch">
-            <a
-                href="{{ route('listings.index') }}"
-                @class(['flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500', 'text-brand-700' => request()->routeIs('listings.index', 'listings.show')])
-                @if (request()->routeIs('listings.index')) aria-current="page" @endif
-                aria-label="Home"
-            >
-                <x-app-icon name="home" class="h-5 w-5" />
-                <span class="text-[10px] font-medium">Home</span>
-            </a>
+         accounts for its height so content is never hidden behind it.
+         Guests get no bottom tab bar at all - every destination it links
+         to is marketplace content, now behind login. --}}
+    @auth
+        <nav
+            class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-slate-300 dark:bg-slate-200/95"
+            aria-label="Primary navigation"
+        >
+            <div class="grid grid-cols-5 items-stretch">
+                <a
+                    href="{{ route('listings.index') }}"
+                    @class(['flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500', 'text-brand-700' => request()->routeIs('listings.index', 'listings.show')])
+                    @if (request()->routeIs('listings.index')) aria-current="page" @endif
+                    aria-label="Home"
+                >
+                    <x-app-icon name="home" class="h-5 w-5" />
+                    <span class="text-[10px] font-medium">Home</span>
+                </a>
 
-            <a
-                href="{{ route('listings.index', ['search' => request('search')]) }}#search"
-                class="flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500"
-                aria-label="Search listings"
-            >
-                <x-app-icon name="search" class="h-5 w-5" />
-                <span class="text-[10px] font-medium">Search</span>
-            </a>
+                <a
+                    href="{{ route('listings.index', ['search' => request('search')]) }}#search"
+                    class="flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500"
+                    aria-label="Search listings"
+                >
+                    <x-app-icon name="search" class="h-5 w-5" />
+                    <span class="text-[10px] font-medium">Search</span>
+                </a>
 
-            <div class="flex items-center justify-center">
-                @auth
+                <div class="flex items-center justify-center">
                     <a
                         href="{{ route('listings.create') }}"
                         class="flex h-14 w-14 -translate-y-3 items-center justify-center rounded-full bg-brand-700 text-white shadow-lg ring-4 ring-white transition-colors hover:bg-brand-800 dark:ring-slate-100"
@@ -424,19 +434,8 @@
                     >
                         <x-app-icon name="plus" class="h-6 w-6" />
                     </a>
-                @else
-                    <a
-                        href="{{ route('register') }}"
-                        class="flex h-14 w-14 -translate-y-3 items-center justify-center rounded-full bg-brand-700 text-white shadow-lg ring-4 ring-white transition-colors hover:bg-brand-800 dark:ring-slate-100"
-                        aria-label="Join UniMarket"
-                        title="Join UniMarket"
-                    >
-                        <x-app-icon name="plus" class="h-6 w-6" />
-                    </a>
-                @endauth
-            </div>
+                </div>
 
-            @auth
                 <a
                     href="{{ route('activity.index') }}"
                     @class(['flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500', 'text-brand-700' => request()->routeIs('activity.index', 'listings.mine', 'listings.edit', 'transactions.tracker')])
@@ -458,21 +457,11 @@
                     <x-avatar :user="auth()->user()" class="h-5 w-5 text-[9px]" />
                     <span class="text-[10px] font-medium">Profile</span>
                 </button>
-            @else
-                <a href="{{ route('login') }}" class="flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500" aria-label="Log in">
-                    <x-app-icon name="user" class="h-5 w-5" />
-                    <span class="text-[10px] font-medium">Log in</span>
-                </a>
+            </div>
+        </nav>
 
-                <a href="{{ route('how-it-works') }}" @class(['flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500', 'text-brand-700' => request()->routeIs('how-it-works')]) aria-label="How UniMarket works">
-                    <x-app-icon name="info" class="h-5 w-5" />
-                    <span class="text-[10px] font-medium">How it works</span>
-                </a>
-            @endauth
-        </div>
-    </nav>
-
-    @livewire('help-panel')
+        @livewire('help-panel')
+    @endauth
 
     @livewireScripts
 </body>

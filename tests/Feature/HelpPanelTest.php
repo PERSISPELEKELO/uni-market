@@ -5,11 +5,17 @@ use App\Models\SupportMessage;
 use App\Models\User;
 use Livewire\Livewire;
 
-it('shows the Help trigger to anyone, including a guest, without the FAQ text until opened', function () {
-    $this->get(route('listings.index'))
+it('shows the Help trigger to a signed-in student, without the FAQ text until opened', function () {
+    $this->actingAs(User::factory()->create())->get(route('listings.index'))
         ->assertOk()
         ->assertSee('Help')
         ->assertDontSee('How do I reserve an item?');
+});
+
+it('never shows the Help trigger to a guest', function () {
+    $this->get(route('how-it-works'))
+        ->assertOk()
+        ->assertDontSee('open-help-panel', false);
 });
 
 it('reveals the FAQ and quick links once the panel is opened', function () {

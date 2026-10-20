@@ -1,22 +1,4 @@
 <div x-data="{ filtersOpen: false, categoriesOpen: false }">
-    @guest
-        {{-- A slim, dismissible strip instead of a tall gradient banner -
-             products start within the first screenful even for a guest. --}}
-        <div
-            x-data="{ dismissed: false }"
-            x-show="!dismissed"
-            x-cloak
-            class="mb-4 flex items-center justify-between gap-3 rounded-lg bg-brand-50 px-4 py-2.5 text-sm dark:bg-brand-500/10"
-        >
-            <p class="text-ink">
-                Buy and sell within your campus community.
-                <a href="{{ route('register') }}" class="font-semibold text-brand-800 underline underline-offset-2 dark:text-brand-300">Join UniMarket</a>
-            </p>
-            <button type="button" x-on:click="dismissed = true" aria-label="Dismiss" class="-m-2 flex-shrink-0 rounded-full p-2 text-slate-500 hover:bg-black/5">
-                <x-app-icon name="x" class="h-4 w-4" />
-            </button>
-        </div>
-    @endguest
 
     <form role="search" x-on:submit.prevent class="mb-4">
         <label for="search" class="sr-only">Search listings</label>

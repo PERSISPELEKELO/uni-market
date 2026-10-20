@@ -50,6 +50,6 @@ class ForgotPassword extends Component
     public function render()
     {
         return view('livewire.auth.forgot-password')
-            ->layout('layouts.app', ['title' => 'Reset your password - UniMarket']);
+            ->layout('layouts.guest', ['title' => 'Reset your password - UniMarket']);
     }
 }

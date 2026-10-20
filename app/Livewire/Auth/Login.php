@@ -97,7 +97,7 @@ class Login extends Component
     {
         return view('livewire.auth.login', [
             'stats' => $this->sideStats(),
-        ])->layout('layouts.app', ['title' => 'Log in - UniMarket']);
+        ])->layout('layouts.guest', ['title' => 'Log in - UniMarket']);
     }
 
     /**

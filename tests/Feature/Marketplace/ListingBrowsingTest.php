@@ -8,15 +8,16 @@ use App\Models\ListingView;
 use App\Models\Reservation;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Livewire;
 
-beforeEach(fn () => $this->withoutVite());
+beforeEach(function () {
+    $this->withoutVite();
+    $this->actingAs(User::factory()->create());
+});
 
 describe('browsing', function () {
-    it('shows a slim, dismissible strip to a guest instead of a tall banner, and nothing at all to a signed-in student', function () {
-        $this->get(route('listings.index'))
-            ->assertSee('Join UniMarket');
-
+    it('never shows the guest "Join UniMarket" prompt to a signed-in student', function () {
         $this->actingAs(User::factory()->create())
             ->get(route('listings.index'))
             ->assertDontSee('Join UniMarket');
@@ -36,6 +37,8 @@ describe('browsing', function () {
     });
 
     it('sends a guest to log in instead of toggling the notification opt-in', function () {
+        Auth::logout();
+
         Livewire::test(ListingIndex::class)
             ->call('toggleNotifyNewListings')
             ->assertRedirect(route('login'));
@@ -389,6 +392,7 @@ describe('viewing a listing', function () {
 
 describe('reserving an item', function () {
     it('sends guests to the login page', function () {
+        Auth::logout();
         $listing = Listing::factory()->create();
 
         Livewire::test(ListingShow::class, ['listing' => $listing])

@@ -30,11 +30,6 @@ use App\Livewire\Transactions\Tracker;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-// Public Marketplace Discovery
-Route::get('/', ListingIndex::class)->name('listings.index');
-Route::get('/listings/{listing}', ListingShow::class)->name('listings.show');
-Route::get('/students/{user}', PublicProfile::class)->name('profiles.show');
-
 // Public reputation-record verification: no account needed, so a credential
 // stays checkable by anyone (e.g. an employer) after the student graduates.
 Route::get('/reputation/verify', VerifyReputation::class)->name('reputation.verify');
@@ -51,6 +46,12 @@ Route::middleware(['guest'])->group(function () {
 
 // Authenticated Student Actions
 Route::middleware(['auth', EnsureUserIsNotSuspended::class])->group(function () {
+    // Marketplace discovery - a guest is sent to log in first and returns
+    // here (redirect()->intended()) once signed in; see Login::login().
+    Route::get('/', ListingIndex::class)->name('listings.index');
+    Route::get('/listings/{listing}', ListingShow::class)->name('listings.show');
+    Route::get('/students/{user}', PublicProfile::class)->name('profiles.show');
+
     // Account, email verification and student identity verification
     Route::get('/account', Profile::class)->name('account');
     Route::get('/email/verify', VerifyEmail::class)->name('verification.notice');

@@ -10,7 +10,10 @@ use App\Services\InspectionService;
 use App\Services\ReservationService;
 use Livewire\Livewire;
 
-beforeEach(fn () => $this->withoutVite());
+beforeEach(function () {
+    $this->withoutVite();
+    $this->actingAs(User::factory()->create());
+});
 
 function categoryWithMode(string $mode): Category
 {

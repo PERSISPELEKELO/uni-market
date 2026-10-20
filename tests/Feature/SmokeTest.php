@@ -9,11 +9,12 @@ beforeEach(fn () => $this->withoutVite());
 
 it('renders every public page without errors', function (string $routeName) {
     $this->get(route($routeName))->assertOk();
-})->with(['home' => 'listings.index', 'login' => 'login', 'register' => 'register']);
+})->with(['login' => 'login', 'register' => 'register', 'how it works' => 'how-it-works']);
 
 it('renders every signed-in page without errors', function (string $routeName) {
     $this->actingAs(User::factory()->create())->get(route($routeName))->assertOk();
 })->with([
+    'home' => 'listings.index',
     'sell an item' => 'listings.create',
     'my listings' => 'listings.mine',
     'messages' => 'chat.index',
@@ -22,7 +23,8 @@ it('renders every signed-in page without errors', function (string $routeName) {
 ]);
 
 it('ships an accessible, responsive page shell', function () {
-    $this->get(route('listings.index'))
+    $this->actingAs(User::factory()->create())
+        ->get(route('listings.index'))
         ->assertOk()
         ->assertSee('<html lang="en"', false)
         ->assertSee('name="viewport" content="width=device-width, initial-scale=1"', false)
@@ -32,7 +34,7 @@ it('ships an accessible, responsive page shell', function () {
 });
 
 it('shows account links to signed-in users and sign-in links to guests', function () {
-    $this->get(route('listings.index'))
+    $this->get(route('how-it-works'))
         ->assertSee('Log in')
         ->assertSee('Join UniMarket')
         ->assertDontSee('Log out');

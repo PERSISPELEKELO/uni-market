@@ -5,9 +5,13 @@ use App\Models\Listing;
 use App\Models\Rating;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Livewire;
 
-beforeEach(fn () => $this->withoutVite());
+beforeEach(function () {
+    $this->withoutVite();
+    $this->actingAs(User::factory()->create());
+});
 
 it('shows the public information for a student', function () {
     $user = User::factory()->create([
@@ -145,6 +149,7 @@ describe('rating display', function () {
 
 describe('messaging from a profile', function () {
     it('sends a guest to log in', function () {
+        Auth::logout();
         $user = User::factory()->create();
 
         Livewire::test(PublicProfile::class, ['user' => $user])

@@ -12,6 +12,8 @@ use App\Services\Recommendations\ContentSimilarityService;
 use App\Services\Recommendations\CoOccurrenceService;
 use App\Services\Recommendations\PersonalizedFeedService;
 
+beforeEach(fn () => $this->actingAs(User::factory()->create()));
+
 describe('content similarity', function () {
     it('scores two listings with genuinely shared distinctive words higher than an unrelated one', function () {
         $books = Category::factory()->create(['name' => 'Books & Textbooks']);

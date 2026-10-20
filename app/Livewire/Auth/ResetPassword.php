@@ -79,6 +79,6 @@ class ResetPassword extends Component
     public function render()
     {
         return view('livewire.auth.reset-password')
-            ->layout('layouts.app', ['title' => 'Choose a new password - UniMarket']);
+            ->layout('layouts.guest', ['title' => 'Choose a new password - UniMarket']);
     }
 }

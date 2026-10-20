@@ -3,6 +3,8 @@
 use App\Models\Listing;
 use App\Models\User;
 
+beforeEach(fn () => $this->actingAs(User::factory()->create()));
+
 it('renders the gallery with every photo embedded and wire:ignore so Livewire never resets it', function () {
     $listing = Listing::factory()->create(['images' => ['listings/a.jpg', 'listings/b.jpg', 'listings/c.jpg']]);
 

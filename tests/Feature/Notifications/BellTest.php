@@ -9,7 +9,7 @@ use Livewire\Livewire;
 beforeEach(fn () => $this->withoutVite());
 
 it('is not shown to guests', function () {
-    $this->get(route('listings.index'))->assertDontSee('wire:poll.20s', false);
+    $this->get(route('how-it-works'))->assertDontSee('wire:poll.20s', false);
 });
 
 it('is shown to a signed-in member', function () {
