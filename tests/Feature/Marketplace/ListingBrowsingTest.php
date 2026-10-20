@@ -347,7 +347,7 @@ describe('viewing a listing', function () {
         expect(substr_count($response->getContent(), 'K300.00'))->toBeGreaterThanOrEqual(2); // main card + sticky bar
 
         $ownerResponse = $this->actingAs($seller)->get(route('listings.show', $listing))->assertSee('This is your listing.');
-        expect(substr_count($ownerResponse->getContent(), 'K300.00'))->toBe(1); // sticky bar hidden for the owner
+        expect(substr_count($ownerResponse->getContent(), 'K300.00'))->toBe(2); // main card + the gallery viewer's details panel; sticky bar hidden for the owner
     });
 
     it('hides suspended listings from everyone except their seller', function () {

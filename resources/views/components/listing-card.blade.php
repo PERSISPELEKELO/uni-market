@@ -10,7 +10,7 @@
 <article {{ $attributes->class(['card card-hover group flex flex-col overflow-hidden']) }}>
     <div class="relative">
         <a href="{{ $href }}" class="block focus-visible:outline-offset-[-2px]" aria-label="{{ $listing->title }}, K{{ number_format($listing->price, 2) }}">
-            <x-listing-image :src="$listing->cover_thumbnail_url" :alt="$listing->title" class="aspect-[4/3] w-full" zoom>
+            <x-listing-image :src="$listing->cover_thumbnail_url" :alt="$listing->title" class="aspect-[4/3] w-full" fit="contain" zoom>
                 <span class="badge badge-neutral absolute left-3 top-3 bg-white/95 shadow-sm dark:bg-slate-200/95">
                     {{ $listing->condition_label }}
                 </span>

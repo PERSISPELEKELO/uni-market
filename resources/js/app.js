@@ -192,7 +192,141 @@ function countUp(target, decimals, prefix = '', suffix = '') {
     };
 }
 
+/**
+ * The listing page's photo display and full-screen viewer, Facebook
+ * Marketplace style. Lives entirely in Alpine inside a wire:ignore
+ * wrapper (see listing-show.blade.php) - a Livewire re-render anywhere
+ * else on the page (reserving, messaging, choosing a buyer) must never
+ * reset which photo is showing or silently close an open viewer, which
+ * only wire:ignore reliably guarantees.
+ */
+function listingGallery({ images }) {
+    return {
+        images,
+        activeIndex: 0,
+        viewerOpen: false,
+        zoomed: false,
+        touch: { x: 0, y: 0, distance: 0, lastTap: 0 },
+        triggerEl: null,
+
+        get current() {
+            return this.images[this.activeIndex] ?? null;
+        },
+
+        show(index) {
+            if (index < 0 || index >= this.images.length) {
+                return;
+            }
+
+            this.activeIndex = index;
+            this.zoomed = false;
+        },
+
+        prev() {
+            this.show((this.activeIndex - 1 + this.images.length) % this.images.length);
+        },
+
+        next() {
+            this.show((this.activeIndex + 1) % this.images.length);
+        },
+
+        openViewer(index) {
+            this.triggerEl = document.activeElement;
+            this.show(index);
+            this.viewerOpen = true;
+            document.documentElement.style.overflow = 'hidden';
+            this.$nextTick(() => this.$refs.viewerClose?.focus());
+        },
+
+        closeViewer() {
+            this.viewerOpen = false;
+            this.zoomed = false;
+            document.documentElement.style.overflow = '';
+            this.triggerEl?.focus?.();
+        },
+
+        toggleZoom() {
+            this.zoomed = !this.zoomed;
+        },
+
+        /** Keeps Tab cycling inside the viewer instead of leaking out to the page behind it. */
+        trapFocus(event) {
+            const focusable = this.$refs.viewer?.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])');
+            if (!focusable || focusable.length === 0) {
+                return;
+            }
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        },
+
+        onTouchStart(event) {
+            if (event.touches.length === 2) {
+                this.touch.distance = this.pinchDistance(event.touches);
+
+                return;
+            }
+
+            this.touch.x = event.touches[0].clientX;
+            this.touch.y = event.touches[0].clientY;
+        },
+
+        onTouchMove(event) {
+            if (event.touches.length !== 2 || !this.touch.distance) {
+                return;
+            }
+
+            const distance = this.pinchDistance(event.touches);
+
+            if (distance - this.touch.distance > 40) {
+                this.zoomed = true;
+            } else if (this.touch.distance - distance > 40) {
+                this.zoomed = false;
+            }
+        },
+
+        onTouchEnd(event) {
+            if (this.zoomed || event.changedTouches.length !== 1) {
+                return;
+            }
+
+            const deltaX = event.changedTouches[0].clientX - this.touch.x;
+            const deltaY = event.changedTouches[0].clientY - this.touch.y;
+
+            if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+                deltaX < 0 ? this.next() : this.prev();
+
+                return;
+            }
+
+            const now = Date.now();
+
+            if (now - this.touch.lastTap < 300) {
+                this.toggleZoom();
+            }
+
+            this.touch.lastTap = now;
+        },
+
+        pinchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+
+            return Math.sqrt((dx * dx) + (dy * dy));
+        },
+    };
+}
+
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('chartTile', chartTile);
     window.Alpine.data('countUp', countUp);
+    window.Alpine.data('listingGallery', listingGallery);
 });

@@ -31,8 +31,6 @@ class ListingShow extends Component
 
     public Listing $listing;
 
-    public int $activeImageIndex = 0;
-
     public bool $recommendationImpressionsLogged = false;
 
     public function mount(Listing $listing): void
@@ -111,11 +109,6 @@ class ListingShow extends Component
             'type' => ListingEvent::TYPE_VIEW,
             'created_at' => now(),
         ]);
-    }
-
-    public function setActiveImage(int $index): void
-    {
-        $this->activeImageIndex = max(0, min($index, count($this->listing->image_urls) - 1));
     }
 
     public function reserve(ReservationService $reservations)

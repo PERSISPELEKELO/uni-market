@@ -1,23 +1,9 @@
 @php
     $images = $listing->image_urls;
-    $currentImage = $images[$activeImageIndex] ?? ($images[0] ?? null);
     $isOwner = $listing->isOwnedBy(auth()->user());
 @endphp
 
-<div
-    x-data="{
-        lightboxOpen: false,
-        lightboxIndex: {{ $activeImageIndex }},
-        images: @js($images),
-        open(index) { this.lightboxIndex = index; this.lightboxOpen = true; },
-        close() { this.lightboxOpen = false; },
-        prev() { this.lightboxIndex = (this.lightboxIndex - 1 + this.images.length) % this.images.length; },
-        next() { this.lightboxIndex = (this.lightboxIndex + 1) % this.images.length; },
-    }"
-    x-on:keydown.escape.window="close()"
-    x-on:keydown.arrow-left.window="lightboxOpen && prev()"
-    x-on:keydown.arrow-right.window="lightboxOpen && next()"
->
+<div>
     <x-breadcrumbs :items="[
         ['label' => 'Browse', 'url' => route('listings.index')],
         ['label' => $listing->category->name, 'url' => route('listings.index', ['category' => $listing->category_id])],
@@ -30,40 +16,57 @@
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
 
-        <div class="space-y-3 lg:col-span-7">
-            @if ($currentImage)
-                <button type="button" class="block w-full cursor-zoom-in text-left" x-on:click="open({{ $activeImageIndex }})" aria-label="View photo full screen">
-                    <x-listing-image :src="$currentImage" :alt="$listing->title" class="card aspect-[4/3] w-full">
-                        @if ($listing->status !== 'active')
-                            <span class="absolute right-3 top-3"><x-status-badge :status="$listing->status" class="bg-white shadow-sm" /></span>
-                        @endif
-                    </x-listing-image>
-                </button>
-            @else
-                <x-listing-image :src="$currentImage" :alt="$listing->title" class="card aspect-[4/3] w-full">
-                    @if ($listing->status !== 'active')
-                        <span class="absolute right-3 top-3"><x-status-badge :status="$listing->status" class="bg-white shadow-sm" /></span>
-                    @endif
-                </x-listing-image>
+        <div class="relative lg:col-span-7">
+            @if ($listing->status !== 'active')
+                <span class="absolute right-3 top-3 z-20"><x-status-badge :status="$listing->status" class="bg-white shadow-sm" /></span>
             @endif
 
-            @if (count($images) > 1)
-                <ul class="flex gap-3 overflow-x-auto pb-1" aria-label="Photo thumbnails">
-                    @foreach ($images as $index => $imageUrl)
-                        <li class="flex-shrink-0">
-                            <button
-                                type="button"
-                                wire:click="setActiveImage({{ $index }})"
-                                aria-label="Show photo {{ $index + 1 }} of {{ count($images) }}"
-                                aria-current="{{ $activeImageIndex === $index ? 'true' : 'false' }}"
-                                @class(['block h-16 w-16 overflow-hidden rounded-lg border-2 sm:h-20 sm:w-20', 'border-brand-700 ring-2 ring-brand-200' => $activeImageIndex === $index, 'border-slate-200 opacity-80 hover:opacity-100' => $activeImageIndex !== $index])
-                            >
-                                <img src="{{ $imageUrl }}" alt="" class="h-full w-full object-cover" loading="lazy" />
-                            </button>
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
+            <x-listing-gallery :images="$images" :title="$listing->title">
+                <div class="space-y-5 text-[#e4e6eb]">
+                    <div>
+                        <h2 class="break-words text-xl font-bold leading-snug">{{ $listing->title }}</h2>
+                        <p class="mt-1 text-2xl font-bold">K{{ number_format($listing->price, 2) }}</p>
+                    </div>
+
+                    <dl class="flex items-center gap-2 text-sm">
+                        <dt class="font-medium text-[#b0b3b8]">Condition</dt>
+                        <dd class="font-semibold">{{ $listing->condition_label }}</dd>
+                    </dl>
+
+                    <div class="border-t border-white/10 pt-4">
+                        <a href="{{ route('profiles.show', $listing->seller) }}" x-on:click="closeViewer()" class="flex items-center gap-3 rounded-lg hover:bg-white/5">
+                            <x-avatar :user="$listing->seller" class="h-10 w-10 flex-shrink-0 text-sm" />
+                            <div class="min-w-0">
+                                <p class="truncate text-sm font-semibold">{{ $listing->seller->name }}</p>
+                                @if ($listing->seller->is_verified)
+                                    <span class="badge badge-success mt-0.5"><x-app-icon name="check-circle" class="h-3.5 w-3.5" /> Official Student</span>
+                                @endif
+                            </div>
+                        </a>
+                    </div>
+
+                    @unless ($isOwner)
+                        <div class="space-y-2 border-t border-white/10 pt-4">
+                            @if ($listing->status === 'active')
+                                @if ($hasReserved)
+                                    <span class="btn btn-secondary btn-block pointer-events-none">Reserved</span>
+                                @else
+                                    <button type="button" wire:click="reserve" x-on:click="closeViewer()" class="btn btn-primary btn-block">
+                                        {{ auth()->check() ? 'Reserve this item' : 'Log in to reserve this item' }}
+                                    </button>
+                                @endif
+                                <button type="button" wire:click="contactSeller" x-on:click="closeViewer()" class="btn btn-secondary btn-block">
+                                    {{ auth()->check() ? 'Message seller' : 'Log in to message seller' }}
+                                </button>
+                            @else
+                                <span class="btn btn-secondary btn-block pointer-events-none">
+                                    {{ $listing->status === 'sold' ? 'This item has been sold' : 'This item is not available right now' }}
+                                </span>
+                            @endif
+                        </div>
+                    @endunless
+                </div>
+            </x-listing-gallery>
         </div>
 
         <div class="space-y-5 lg:col-span-5">
@@ -97,7 +100,6 @@
                     @unless ($listing->isHotDeal())
                         <span class="text-3xl font-bold text-ink">K{{ number_format($listing->price, 2) }}</span>
                     @endunless
-                    <span class="badge badge-neutral">Condition: {{ $listing->condition_label }}</span>
                     @if ($reservationCount > 0)
                         <span class="badge badge-info">
                             <x-app-icon name="user" class="h-3.5 w-3.5" />
@@ -105,13 +107,19 @@
                         </span>
                     @endif
                     @if ($recentViewCount > 0 && ! $isOwner)
-                        <span class="text-xs text-slate-500">Viewed {{ $recentViewCount }} {{ \Illuminate\Support\Str::plural('time', $recentViewCount) }} this week</span>
+                        <span class="text-xs text-slate-600">Viewed {{ $recentViewCount }} {{ \Illuminate\Support\Str::plural('time', $recentViewCount) }} this week</span>
                     @endif
                 </div>
 
+                {{-- Condition appears exactly once, here - never duplicated as
+                     a second badge near the price. --}}
                 <div class="border-t border-slate-100 pt-4">
-                    <h2 class="text-sm font-semibold text-slate-800">About this item</h2>
-                    <p class="mt-2 whitespace-pre-line break-words text-sm leading-relaxed text-slate-800">{{ $listing->description }}</p>
+                    <h2 class="text-sm font-semibold text-ink">Details</h2>
+                    <dl class="mt-2 flex items-center gap-2 text-sm">
+                        <dt class="font-medium text-slate-600">Condition</dt>
+                        <dd class="font-semibold text-ink">{{ $listing->condition_label }}</dd>
+                    </dl>
+                    <p class="mt-3 whitespace-pre-line break-words text-sm leading-relaxed text-ink">{{ $listing->description }}</p>
                 </div>
             </div>
 
@@ -290,65 +298,4 @@
         </div>
         <div class="h-20 md:hidden" aria-hidden="true"></div>
     @endunless
-
-    <div
-        x-show="lightboxOpen"
-        x-cloak
-        x-transition.opacity
-        x-on:click="close()"
-        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-2 sm:p-6"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Photo viewer"
-    >
-        <button
-            type="button"
-            x-on:click.stop="close()"
-            class="absolute right-3 top-3 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            aria-label="Close photo viewer"
-            title="Close"
-        >
-            <x-app-icon name="x" class="h-6 w-6" />
-        </button>
-
-        <template x-if="images.length > 1">
-            <button
-                type="button"
-                x-on:click.stop="prev()"
-                class="absolute left-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:left-4"
-                aria-label="Previous photo"
-                title="Previous"
-            >
-                <x-app-icon name="arrow-left" class="h-6 w-6" />
-            </button>
-        </template>
-
-        <img
-            x-show="lightboxOpen"
-            x-on:click.stop=""
-            x-bind:src="images[lightboxIndex]"
-            alt="{{ $listing->title }}"
-            class="max-h-full max-w-full select-none object-contain"
-            draggable="false"
-        />
-
-        <template x-if="images.length > 1">
-            <button
-                type="button"
-                x-on:click.stop="next()"
-                class="absolute right-2 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:right-4"
-                aria-label="Next photo"
-                title="Next"
-            >
-                <x-app-icon name="arrow-right" class="h-6 w-6" />
-            </button>
-        </template>
-
-        <template x-if="images.length > 1">
-            <span
-                class="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white"
-                x-text="(lightboxIndex + 1) + ' / ' + images.length"
-            ></span>
-        </template>
-    </div>
 </div>
