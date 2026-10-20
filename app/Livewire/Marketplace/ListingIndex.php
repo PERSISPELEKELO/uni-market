@@ -7,13 +7,11 @@ use App\Models\Listing;
 use App\Models\RecommendationEvent;
 use App\Models\SavedSearch;
 use App\Models\SearchLog;
-use App\Models\Transaction;
-use App\Models\User;
 use App\Services\Insights\BuyerInsightsService;
 use App\Services\Recommendations\PersonalizedFeedService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -50,13 +48,6 @@ class ListingIndex extends Component
      * impression is only ever genuinely "shown" the first time.
      */
     public bool $recommendationImpressionsLogged = false;
-
-    /**
-     * How many of the busiest categories show as chips before the rest
-     * fold into "More" - keeps the row to one scrollable line instead of
-     * wrapping across several.
-     */
-    private const TOP_CATEGORY_COUNT = 6;
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -306,7 +297,6 @@ class ListingIndex extends Component
         return view('livewire.marketplace.listing-index', [
             'listings' => $listings,
             'categories' => $categories,
-            'topCategories' => $this->topCategories($categories),
             'hasActiveFilters' => $hasActiveFilters,
             'hotDeals' => $hasActiveFilters ? collect() : $this->safely(fn () => Listing::active()->hotDeals()->with(['seller:id,name,is_verified,avatar_path', 'category:id,name'])->latest('price_dropped_at')->limit(8)->get(), collect()),
             'popularWithYou' => ($hasActiveFilters || ! Auth::check()) ? collect() : $this->safely(fn () => app(BuyerInsightsService::class)->popularListings($user), collect()),
@@ -315,7 +305,7 @@ class ListingIndex extends Component
             'trending' => $trending,
             'goodDeals' => $goodDeals,
             'justListed' => $justListed,
-            'heroStats' => Auth::check() ? null : $this->heroStats(),
+            'canSell' => Auth::check() ? Gate::allows('create', Listing::class) : null,
         ])->layout('layouts.app', ['title' => 'Campus Marketplace - UniMarket']);
     }
 
@@ -353,33 +343,6 @@ class ListingIndex extends Component
     }
 
     /**
-     * The busiest categories (by active listing count), capped so the chip
-     * row stays to one scrollable line - everything else is reachable via
-     * the "More" chip instead of wrapping across several rows. Falls back
-     * to a fixed, sensible order when there's no listing data yet at all
-     * (a fresh install), rather than an arbitrary/alphabetical one.
-     *
-     * @param  Collection<int, Category>  $categories
-     * @return Collection<int, Category>
-     */
-    private function topCategories(Collection $categories): Collection
-    {
-        if ($categories->sum('listings_count') === 0) {
-            $fallbackOrder = [
-                'electronics-laptops', 'books-textbooks', 'clothing-fashion',
-                'phones-accessories', 'furniture', 'food-beverages',
-            ];
-
-            return collect($fallbackOrder)
-                ->map(fn (string $slug) => $categories->firstWhere('slug', $slug))
-                ->filter()
-                ->values();
-        }
-
-        return $categories->sortByDesc('listings_count')->take(self::TOP_CATEGORY_COUNT)->values();
-    }
-
-    /**
      * Runs an optional, non-essential section of the page (a recommendation
      * carousel, hot deals, popular-with-you) and falls back instead of
      * taking the whole marketplace page down with it - a broken
@@ -394,21 +357,5 @@ class ListingIndex extends Component
 
             return $fallback;
         }
-    }
-
-    /**
-     * Real headline numbers for the guest-facing hero, cached briefly since
-     * they change slowly and every guest page load would otherwise run
-     * three counts. Never a placeholder/invented figure.
-     *
-     * @return array{students: int, listings: int, sales: int}
-     */
-    private function heroStats(): array
-    {
-        return Cache::remember('marketplace:hero-stats', now()->addMinutes(10), fn () => [
-            'students' => User::where('role', 'student')->count(),
-            'listings' => Listing::active()->count(),
-            'sales' => Transaction::where('status', 'COMPLETED')->count(),
-        ]);
     }
 }

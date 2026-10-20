@@ -13,29 +13,13 @@ use Livewire\Livewire;
 beforeEach(fn () => $this->withoutVite());
 
 describe('browsing', function () {
-    it('shows real headline stats in the hero to a guest once every figure clears the floor, but not to a signed-in student', function () {
-        User::factory()->count(10)->create(['role' => 'student']);
-        Listing::factory()->count(10)->create();
-        Transaction::factory()->count(10)->create(['status' => 'COMPLETED']);
-
+    it('shows a slim, dismissible strip to a guest instead of a tall banner, and nothing at all to a signed-in student', function () {
         $this->get(route('listings.index'))
-            ->assertSee('Students')
-            ->assertSee('Active listings')
-            ->assertSee('Completed sales');
+            ->assertSee('Join UniMarket');
 
         $this->actingAs(User::factory()->create())
             ->get(route('listings.index'))
-            ->assertDontSee('Completed sales');
-    });
-
-    it('hides the hero stats row entirely while any figure is still below the floor, rather than showing zeros', function () {
-        User::factory()->count(2)->create(['role' => 'student']);
-        Listing::factory()->create();
-        Transaction::factory()->create(['status' => 'COMPLETED']);
-
-        $this->get(route('listings.index'))
-            ->assertDontSee('Active listings')
-            ->assertDontSee('Completed sales');
+            ->assertDontSee('Join UniMarket');
     });
 
     it('toggles the new-listing notification opt-in for a signed-in student', function () {
@@ -87,8 +71,6 @@ describe('browsing', function () {
             ->assertOk()
             ->assertSee('Chemistry notes bundle')
             ->assertSee('K120.00')
-            ->assertSee('Like new')
-            ->assertSee('Textbooks')
             ->assertDontSee('Already sold item')
             ->assertDontSee('Reserved item')
             ->assertDontSee('Suspended item');
@@ -197,26 +179,15 @@ describe('browsing', function () {
             ->assertSee('Only item');
     });
 
-    it('shows only the busiest categories as chips, capped at six, with the rest reachable via "More"', function () {
+    it('lists every category, with icons and counts, for the category picker', function () {
         // The canonical 15 categories already exist (seeded by migration,
         // see 2026_09_28_153539) - no need to create any for this test.
         $busiest = Category::where('slug', 'books-textbooks')->first();
         Listing::factory()->count(5)->create(['category_id' => $busiest->id]);
 
         Livewire::test(ListingIndex::class)
-            ->assertViewHas('topCategories', fn ($topCategories) => $topCategories->count() === 6 && $topCategories->first()->id === $busiest->id)
-            ->assertViewHas('categories', fn ($allCategories) => $allCategories->count() === 15);
-    });
-
-    it('falls back to a fixed category order when there are no listings at all yet', function () {
-        // The canonical 15 categories already exist (seeded by migration)
-        // and start with zero listings in a fresh test database - no setup
-        // needed to exercise the no-data fallback.
-        Livewire::test(ListingIndex::class)
-            ->assertViewHas('topCategories', function ($topCategories) {
-                return $topCategories->isNotEmpty()
-                    && $topCategories->first()->slug === 'electronics-laptops';
-            });
+            ->assertViewHas('categories', fn ($allCategories) => $allCategories->count() === 15
+                && $allCategories->firstWhere('id', $busiest->id)->listings_count === 5);
     });
 
     it('sorts by price', function () {
@@ -294,6 +265,19 @@ describe('browsing', function () {
 
         $response->assertSeeInOrder(['Brand new post', 'Just listed']);
         expect($old->created_at->diffInHours())->toBeGreaterThan(24);
+    });
+
+    it('offers an unverified student "Get verified to sell" instead of "Create new listing"', function () {
+        $this->actingAs(User::factory()->pendingStudentVerification()->create())
+            ->get(route('listings.index'))
+            ->assertSee('Get verified to sell')
+            ->assertDontSee('Create new listing');
+    });
+
+    it('offers a verified student "Create new listing"', function () {
+        $this->actingAs(User::factory()->create())
+            ->get(route('listings.index'))
+            ->assertSee('Create new listing');
     });
 });
 
