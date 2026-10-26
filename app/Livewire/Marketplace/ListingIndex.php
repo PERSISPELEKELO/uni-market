@@ -9,6 +9,7 @@ use App\Models\SavedSearch;
 use App\Models\SearchLog;
 use App\Services\Insights\BuyerInsightsService;
 use App\Services\Recommendations\PersonalizedFeedService;
+use App\Services\TransactionInboxService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -306,6 +307,7 @@ class ListingIndex extends Component
             'goodDeals' => $goodDeals,
             'justListed' => $justListed,
             'canSell' => Auth::check() ? Gate::allows('create', Listing::class) : null,
+            'transactionsNeedingActionCount' => Auth::check() ? app(TransactionInboxService::class)->needsActionCount(Auth::user()) : 0,
         ])->layout('layouts.app', ['title' => 'Campus Marketplace - UniMarket']);
     }
 

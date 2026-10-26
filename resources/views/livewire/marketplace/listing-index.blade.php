@@ -1,6 +1,20 @@
 <div x-data="{ filtersOpen: false, categoriesOpen: false }">
 
-    <form role="search" x-on:submit.prevent class="mb-4">
+    @if ($transactionsNeedingActionCount > 0)
+        <div x-data="{ dismissed: false }" x-show="!dismissed" x-cloak class="mb-4 flex items-center justify-between gap-3 rounded-lg bg-accent-50 px-4 py-2.5 text-sm dark:bg-accent-500/10">
+            <p class="text-ink">
+                You have {{ $transactionsNeedingActionCount }} {{ \Illuminate\Support\Str::plural('transaction', $transactionsNeedingActionCount) }} waiting for you -
+                <a href="{{ route('transactions.index') }}" class="font-semibold text-accent-800 underline underline-offset-2 dark:text-accent-400">Continue</a>
+            </p>
+            <button type="button" x-on:click="dismissed = true" aria-label="Dismiss" class="-m-2 flex-shrink-0 rounded-full p-2 text-slate-500 hover:bg-black/5">
+                <x-app-icon name="x" class="h-4 w-4" />
+            </button>
+        </div>
+    @endif
+
+    {{-- Hidden on desktop (lg+) - the header already has a search bar there;
+         showing both was the duplicate seen in the screenshot. --}}
+    <form role="search" x-on:submit.prevent class="mb-4 lg:hidden">
         <label for="search" class="sr-only">Search listings</label>
         <div class="relative">
             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500" aria-hidden="true">
@@ -59,6 +73,12 @@
                 </button>
                 <a href="{{ route('activity.buying', ['tab' => 'saved']) }}" class="flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
                     <x-app-icon name="bookmark" class="h-4 w-4" /> Saved
+                </a>
+                <a href="{{ route('transactions.index') }}" class="flex min-h-11 items-center justify-between gap-2.5 rounded-lg px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <span class="flex items-center gap-2.5"><x-app-icon name="transactions" class="h-4 w-4" /> Transactions</span>
+                    @if ($transactionsNeedingActionCount > 0)
+                        <span class="badge badge-danger px-1.5 py-0 text-[10px]">{{ $transactionsNeedingActionCount }}</span>
+                    @endif
                 </a>
             </nav>
 

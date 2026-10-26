@@ -27,6 +27,7 @@ use App\Livewire\Marketplace\MyListings;
 use App\Livewire\Profiles\PublicProfile;
 use App\Livewire\Ratings\VerifyReputation;
 use App\Livewire\Transactions\Tracker;
+use App\Livewire\Transactions\TransactionsHub;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -72,9 +73,13 @@ Route::middleware(['auth', EnsureUserIsNotSuspended::class])->group(function () 
     Route::get('/chat-thread/{receiver}/{listing?}', MessageThread::class)->name('chat.thread');
 
     // Escrow Transaction Tracker. Kept as its own standalone route/component,
-    // unchanged, alongside the new My Activity hub below: existing tests and
-    // notification links already target this exact route directly.
+    // unchanged: existing tests and notification links already target this
+    // exact route directly - the hub below links here for every action.
     Route::get('/transactions-tracker/{transaction?}', Tracker::class)->name('transactions.tracker');
+
+    // Transactions hub: every transaction the user takes part in, grouped
+    // into tabs - the one place to find an unfinished transaction from.
+    Route::get('/transactions', TransactionsHub::class)->name('transactions.index');
 
     // My Activity: the single nav destination for "things I'm doing on the
     // marketplace" (buying, selling, personal insights) - see docs/ui-audit.md.

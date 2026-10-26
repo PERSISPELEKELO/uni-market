@@ -153,6 +153,22 @@
                         </div>
 
                         <a
+                            href="{{ route('transactions.index') }}"
+                            @class(['relative hidden h-11 w-11 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 dark:hover:bg-slate-300 md:inline-flex', 'text-brand-800' => request()->routeIs('transactions.*')])
+                            @if(request()->routeIs('transactions.*')) aria-current="page" @endif
+                            aria-label="Transactions"
+                            title="Transactions"
+                        >
+                            <x-app-icon name="transactions" class="h-5 w-5" />
+                            <span class="sr-only">Transactions</span>
+                            @if ($transactionsNeedingActionCount > 0)
+                                <span class="absolute right-0.5 top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-danger-600 px-1 text-[10px] font-bold text-white dark:border-slate-200">
+                                    {{ $transactionsNeedingActionCount > 9 ? '9+' : $transactionsNeedingActionCount }}<span class="sr-only"> needing your action</span>
+                                </span>
+                            @endif
+                        </a>
+
+                        <a
                             href="{{ route('chat.index') }}"
                             @class(['relative inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 dark:hover:bg-slate-300', 'text-brand-800' => request()->routeIs('chat.*')])
                             @if(request()->routeIs('chat.*')) aria-current="page" @endif
@@ -438,11 +454,18 @@
 
                 <a
                     href="{{ route('activity.index') }}"
-                    @class(['flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500', 'text-brand-700' => request()->routeIs('activity.index', 'listings.mine', 'listings.edit', 'transactions.tracker')])
+                    @class(['relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-slate-500', 'text-brand-700' => request()->routeIs('activity.index', 'listings.mine', 'listings.edit', 'transactions.*')])
                     @if (request()->routeIs('activity.index')) aria-current="page" @endif
                     aria-label="My Activity"
                 >
-                    <x-app-icon name="layout-grid" class="h-5 w-5" />
+                    <span class="relative">
+                        <x-app-icon name="layout-grid" class="h-5 w-5" />
+                        @if ($transactionsNeedingActionCount > 0)
+                            <span class="absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-danger-600 px-0.5 text-[9px] font-bold text-white dark:border-slate-100">
+                                {{ $transactionsNeedingActionCount > 9 ? '9+' : $transactionsNeedingActionCount }}<span class="sr-only"> transactions needing your action</span>
+                            </span>
+                        @endif
+                    </span>
                     <span class="text-[10px] font-medium">Activity</span>
                 </a>
 
