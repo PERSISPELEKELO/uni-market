@@ -2,7 +2,7 @@
     <x-page-header title="How UniMarket works" description="A plain-language guide to buying, selling and staying safe on the campus marketplace." />
 
     <div class="space-y-8">
-        <x-section title="Buying an item">
+        <x-section id="buying" title="Buying an item">
             <x-steps :items="[
                 ['title' => 'Find an item', 'description' => 'Search or browse by category on the marketplace home page.'],
                 ['title' => 'Reserve it', 'description' => 'Reserving tells the seller you want it. If more than one student reserves, the seller chooses who to sell to.'],
@@ -10,7 +10,7 @@
             ]" />
         </x-section>
 
-        <x-section title="Selling an item">
+        <x-section id="selling" title="Selling an item">
             <x-steps :items="[
                 ['title' => 'Create a listing', 'description' => 'Add photos, a description, a condition and a price.'],
                 ['title' => 'Choose a buyer', 'description' => 'When students reserve your item, pick who to sell to from \'My Activity\'.'],
@@ -35,7 +35,7 @@
             <p class="text-sm text-slate-600">Upload your student ID from your account to become a Verified Student. Verified sellers show a green badge, which helps buyers trust your listings.</p>
         </x-section>
 
-        <x-section title="If something goes wrong: disputes">
+        <x-section id="disputes" title="If something goes wrong: disputes">
             <p class="text-sm text-slate-600">
                 If an inspection-protected purchase isn't as described, you can raise a dispute directly from the transaction tracker. An administrator reviews it, assisted by an AI tool that summarises the evidence - the final decision is always made by a human administrator, never the AI alone. If you disagree with a moderation decision, you can appeal it from "My appeals".
             </p>

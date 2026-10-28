@@ -46,7 +46,7 @@ class Register extends Component
             'first_name' => ['required', 'string', 'max:100', $this->meaningfulNameRule()],
             'last_name' => ['required', 'string', 'max:100', $this->meaningfulNameRule()],
             'email' => ['required', 'string', 'email:rfc,strict,filter', 'max:255', 'unique:users,email'],
-            'student_id' => ['required', 'digits_between:1,10', 'unique:users,student_id'],
+            'student_id' => ['required', 'digits:7', 'unique:users,student_id'],
             'phone_number' => ['nullable', 'string', 'max:20', 'regex:/^\+?[0-9 ()\-]{7,20}$/', 'unique:users,phone_number'],
             'intake_year' => ['required', 'integer', 'min:'.(now()->year - 10), 'max:'.now()->year],
             'school' => ['required', 'string', Rule::in(array_keys(config('zut.schools')))],
@@ -90,9 +90,9 @@ class Register extends Component
             'email.required' => 'Please enter your email address.',
             'email.email' => 'Please enter a valid email address.',
             'email.unique' => 'An account with this email already exists. Try logging in instead.',
-            'student_id.required' => 'Please enter your student ID number.',
-            'student_id.digits_between' => 'Your student ID must contain only numbers, up to 10 digits long.',
-            'student_id.unique' => 'This student ID is already registered.',
+            'student_id.required' => 'Please enter your student number.',
+            'student_id.digits' => 'Your student number must be exactly 7 digits, as printed on your student ID card.',
+            'student_id.unique' => 'This student number is already registered.',
             'phone_number.regex' => 'Please enter a valid phone number, for example +260971234567.',
             'phone_number.unique' => 'This phone number is already registered.',
             'intake_year.required' => 'Please select the year you started.',
@@ -179,8 +179,8 @@ class Register extends Component
 
         return redirect()->route('listings.index')
             ->with('success', $emailSent
-                ? 'Account created! We emailed you a link - confirm your address to earn the Official Student badge.'
-                : 'Account created! We could not send your verification email just now - use "Verify now" below to try again.');
+                ? 'Account created! Next: 1) confirm your email using the link we just sent you, then 2) upload your student ID card to start selling.'
+                : 'Account created! We could not send your verification email just now - use "Verify now" below to try again. Once confirmed, upload your student ID card to start selling.');
     }
 
     public function render()
@@ -188,6 +188,6 @@ class Register extends Component
         return view('livewire.auth.register', [
             'schools' => config('zut.schools'),
             'intakeYears' => range(now()->year, now()->year - 10),
-        ])->layout('layouts.app', ['title' => 'Create your account - UniMarket']);
+        ])->layout('layouts.guest', ['title' => 'Create your account - UniMarket']);
     }
 }

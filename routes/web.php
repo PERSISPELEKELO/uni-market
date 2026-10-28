@@ -27,13 +27,9 @@ use App\Livewire\Marketplace\MyListings;
 use App\Livewire\Profiles\PublicProfile;
 use App\Livewire\Ratings\VerifyReputation;
 use App\Livewire\Transactions\Tracker;
+use App\Livewire\Transactions\TransactionsHub;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-
-// Public Marketplace Discovery
-Route::get('/', ListingIndex::class)->name('listings.index');
-Route::get('/listings/{listing}', ListingShow::class)->name('listings.show');
-Route::get('/students/{user}', PublicProfile::class)->name('profiles.show');
 
 // Public reputation-record verification: no account needed, so a credential
 // stays checkable by anyone (e.g. an employer) after the student graduates.
@@ -51,6 +47,12 @@ Route::middleware(['guest'])->group(function () {
 
 // Authenticated Student Actions
 Route::middleware(['auth', EnsureUserIsNotSuspended::class])->group(function () {
+    // Marketplace discovery - a guest is sent to log in first and returns
+    // here (redirect()->intended()) once signed in; see Login::login().
+    Route::get('/', ListingIndex::class)->name('listings.index');
+    Route::get('/listings/{listing}', ListingShow::class)->name('listings.show');
+    Route::get('/students/{user}', PublicProfile::class)->name('profiles.show');
+
     // Account, email verification and student identity verification
     Route::get('/account', Profile::class)->name('account');
     Route::get('/email/verify', VerifyEmail::class)->name('verification.notice');
@@ -71,9 +73,13 @@ Route::middleware(['auth', EnsureUserIsNotSuspended::class])->group(function () 
     Route::get('/chat-thread/{receiver}/{listing?}', MessageThread::class)->name('chat.thread');
 
     // Escrow Transaction Tracker. Kept as its own standalone route/component,
-    // unchanged, alongside the new My Activity hub below: existing tests and
-    // notification links already target this exact route directly.
+    // unchanged: existing tests and notification links already target this
+    // exact route directly - the hub below links here for every action.
     Route::get('/transactions-tracker/{transaction?}', Tracker::class)->name('transactions.tracker');
+
+    // Transactions hub: every transaction the user takes part in, grouped
+    // into tabs - the one place to find an unfinished transaction from.
+    Route::get('/transactions', TransactionsHub::class)->name('transactions.index');
 
     // My Activity: the single nav destination for "things I'm doing on the
     // marketplace" (buying, selling, personal insights) - see docs/ui-audit.md.

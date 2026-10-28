@@ -14,7 +14,7 @@ function validRegistration(array $overrides = []): array
         'first_name' => 'Chileshe',
         'last_name' => 'Mwansa',
         'email' => 'chileshe@example.com',
-        'student_id' => '2024198273',
+        'student_id' => '2041987',
         'phone_number' => '+260971234567',
         'intake_year' => now()->year - 1,
         'school' => 'ict',
@@ -40,7 +40,7 @@ it('shows the registration page to guests', function () {
         ->assertSee('Create your account')
         ->assertSee('First name')
         ->assertSee('Last name')
-        ->assertSee('Student ID number');
+        ->assertSee('Student number');
 });
 
 it('registers a student, combines first and last name, hashes the password and signs them in', function () {
@@ -75,7 +75,7 @@ it('does not allow required fields to be empty', function () {
         ->assertSee('Please enter your first name.')
         ->assertSee('Please enter your last name.')
         ->assertSee('Please enter your email address.')
-        ->assertSee('Please enter your student ID number.')
+        ->assertSee('Please enter your student number.')
         ->assertSee('Please select the year you started.')
         ->assertSee('Please select your school.')
         ->assertSee('Please choose a password.');
@@ -101,7 +101,7 @@ it('rejects an intake year outside the allowed range', function (int $yearOffset
 it('leaves gender optional, defaulting to undisclosed, and rejects anything outside the list', function () {
     fillRegistration(validRegistration(['gender' => '']))->assertHasErrors(['gender']);
 
-    fillRegistration(validRegistration(['email' => 'nogender@example.com', 'student_id' => '2024000077', 'gender' => 'undisclosed']))
+    fillRegistration(validRegistration(['email' => 'nogender@example.com', 'student_id' => '2040077', 'gender' => 'undisclosed']))
         ->assertHasNoErrors();
 
     expect(User::where('email', 'nogender@example.com')->first()->gender)->toBe('undisclosed');
@@ -115,7 +115,7 @@ it('rejects a school that is not in the configured list', function () {
 });
 
 it('accepts short but genuine names', function (string $first, string $last) {
-    fillRegistration(validRegistration(['first_name' => $first, 'last_name' => $last, 'email' => 'short@example.com', 'student_id' => '2024000099']))
+    fillRegistration(validRegistration(['first_name' => $first, 'last_name' => $last, 'email' => 'short@example.com', 'student_id' => '2040099']))
         ->assertHasNoErrors();
 
     expect(User::where('email', 'short@example.com')->value('name'))->toBe("{$first} {$last}");
@@ -152,7 +152,7 @@ it('rejects a duplicate email regardless of letter case', function () {
 });
 
 it('rejects a duplicate student id and a duplicate phone number', function () {
-    User::factory()->create(['student_id' => '2024198273', 'phone_number' => '+260971234567']);
+    User::factory()->create(['student_id' => '2041987', 'phone_number' => '+260971234567']);
 
     fillRegistration(validRegistration(['email' => 'other@example.com']))
         ->assertHasErrors(['student_id' => 'unique', 'phone_number' => 'unique']);
@@ -162,7 +162,7 @@ it('rejects a duplicate student id and a duplicate phone number', function () {
 
 it('stores a blank phone number as null so it cannot clash with other blanks', function () {
     fillRegistration(validRegistration(['phone_number' => '  ']))->assertHasNoErrors();
-    fillRegistration(validRegistration(['email' => 'second@example.com', 'student_id' => '2024000001', 'phone_number' => '']))->assertHasNoErrors();
+    fillRegistration(validRegistration(['email' => 'second@example.com', 'student_id' => '2040001', 'phone_number' => '']))->assertHasNoErrors();
 
     expect(User::whereNull('phone_number')->count())->toBe(2);
 });
@@ -185,25 +185,27 @@ it('rejects a malformed phone number', function () {
         ->assertHasErrors(['phone_number' => 'regex']);
 });
 
-it('accepts a student id of up to 10 digits', function (string $studentId) {
+it('accepts a student number of exactly 7 digits', function (string $studentId) {
     fillRegistration(validRegistration(['student_id' => $studentId]))->assertHasNoErrors('student_id');
 
     expect(User::where('student_id', $studentId)->exists())->toBeTrue();
 })->with([
-    'exactly 10 digits' => ['1234567890'],
-    'short numeric id' => ['12345'],
+    'ordinary 7-digit number' => ['2041987'],
+    'leading zero' => ['0123456'],
 ]);
 
-it('rejects a student id that is not all-digit or is longer than 10 digits', function (string $studentId) {
+it('rejects a student number that is not exactly 7 digits', function (string $studentId) {
     fillRegistration(validRegistration(['student_id' => $studentId]))
-        ->assertHasErrors(['student_id' => 'digits_between'])
-        ->assertSee('Your student ID must contain only numbers, up to 10 digits long.');
+        ->assertHasErrors(['student_id' => 'digits'])
+        ->assertSee('Your student number must be exactly 7 digits, as printed on your student ID card.');
 
     expect(User::count())->toBe(0);
 })->with([
-    'more than 10 digits' => ['202412345678'],
-    'letters mixed in' => ['12345ABC89'],
-    'letters only' => ['ABCDEFGHIJ'],
-    'contains a dash' => ['1234-56789'],
+    'too short' => ['12345'],
+    'too long' => ['202412345678'],
+    'ten digits (the old rule)' => ['1234567890'],
+    'letters mixed in' => ['1234ABC'],
+    'letters only' => ['ABCDEFG'],
+    'contains a dash' => ['123-4567'],
     'html/script injection attempt' => ['<script>alert(1)</script>'],
 ]);

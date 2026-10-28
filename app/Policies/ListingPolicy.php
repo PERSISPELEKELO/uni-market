@@ -21,9 +21,24 @@ class ListingPolicy
         return $user !== null && ($listing->isOwnedBy($user) || $user->isAdmin() || $user->isGovernanceCommittee());
     }
 
-    public function create(User $user): bool
+    /**
+     * Only a student whose ID has been approved ("Verified Student") may
+     * sell - enforced here, not just by hiding the Sell button, so a direct
+     * request to create a listing is blocked the same way everywhere
+     * (CreateListing's render() uses this same check to decide whether to
+     * show the form or a "get verified" screen).
+     */
+    public function create(User $user): Response
     {
-        return true;
+        if (! $user->hasVerifiedEmail()) {
+            return Response::deny('Please verify your email address before selling.');
+        }
+
+        if (! $user->isStudentVerified()) {
+            return Response::deny('Only verified ZUT students can sell. Upload your student ID to get verified.');
+        }
+
+        return Response::allow();
     }
 
     /**

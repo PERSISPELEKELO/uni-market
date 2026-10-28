@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\StudentVerificationDocument;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Observers\ListingObserver;
 use App\Observers\TransactionObserver;
 use App\Policies\AppealPolicy;
 use App\Policies\AuditLogPolicy;
@@ -16,6 +17,7 @@ use App\Policies\ListingPolicy;
 use App\Policies\StudentVerificationDocumentPolicy;
 use App\Policies\TransactionPolicy;
 use App\Policies\UserPolicy;
+use App\Services\TransactionInboxService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View as ViewFacade;
@@ -52,9 +54,11 @@ class AppServiceProvider extends ServiceProvider
         Password::defaults(fn () => Password::min(8)->letters()->numbers());
 
         Transaction::observe(TransactionObserver::class);
+        Listing::observe(ListingObserver::class);
 
         ViewFacade::composer('layouts.app', function (View $view): void {
             $view->with('unreadMessageCount', $this->unreadMessageCount());
+            $view->with('transactionsNeedingActionCount', $this->transactionsNeedingActionCount());
         });
     }
 
@@ -70,6 +74,24 @@ class AppServiceProvider extends ServiceProvider
 
         try {
             return Message::where('receiver_id', auth()->id())->where('is_read', false)->count();
+        } catch (\Throwable) {
+            return 0;
+        }
+    }
+
+    /**
+     * Transactions needing the signed-in user's action, cached briefly - see
+     * TransactionInboxService. Falls back to zero so a database problem can
+     * never stop the error pages themselves from rendering.
+     */
+    private function transactionsNeedingActionCount(): int
+    {
+        if (! auth()->check()) {
+            return 0;
+        }
+
+        try {
+            return app(TransactionInboxService::class)->needsActionCount(auth()->user());
         } catch (\Throwable) {
             return 0;
         }

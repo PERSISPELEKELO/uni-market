@@ -1,239 +1,321 @@
-<div>
-    <section class="rounded-2xl bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 p-6 text-center text-white shadow-sm sm:p-10" aria-labelledby="hero-heading">
-        <div class="mx-auto max-w-2xl">
-            @guest
-                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15" aria-hidden="true">
-                    <x-app-icon name="bag" class="h-7 w-7" />
-                </div>
-            @endguest
+<div x-data="{ filtersOpen: false, categoriesOpen: false }">
 
-            <h1 id="hero-heading" class="mt-4 text-2xl font-bold leading-tight tracking-tight sm:text-4xl">
-                Buy and sell within your campus community
-            </h1>
-            <p class="mx-auto mt-2 max-w-xl text-sm text-brand-100 sm:text-base">
-                Textbooks, laptops, dorm gear and more from verified students, with in-app chat and protected handovers.
+    @if ($transactionsNeedingActionCount > 0)
+        <div x-data="{ dismissed: false }" x-show="!dismissed" x-cloak class="mb-4 flex items-center justify-between gap-3 rounded-lg bg-accent-50 px-4 py-2.5 text-sm dark:bg-accent-500/10">
+            <p class="text-ink">
+                You have {{ $transactionsNeedingActionCount }} {{ \Illuminate\Support\Str::plural('transaction', $transactionsNeedingActionCount) }} waiting for you -
+                <a href="{{ route('transactions.index') }}" class="font-semibold text-accent-800 underline underline-offset-2 dark:text-accent-400">Continue</a>
             </p>
-
-            <form role="search" x-on:submit.prevent class="mt-5 sm:mt-6">
-                <label for="search" class="sr-only">Search listings</label>
-                <div class="relative">
-                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
-                        <x-app-icon name="search" class="h-5 w-5" />
-                    </span>
-                    <input
-                        id="search"
-                        type="search"
-                        wire:model.live.debounce.300ms="search"
-                        maxlength="100"
-                        autocomplete="off"
-                        placeholder="Search textbooks, laptops, dorm gear..."
-                        class="form-input border-transparent pl-11 text-left shadow-sm"
-                    />
-                </div>
-            </form>
-
-            @guest
-                <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
-                    <a href="{{ route('listings.index') }}" class="btn min-h-11 border border-white/30 bg-white/10 px-4 text-white hover:bg-white/20">
-                        <x-app-icon name="search" class="h-4 w-4" /> Browse the marketplace
-                    </a>
-                    <a href="{{ route('register') }}" class="btn min-h-11 bg-white px-4 text-brand-800 hover:bg-brand-50">
-                        <x-app-icon name="plus" class="h-4 w-4" /> Join UniMarket
-                    </a>
-                </div>
-
-                @if ($heroStats)
-                    <dl class="mt-8 grid grid-cols-3 gap-4 border-t border-white/15 pt-6">
-                        <div>
-                            <dt class="text-2xl font-bold sm:text-3xl">{{ number_format($heroStats['students']) }}+</dt>
-                            <dd class="mt-0.5 text-xs text-brand-100 sm:text-sm">Students</dd>
-                        </div>
-                        <div>
-                            <dt class="text-2xl font-bold sm:text-3xl">{{ number_format($heroStats['listings']) }}+</dt>
-                            <dd class="mt-0.5 text-xs text-brand-100 sm:text-sm">Active listings</dd>
-                        </div>
-                        <div>
-                            <dt class="text-2xl font-bold sm:text-3xl">{{ number_format($heroStats['sales']) }}+</dt>
-                            <dd class="mt-0.5 text-xs text-brand-100 sm:text-sm">Completed sales</dd>
-                        </div>
-                    </dl>
-                @endif
-            @endguest
+            <button type="button" x-on:click="dismissed = true" aria-label="Dismiss" class="-m-2 flex-shrink-0 rounded-full p-2 text-slate-500 hover:bg-black/5">
+                <x-app-icon name="x" class="h-4 w-4" />
+            </button>
         </div>
-    </section>
-
-    @if ($hotDeals->isNotEmpty())
-        <section class="mt-6 sm:mt-8" aria-labelledby="hot-deals-heading">
-            <div class="mb-3 flex items-center justify-between">
-                <h2 id="hot-deals-heading" class="text-base font-bold text-ink">🔥 Hot Deals</h2>
-                <button type="button" wire:click="toggleHotDeals" class="text-sm font-medium text-brand-800 hover:underline dark:text-brand-300">
-                    See all
-                </button>
-            </div>
-            <div class="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-                @foreach ($hotDeals as $deal)
-                    <x-listing-card :listing="$deal" wire:key="hot-deal-{{ $deal->id }}" class="w-64 flex-shrink-0 sm:w-72" />
-                @endforeach
-            </div>
-        </section>
     @endif
 
-    <section class="mt-6 sm:mt-8" aria-label="Filter listings">
-        <div class="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Categories">
-            <button type="button" wire:click="selectCategory(null)" @class(['chip', 'chip-active' => is_null($selectedCategory)]) aria-pressed="{{ is_null($selectedCategory) ? 'true' : 'false' }}">
-                All items
-            </button>
-            <button type="button" wire:click="toggleHotDeals" @class(['chip', 'chip-active' => $hotDealsOnly]) aria-pressed="{{ $hotDealsOnly ? 'true' : 'false' }}">
-                🔥 Hot Deals
-            </button>
-            @foreach ($categories as $category)
-                <button type="button" wire:key="category-{{ $category->id }}" wire:click="selectCategory({{ $category->id }})" @class(['chip', 'chip-active' => $selectedCategory === $category->id]) aria-pressed="{{ $selectedCategory === $category->id ? 'true' : 'false' }}">
-                    <span aria-hidden="true">{{ $category->emoji() }}</span>
-                    <span>{{ $category->name }}</span>
-                    <span class="text-xs opacity-80">({{ $category->listings_count }})</span>
-                </button>
-            @endforeach
+    {{-- Hidden on desktop (lg+) - the header already has a search bar there;
+         showing both was the duplicate seen in the screenshot. --}}
+    <form role="search" x-on:submit.prevent class="mb-4 lg:hidden">
+        <label for="search" class="sr-only">Search listings</label>
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500" aria-hidden="true">
+                <x-app-icon name="search" class="h-5 w-5" />
+            </span>
+            <input
+                id="search"
+                type="search"
+                wire:model.live.debounce.300ms="search"
+                maxlength="100"
+                autocomplete="off"
+                placeholder="Search textbooks, laptops, dorm gear..."
+                class="form-input pl-11"
+            />
         </div>
+    </form>
 
-    </section>
+    {{-- Mobile/tablet pill row - replaces the old category chip row and the
+         separate Browse-all link. Desktop gets the sidebar instead (B3). --}}
+    <div class="no-scrollbar -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 lg:hidden" role="group" aria-label="Quick actions">
+        <a href="{{ route('listings.create') }}" class="chip min-h-11 flex-shrink-0">
+            <x-app-icon name="plus" class="h-3.5 w-3.5" /> Sell
+        </a>
+        <button type="button" x-on:click="categoriesOpen = true" class="chip min-h-11 flex-shrink-0" aria-haspopup="true" x-bind:aria-expanded="categoriesOpen">
+            <x-app-icon name="layout-grid" class="h-3.5 w-3.5" /> Categories
+        </button>
+        <button type="button" x-on:click="filtersOpen = true" class="chip min-h-11 flex-shrink-0" aria-haspopup="true" x-bind:aria-expanded="filtersOpen">
+            <x-app-icon name="menu" class="h-3.5 w-3.5" /> Filters
+            @if ($hasActiveFilters)
+                <span class="h-1.5 w-1.5 rounded-full bg-brand-700" aria-hidden="true"></span>
+            @endif
+        </button>
+        <a href="{{ route('activity.buying', ['tab' => 'saved']) }}" class="chip min-h-11 flex-shrink-0">
+            <x-app-icon name="bookmark" class="h-3.5 w-3.5" /> Saved
+        </a>
+    </div>
 
-    <div class="mt-6 flex flex-col gap-6 sm:mt-8 lg:flex-row lg:items-start" x-data="{ filtersOpen: window.innerWidth >= 1024 }">
-        <aside class="space-y-5 lg:w-64 lg:flex-shrink-0">
-            <x-app-sidebar :groups="[
-                ['items' => [
-                    ['label' => 'Browse all', 'icon' => 'home', 'href' => route('listings.index'), 'active' => true],
-                    ...(auth()->check() ? [
-                        ['label' => 'Inbox', 'icon' => 'chat', 'href' => route('chat.index')],
-                        ['label' => 'Buying', 'icon' => 'bag', 'href' => route('activity.buying')],
-                        ['label' => 'Selling', 'icon' => 'layout-grid', 'href' => route('listings.mine')],
-                    ] : []),
-                ]],
-            ]" class="card p-3" />
-
-            <button type="button" x-on:click="filtersOpen = !filtersOpen" class="btn btn-secondary btn-block justify-between lg:hidden" x-bind:aria-expanded="filtersOpen" aria-controls="marketplace-filters">
-                <span class="inline-flex items-center gap-2"><x-app-icon name="menu" class="h-4 w-4" /> Filters</span>
-                <x-app-icon name="chevron-down" class="h-4 w-4 transition-transform" x-bind:class="filtersOpen ? 'rotate-180' : ''" />
-            </button>
-
-            <div id="marketplace-filters" x-show="filtersOpen" x-cloak x-transition class="card mt-3 space-y-5 p-5 lg:mt-0">
-                <div>
-                    <label for="filter-category" class="form-label">Category</label>
-                    <select id="filter-category" wire:change="selectCategory($event.target.value)" class="form-input">
-                        <option value="" @selected(is_null($selectedCategory))>All categories</option>
-                        @foreach ($categories as $category)
-                            <option value="{{ $category->id }}" @selected($selectedCategory === $category->id)>{{ $category->name }} ({{ $category->listings_count }})</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div>
-                    <label for="filter-condition" class="form-label">Condition</label>
-                    <select id="filter-condition" wire:model.live="conditionFilter" class="form-input">
-                        <option value="">Any condition</option>
-                        @foreach (\App\Models\Listing::CONDITIONS as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div>
-                    <label for="filter-sort" class="form-label">Sort by</label>
-                    <select id="filter-sort" wire:model.live="sortBy" class="form-input">
-                        <option value="latest">Newest first</option>
-                        <option value="price_asc">Price: low to high</option>
-                        <option value="price_desc">Price: high to low</option>
-                    </select>
-                </div>
-
-                <label class="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-slate-800">
-                    <input type="checkbox" wire:model.live="hotDealsOnly" class="h-5 w-5 rounded border-slate-400 text-brand-700 focus:ring-brand-700" />
-                    <span>🔥 Hot deals only</span>
-                </label>
-
-                @if ($hasActiveFilters)
-                    <button type="button" wire:click="clearFilters" class="btn btn-secondary btn-sm btn-block">
-                        <x-app-icon name="x" class="h-4 w-4" /> Clear filters
-                    </button>
+    <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
+        {{-- Desktop-only left sidebar (B3). Only Browse all/Saved are linked
+             here from the account-wide nav - Notifications/Inbox/Buying/
+             Selling/Insights already live one click away in the header's
+             My Activity menu and bell/message icons, so repeating them here
+             would just duplicate that, not add anything. --}}
+        <aside class="hidden lg:block lg:w-64 lg:flex-shrink-0 lg:space-y-5">
+            <a href="{{ route('listings.create') }}" class="btn btn-primary btn-block">
+                @if ($canSell === false)
+                    <x-app-icon name="shield" class="h-4 w-4" /> Get verified to sell
+                @else
+                    <x-app-icon name="plus" class="h-4 w-4" /> Create new listing
                 @endif
+            </a>
+
+            <nav class="card space-y-1 p-2" aria-label="Browse">
+                <button type="button" wire:click="selectCategory(null)" @class(['flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-sm font-medium', 'bg-brand-50 text-brand-800 dark:bg-brand-500/10' => is_null($selectedCategory), 'text-slate-700 hover:bg-slate-50' => ! is_null($selectedCategory)])>
+                    <x-app-icon name="layout-grid" class="h-4 w-4" /> Browse all
+                </button>
+                <a href="{{ route('activity.buying', ['tab' => 'saved']) }}" class="flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <x-app-icon name="bookmark" class="h-4 w-4" /> Saved
+                </a>
+                <a href="{{ route('transactions.index') }}" class="flex min-h-11 items-center justify-between gap-2.5 rounded-lg px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <span class="flex items-center gap-2.5"><x-app-icon name="transactions" class="h-4 w-4" /> Transactions</span>
+                    @if ($transactionsNeedingActionCount > 0)
+                        <span class="badge badge-danger px-1.5 py-0 text-[10px]">{{ $transactionsNeedingActionCount }}</span>
+                    @endif
+                </a>
+            </nav>
+
+            <nav class="card space-y-1 p-2" aria-label="Categories">
+                @foreach ($categories as $category)
+                    <button type="button" wire:key="sidebar-category-{{ $category->id }}" wire:click="selectCategory({{ $category->id }})" @class(['flex min-h-11 w-full items-center justify-between gap-2.5 rounded-lg px-3 text-left text-sm font-medium', 'bg-brand-50 text-brand-800 dark:bg-brand-500/10' => $selectedCategory === $category->id, 'text-slate-700 hover:bg-slate-50' => $selectedCategory !== $category->id])>
+                        <span class="flex items-center gap-2.5 truncate">
+                            <span aria-hidden="true">{{ $category->emoji() }}</span>
+                            <span class="truncate">{{ $category->name }}</span>
+                        </span>
+                        @if ($category->listings_count > 0)
+                            <span class="badge badge-neutral flex-shrink-0 px-1.5 py-0 text-[10px]">{{ $category->listings_count }}</span>
+                        @endif
+                    </button>
+                @endforeach
+            </nav>
+
+            <div class="card p-4">
+                <button type="button" x-on:click="filtersOpen = !filtersOpen" class="flex min-h-11 w-full items-center justify-between text-sm font-semibold text-ink">
+                    Filters
+                    <x-app-icon name="chevron-down" class="h-4 w-4 transition-transform" x-bind:class="filtersOpen ? 'rotate-180' : ''" />
+                </button>
+                <div x-show="filtersOpen" x-transition class="mt-4">
+                    <x-marketplace.filter-fields id-prefix="sidebar-filter" :has-active-filters="$hasActiveFilters" />
+                </div>
             </div>
         </aside>
 
         <div class="min-w-0 flex-1 space-y-6 sm:space-y-8">
-    @if ($popularWithYou->isNotEmpty())
-        <section class="mt-6 sm:mt-8" aria-labelledby="popular-with-you-heading">
-            <h2 id="popular-with-you-heading" class="mb-3 text-base font-bold text-ink">Popular with students like you</h2>
-            <div class="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-                @foreach ($popularWithYou as $listing)
-                    <x-listing-card :listing="$listing" wire:key="popular-{{ $listing->id }}" class="w-64 flex-shrink-0 sm:w-72" />
-                @endforeach
-            </div>
-        </section>
-    @endif
-
-    @if ($sellingFast->isNotEmpty())
-        <section class="mt-6 sm:mt-8" aria-labelledby="selling-fast-heading">
-            <h2 id="selling-fast-heading" class="mb-3 text-base font-bold text-ink">Selling fast</h2>
-            <div class="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-                @foreach ($sellingFast as $listing)
-                    <x-listing-card :listing="$listing" wire:key="selling-fast-{{ $listing->id }}" class="w-64 flex-shrink-0 sm:w-72" />
-                @endforeach
-            </div>
-        </section>
-    @endif
-
-    <section class="mt-6" aria-live="polite" aria-busy="false">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div>
-                <h2 class="text-base font-bold text-ink">{{ $hasActiveFilters ? 'Results' : "Today's picks" }}</h2>
-                <p class="text-sm text-slate-700">
-                    <span class="font-semibold text-ink">{{ number_format($listings->total()) }}</span>
-                    {{ \Illuminate\Support\Str::plural('item', $listings->total()) }} available
-                </p>
-            </div>
-            @if ($hasActiveFilters)
-                <button type="button" wire:click="clearFilters" class="btn btn-secondary btn-sm">
-                    <x-app-icon name="x" class="h-4 w-4" /> Clear filters
-                </button>
-            @endif
-        </div>
-
-        <div wire:loading.delay class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4" role="status" aria-label="Loading listings">
-            @for ($i = 0; $i < 8; $i++)
-                <x-listing-card-skeleton />
-            @endfor
-        </div>
-
-        <div wire:loading.delay.remove>
-            @if ($listings->count() > 0)
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-                    @foreach ($listings as $listing)
-                        <x-listing-card :listing="$listing" wire:key="listing-{{ $listing->id }}" />
-                    @endforeach
-                </div>
-
-                <div class="mt-8">
-                    {{ $listings->links() }}
-                </div>
-            @else
-                <div class="card px-6 py-12 text-center">
-                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
-                        <x-app-icon name="search" class="h-6 w-6" />
+            {{-- "Today's picks" grid comes first, within the first
+                 screenful, with curated carousels below it (B1) - not the
+                 other way around. --}}
+            <section aria-live="polite" aria-busy="false">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-base font-bold text-ink">{{ $hasActiveFilters ? 'Results' : "Today's picks" }}</h2>
+                        <p class="text-sm text-slate-700">
+                            <span class="font-semibold text-ink">{{ number_format($listings->total()) }}</span>
+                            {{ \Illuminate\Support\Str::plural('item', $listings->total()) }} available
+                        </p>
                     </div>
-                    @if ($hasActiveFilters)
-                        <h2 class="mt-3 text-base font-semibold text-ink">No listings match your search</h2>
-                        <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">Try a different keyword, or remove some filters to see more items.</p>
-                        <button type="button" wire:click="clearFilters" class="btn btn-primary mt-4">Clear all filters</button>
+                </div>
+
+                @if ($hasActiveFilters)
+                    <div class="mb-4 flex flex-wrap items-center gap-2" aria-label="Active filters">
+                        @if ($selectedCategory)
+                            <span class="chip chip-active">
+                                {{ $categories->firstWhere('id', $selectedCategory)?->name }}
+                                <button type="button" wire:click="selectCategory(null)" aria-label="Remove category filter"><x-app-icon name="x" class="h-3.5 w-3.5" /></button>
+                            </span>
+                        @endif
+                        @if ($conditionFilter !== '' && array_key_exists($conditionFilter, \App\Models\Listing::CONDITIONS))
+                            <span class="chip chip-active">
+                                {{ \App\Models\Listing::CONDITIONS[$conditionFilter] }}
+                                <button type="button" wire:click="$set('conditionFilter', '')" aria-label="Remove condition filter"><x-app-icon name="x" class="h-3.5 w-3.5" /></button>
+                            </span>
+                        @endif
+                        @if ($hotDealsOnly)
+                            <span class="chip chip-active">
+                                🔥 Hot deals
+                                <button type="button" wire:click="toggleHotDeals" aria-label="Remove hot deals filter"><x-app-icon name="x" class="h-3.5 w-3.5" /></button>
+                            </span>
+                        @endif
+                        @if ($priceMin !== '' || $priceMax !== '')
+                            <span class="chip chip-active">
+                                K{{ $priceMin !== '' ? $priceMin : '0' }}–K{{ $priceMax !== '' ? $priceMax : '∞' }}
+                                <button type="button" wire:click="clearPriceRange" aria-label="Remove price filter"><x-app-icon name="x" class="h-3.5 w-3.5" /></button>
+                            </span>
+                        @endif
+                        <button type="button" wire:click="clearFilters" class="text-sm font-medium text-brand-800 hover:underline dark:text-brand-300">
+                            Clear all
+                        </button>
+                        @if ($search !== '' || $selectedCategory || ($conditionFilter !== '' && array_key_exists($conditionFilter, \App\Models\Listing::CONDITIONS)))
+                            <button type="button" wire:click="saveSearch" class="chip">
+                                <x-app-icon name="bell" class="h-3.5 w-3.5" /> Save this search
+                            </button>
+                        @endif
+                    </div>
+                @endif
+
+                <div wire:loading.delay class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5" role="status" aria-label="Loading listings">
+                    @for ($i = 0; $i < 10; $i++)
+                        <x-listing-card-skeleton />
+                    @endfor
+                </div>
+
+                <div wire:loading.delay.remove>
+                    @if ($listings->count() > 0)
+                        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                            @foreach ($listings as $listing)
+                                <x-listing-card :listing="$listing" wire:key="listing-{{ $listing->id }}" />
+                            @endforeach
+                        </div>
+
+                        <div class="mt-8 flex flex-col items-center gap-3">
+                            @if ($listings->hasMorePages())
+                                <button type="button" wire:click="loadMore" wire:loading.attr="disabled" wire:target="loadMore" class="btn btn-secondary">
+                                    <span wire:loading.remove wire:target="loadMore">Load more</span>
+                                    <span wire:loading wire:target="loadMore">Loading...</span>
+                                </button>
+                            @endif
+                            <p class="text-xs text-slate-500">Showing {{ $listings->count() }} of {{ $listings->total() }}</p>
+                        </div>
                     @else
-                        <h2 class="mt-3 text-base font-semibold text-ink">Nothing for sale yet</h2>
-                        <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">Be the first to list an item on the campus marketplace.</p>
-                        <a href="{{ auth()->check() ? route('listings.create') : route('register') }}" class="btn btn-primary mt-4">
-                            {{ auth()->check() ? 'Sell an item' : 'Create an account to sell' }}
-                        </a>
+                        <div class="card px-6 py-12 text-center">
+                            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
+                                <x-app-icon name="search" class="h-6 w-6" />
+                            </div>
+                            @if ($hasActiveFilters)
+                                <h2 class="mt-3 text-base font-semibold text-ink">No listings match your search</h2>
+                                <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">Try a different keyword, or remove some filters to see more items.</p>
+                                <button type="button" wire:click="clearFilters" class="btn btn-primary mt-4">Clear all filters</button>
+                            @else
+                                <h2 class="mt-3 text-base font-semibold text-ink">Nothing for sale yet</h2>
+                                <p class="mx-auto mt-1 max-w-sm text-sm text-slate-600">Be the first to list an item on the campus marketplace.</p>
+                                <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+                                    @if ($canSell === false)
+                                        <a href="{{ route('verification.student.form') }}" class="btn btn-primary">Get verified to sell</a>
+                                    @else
+                                        <a href="{{ auth()->check() ? route('listings.create') : route('register') }}" class="btn btn-primary">
+                                            {{ auth()->check() ? 'Sell an item' : 'Create an account to sell' }}
+                                        </a>
+                                    @endif
+                                    <button type="button" wire:click="toggleNotifyNewListings" class="btn btn-secondary">
+                                        @if (auth()->user()?->notify_new_listings)
+                                            <x-app-icon name="check-circle" class="h-4 w-4" /> You'll be notified
+                                        @else
+                                            <x-app-icon name="bell" class="h-4 w-4" /> Get notified when items arrive
+                                        @endif
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
                     @endif
                 </div>
+            </section>
+
+            @if ($hotDeals->isNotEmpty())
+                <section aria-labelledby="hot-deals-heading">
+                    <div class="mb-3 flex items-center justify-between">
+                        <h2 id="hot-deals-heading" class="text-base font-bold text-ink">🔥 Hot Deals</h2>
+                        <button type="button" wire:click="toggleHotDeals" class="text-sm font-medium text-brand-800 hover:underline dark:text-brand-300">
+                            See all
+                        </button>
+                    </div>
+                    <div class="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+                        @foreach ($hotDeals as $deal)
+                            <x-listing-card :listing="$deal" wire:key="hot-deal-{{ $deal->id }}" class="w-44 flex-shrink-0 sm:w-56" />
+                        @endforeach
+                    </div>
+                </section>
             @endif
+
+            <x-listing-carousel title="Recommended for you" :items="$recommendedForYou" key-prefix="recommended" rec-section="recommended_for_you" description="Based on what you've been looking at recently." />
+
+            @if ($becauseYouViewed)
+                <x-listing-carousel
+                    title="Because you viewed &quot;{{ \Illuminate\Support\Str::limit($becauseYouViewed['listing']->title, 40) }}&quot;"
+                    :items="$becauseYouViewed['items']"
+                    key-prefix="because-you-viewed"
+                    rec-section="because_you_viewed"
+                />
+            @endif
+
+            <x-listing-carousel title="Popular with students like you" :items="$popularWithYou" key-prefix="popular" />
+
+            <x-listing-carousel title="Trending this week" :items="$trending" key-prefix="trending" rec-section="trending" description="Real views in the last 24 hours." />
+
+            <x-listing-carousel title="Good deals" :items="$goodDeals" key-prefix="good-deals" rec-section="good_deals" description="Priced below the typical price for their category and condition." />
+
+            <x-listing-carousel title="Just listed" :items="$justListed" key-prefix="just-listed" rec-section="just_listed" />
         </div>
-    </section>
+    </div>
+
+    {{-- Mobile/tablet-only: Filters as a bottom sheet, never inline (B1). --}}
+    <div x-show="filtersOpen" x-cloak class="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Filters">
+        <div class="absolute inset-0 bg-black/40" x-on:click="filtersOpen = false"></div>
+        <div
+            x-show="filtersOpen"
+            x-transition:enter="transition ease-out duration-200 motion-reduce:transition-none"
+            x-transition:enter-start="translate-y-full"
+            x-transition:enter-end="translate-y-0"
+            class="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white p-4 dark:bg-slate-200"
+        >
+            <div class="mb-3 flex items-center justify-between">
+                <h2 class="text-base font-bold text-ink">Filters</h2>
+                <button type="button" x-on:click="filtersOpen = false" class="-m-2 p-2" aria-label="Close">
+                    <x-app-icon name="x" class="h-5 w-5" />
+                </button>
+            </div>
+            <x-marketplace.filter-fields id-prefix="sheet-filter" :has-active-filters="$hasActiveFilters" />
+            <button type="button" x-on:click="filtersOpen = false" class="btn btn-primary btn-block mt-5">Show results</button>
+        </div>
+    </div>
+
+    {{-- Mobile/tablet-only: all categories, as a bottom sheet. --}}
+    <div x-show="categoriesOpen" x-cloak class="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="All categories">
+        <div class="absolute inset-0 bg-black/40" x-on:click="categoriesOpen = false"></div>
+        <div
+            x-show="categoriesOpen"
+            x-transition:enter="transition ease-out duration-200 motion-reduce:transition-none"
+            x-transition:enter-start="translate-y-full"
+            x-transition:enter-end="translate-y-0"
+            class="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white p-4 dark:bg-slate-200"
+        >
+            <div class="mb-3 flex items-center justify-between">
+                <h2 class="text-base font-bold text-ink">All categories</h2>
+                <button type="button" x-on:click="categoriesOpen = false" class="-m-2 p-2" aria-label="Close">
+                    <x-app-icon name="x" class="h-5 w-5" />
+                </button>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+                <button
+                    type="button"
+                    wire:click="selectCategory(null)"
+                    x-on:click="categoriesOpen = false"
+                    @class(['flex flex-col items-center gap-1 rounded-xl border p-3 text-center', 'border-brand-700 bg-brand-50 dark:bg-brand-500/10' => is_null($selectedCategory), 'border-slate-200' => ! is_null($selectedCategory)])
+                >
+                    <x-app-icon name="layout-grid" class="h-6 w-6 text-slate-500" />
+                    <span class="text-xs font-medium text-ink">All</span>
+                </button>
+                @foreach ($categories as $category)
+                    <button
+                        type="button"
+                        wire:key="sheet-category-{{ $category->id }}"
+                        wire:click="selectCategory({{ $category->id }})"
+                        x-on:click="categoriesOpen = false"
+                        @class(['flex flex-col items-center gap-1 rounded-xl border p-3 text-center', 'border-brand-700 bg-brand-50 dark:bg-brand-500/10' => $selectedCategory === $category->id, 'border-slate-200' => $selectedCategory !== $category->id])
+                    >
+                        <span class="text-2xl" aria-hidden="true">{{ $category->emoji() }}</span>
+                        <span class="text-xs font-medium text-ink">{{ $category->name }}</span>
+                        @if ($category->listings_count > 0)
+                            <span class="text-[10px] text-slate-500">{{ $category->listings_count }}</span>
+                        @endif
+                    </button>
+                @endforeach
+            </div>
         </div>
     </div>
 </div>

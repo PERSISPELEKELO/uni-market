@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Resources\StudentVerificationDocumentResource\Pages\ListStudentVerificationDocuments;
+use App\Filament\Resources\StudentVerificationDocumentResource\Pages\ViewSubmission;
 use App\Models\StudentVerificationDocument;
 use App\Models\User;
 use App\Notifications\StudentVerificationApproved;
@@ -53,7 +54,12 @@ describe('reviewing a submission', function () {
         Notification::fake();
         $document = pendingSubmission();
 
-        Livewire::test(ListStudentVerificationDocuments::class)->callTableAction('approve', $document);
+        Livewire::test(ListStudentVerificationDocuments::class)->callTableAction('approve', $document, data: [
+            'checklist_front_side' => true,
+            'checklist_name_matches' => true,
+            'checklist_number_matches' => true,
+            'checklist_photo_clear' => true,
+        ]);
 
         $fresh = $document->user->fresh();
         expect($fresh->is_verified)->toBeTrue()
@@ -70,12 +76,12 @@ describe('reviewing a submission', function () {
         $document = pendingSubmission();
 
         Livewire::test(ListStudentVerificationDocuments::class)
-            ->callTableAction('reject', $document, data: ['reason' => 'The photo is too blurry to read the ID number.']);
+            ->callTableAction('reject', $document, data: ['reason_code' => 'blurry_or_unclear']);
 
         $fresh = $document->user->fresh();
         expect($fresh->is_verified)->toBeFalse()
             ->and($fresh->student_verification_status)->toBe(User::STUDENT_VERIFICATION_REJECTED)
-            ->and($fresh->student_verification_rejection_reason)->toBe('The photo is too blurry to read the ID number.')
+            ->and($fresh->student_verification_rejection_reason)->toBe(StudentVerificationDocument::REJECTION_REASONS['blurry_or_unclear'])
             ->and($document->fresh()->status)->toBe(StudentVerificationDocument::STATUS_REJECTED);
 
         Notification::assertSentTo($fresh, StudentVerificationRejected::class);
@@ -86,8 +92,19 @@ describe('reviewing a submission', function () {
         $document = pendingSubmission();
 
         Livewire::test(ListStudentVerificationDocuments::class)
-            ->callTableAction('reject', $document, data: ['reason' => ''])
-            ->assertHasTableActionErrors(['reason' => 'required']);
+            ->callTableAction('reject', $document, data: ['reason_code' => ''])
+            ->assertHasTableActionErrors(['reason_code' => 'required']);
+
+        expect($document->fresh()->status)->toBe(StudentVerificationDocument::STATUS_PENDING);
+    });
+
+    it('requires a written detail when the reason is "other"', function () {
+        $this->actingAs(makeAdmin());
+        $document = pendingSubmission();
+
+        Livewire::test(ListStudentVerificationDocuments::class)
+            ->callTableAction('reject', $document, data: ['reason_code' => 'other', 'note' => ''])
+            ->assertHasTableActionErrors(['note' => 'required_if']);
 
         expect($document->fresh()->status)->toBe(StudentVerificationDocument::STATUS_PENDING);
     });
@@ -98,9 +115,37 @@ describe('reviewing a submission', function () {
         $document = pendingSubmission();
 
         Livewire::test(ListStudentVerificationDocuments::class)
-            ->callTableAction('request_resubmission', $document, data: ['reason' => 'Please upload a clearer photo of the front of your card.']);
+            ->callTableAction('request_resubmission', $document, data: ['reason_code' => 'wrong_side']);
 
         expect($document->user->fresh()->student_verification_status)->toBe(User::STUDENT_VERIFICATION_RESUBMISSION_REQUIRED);
+    });
+
+    it('requires the full checklist before approving', function () {
+        $this->actingAs(makeAdmin());
+        $document = pendingSubmission();
+
+        Livewire::test(ListStudentVerificationDocuments::class)
+            ->callTableAction('approve', $document, data: [
+                'checklist_front_side' => true,
+                'checklist_name_matches' => true,
+                'checklist_number_matches' => false,
+                'checklist_photo_clear' => true,
+            ])
+            ->assertHasTableActionErrors(['checklist_number_matches' => 'accepted']);
+
+        expect($document->fresh()->status)->toBe(StudentVerificationDocument::STATUS_PENDING);
+    });
+
+    it('does not let an admin review their own account\'s submission', function () {
+        $admin = makeAdmin();
+        $document = StudentVerificationDocument::factory()->for($admin)->create();
+
+        $this->actingAs($admin);
+
+        Livewire::test(ListStudentVerificationDocuments::class)
+            ->assertTableActionHidden('approve', $document)
+            ->assertTableActionHidden('reject', $document)
+            ->assertTableActionHidden('request_resubmission', $document);
     });
 
     it('does not let admins act on a submission the student has already replaced', function () {
@@ -108,7 +153,12 @@ describe('reviewing a submission', function () {
         $document = pendingSubmission();
         StudentVerificationDocument::factory()->for($document->user)->create(); // a newer submission
 
-        Livewire::test(ListStudentVerificationDocuments::class)->callTableAction('approve', $document);
+        Livewire::test(ListStudentVerificationDocuments::class)->callTableAction('approve', $document, data: [
+            'checklist_front_side' => true,
+            'checklist_name_matches' => true,
+            'checklist_number_matches' => true,
+            'checklist_photo_clear' => true,
+        ]);
 
         expect($document->fresh()->status)->toBe(StudentVerificationDocument::STATUS_PENDING)
             ->and($document->user->fresh()->is_verified)->toBeFalse();
@@ -122,5 +172,32 @@ describe('reviewing a submission', function () {
         Livewire::test(ListStudentVerificationDocuments::class)
             ->assertTableActionHidden('approve', $document)
             ->assertTableActionHidden('reject', $document);
+    });
+});
+
+describe('the side-by-side review page', function () {
+    it('shows the registered details and submission history next to the document', function () {
+        $this->actingAs(makeAdmin());
+        $document = pendingSubmission();
+        $earlier = StudentVerificationDocument::factory()->for($document->user)->rejected()->create(['submitted_at' => now()->subDays(3)]);
+
+        Livewire::test(ViewSubmission::class, ['record' => $document->getRouteKey()])
+            ->assertOk()
+            ->assertSee($document->user->name)
+            ->assertSee($document->user->student_id)
+            ->assertSee($document->user->email);
+
+        expect(Livewire::test(ViewSubmission::class, ['record' => $document->getRouteKey()])->instance()->history()->pluck('id'))
+            ->toContain($earlier->id)
+            ->not->toContain($document->id);
+    });
+
+    it('still lets an admin view (but not decide on) their own submission', function () {
+        $admin = makeAdmin();
+        $document = StudentVerificationDocument::factory()->for($admin)->create();
+
+        $this->actingAs($admin);
+
+        Livewire::test(ViewSubmission::class, ['record' => $document->getRouteKey()])->assertOk();
     });
 });

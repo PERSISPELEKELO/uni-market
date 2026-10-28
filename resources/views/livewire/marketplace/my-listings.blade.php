@@ -52,7 +52,7 @@
                         <x-app-icon name="warning" class="h-4 w-4" /> Needs your attention
                     </h2>
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
-                        <x-listing-image :src="$needsActionListing->cover_image_url" :alt="$needsActionListing->title" class="h-20 w-28 flex-shrink-0 rounded-lg" />
+                        <x-listing-image :src="$needsActionListing->cover_thumbnail_url" :alt="$needsActionListing->title" class="h-20 w-28 flex-shrink-0 rounded-lg" />
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
                                 <x-status-badge :status="$needsActionListing->status" />
@@ -90,7 +90,7 @@
                     @foreach ($listings as $listing)
                         <li wire:key="listing-{{ $listing->id }}" class="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
                             <a href="{{ route('listings.show', $listing) }}" class="block flex-shrink-0">
-                                <x-listing-image :src="$listing->cover_image_url" :alt="$listing->title" class="h-40 w-full rounded-lg sm:h-20 sm:w-28" />
+                                <x-listing-image :src="$listing->cover_thumbnail_url" :alt="$listing->title" class="h-40 w-full rounded-lg sm:h-20 sm:w-28" />
                             </a>
 
                             <div class="min-w-0 flex-1">

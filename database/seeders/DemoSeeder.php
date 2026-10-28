@@ -44,7 +44,7 @@ class DemoSeeder extends Seeder
         $seller = User::create([
             'name' => 'Test Seller',
             'email' => 'seller@student.zut.zm',
-            'student_id' => '2026000001',
+            'student_id' => '2600001',
             'phone_number' => '+260971000001',
             'password' => Hash::make('Seller@2026'),
             'role' => 'student',
@@ -60,7 +60,7 @@ class DemoSeeder extends Seeder
         $buyer = User::create([
             'name' => 'Test Buyer',
             'email' => 'buyer@student.zut.zm',
-            'student_id' => '2026000002',
+            'student_id' => '2600002',
             'phone_number' => '+260971000002',
             'password' => Hash::make('Buyer@2026'),
             'role' => 'student',

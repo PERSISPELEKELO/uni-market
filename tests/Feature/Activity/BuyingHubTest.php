@@ -86,3 +86,18 @@ it('shows the student\'s own active listing count on the profile card', function
     Livewire::actingAs($student)->test(BuyingHub::class)
         ->assertSee('2 active listings');
 });
+
+it('shows a real buying overview stat row, isolated per student', function () {
+    $student = User::factory()->create();
+    $otherBuyer = User::factory()->create();
+    $listing = Listing::factory()->create(['price' => 100]);
+    $othersListing = Listing::factory()->create(['price' => 9999]);
+
+    Transaction::factory()->create(['buyer_id' => $student->id, 'listing_id' => $listing->id, 'status' => 'COMPLETED', 'amount' => 100]);
+    Transaction::factory()->create(['buyer_id' => $otherBuyer->id, 'listing_id' => $othersListing->id, 'status' => 'COMPLETED', 'amount' => 9999]);
+
+    Livewire::actingAs($student)->test(BuyingHub::class)
+        ->assertSee('Items bought')
+        ->assertSee('Total spent')
+        ->assertDontSee('9999');
+});

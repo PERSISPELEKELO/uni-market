@@ -25,6 +25,18 @@ use Illuminate\Support\Collection;
 class SellerInsightsService
 {
     /**
+     * A listing younger than this never gets a "why isn't it selling?" hint
+     * - it simply hasn't had time to attract interest yet.
+     */
+    private const HINT_MIN_DAYS_LISTED = 7;
+
+    /**
+     * How far above the category/condition median counts as "overpriced"
+     * for the hint, not just "a bit more expensive".
+     */
+    private const HINT_PRICE_ABOVE_MEDIAN_PERCENT = 15;
+
+    /**
      * @param  string  $period  one of PeriodBoundary::OPTIONS - 'all' by default
      * @return array{items_sold: int, total_earned: float, average_price: float, average_days_to_sale: ?float, average_rating: ?float}
      */
@@ -414,6 +426,50 @@ class SellerInsightsService
                 ->values()
                 ->all();
         });
+    }
+
+    /**
+     * perListingStats() enriched with a plain-language "why isn't it
+     * selling?" hint for the per-listing table - combines engagement
+     * (clicks/saves/days listed) with priceCheck()'s median comparison
+     * rather than introducing a new signal.
+     *
+     * @return Collection<int, array{listing: Listing, clicks: int, saves: int, shares: int, reservations: int, conversion_rate: ?float, days_listed: int, hint: ?string}>
+     */
+    public function sellingHints(User $seller): Collection
+    {
+        $priceChecks = $this->priceCheck($seller)->keyBy(fn (array $row) => $row['listing']->id);
+
+        return $this->perListingStats($seller)->map(function (array $row) use ($priceChecks) {
+            $row['hint'] = $this->sellingHint($row, $priceChecks->get($row['listing']->id));
+
+            return $row;
+        });
+    }
+
+    /**
+     * @param  array{clicks: int, saves: int, reservations: int, days_listed: int}  $row
+     * @param  ?array{difference_percentage: ?float}  $priceCheck
+     */
+    private function sellingHint(array $row, ?array $priceCheck): ?string
+    {
+        if ($row['days_listed'] < self::HINT_MIN_DAYS_LISTED) {
+            return null;
+        }
+
+        if ($row['clicks'] === 0) {
+            return 'No views yet - try a clearer photo or a more descriptive title.';
+        }
+
+        if ($priceCheck !== null && $priceCheck['difference_percentage'] !== null && $priceCheck['difference_percentage'] > self::HINT_PRICE_ABOVE_MEDIAN_PERCENT) {
+            return 'Priced '.$priceCheck['difference_percentage'].'% above similar recent sales - consider a lower price.';
+        }
+
+        if ($row['saves'] === 0 && $row['reservations'] === 0) {
+            return 'Getting views but no saves or reservations yet - consider better photos or a lower price.';
+        }
+
+        return null;
     }
 
     private function median(Collection $sorted): float

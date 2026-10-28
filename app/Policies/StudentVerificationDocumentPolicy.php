@@ -25,10 +25,15 @@ class StudentVerificationDocumentPolicy
     }
 
     /**
-     * Only staff decide the outcome of a submission.
+     * Only staff decide the outcome of a submission - and never their own,
+     * so a reviewer can't approve or reject their own account's document.
      */
-    public function review(User $user): bool
+    public function review(User $user, StudentVerificationDocument $document): bool
     {
+        if ($user->id === $document->user_id) {
+            return false;
+        }
+
         return $user->isAdmin() || $user->isGovernanceCommittee();
     }
 }

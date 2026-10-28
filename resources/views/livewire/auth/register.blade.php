@@ -26,6 +26,7 @@
                 <x-alert type="error">{{ $message }}</x-alert>
             @enderror
 
+            <p class="text-xs font-medium text-slate-600">Use your name exactly as printed on your student ID card - you'll need it to match when you verify later.</p>
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <x-input label="First name" name="first_name" icon="user" wire:model="first_name" autocomplete="given-name" placeholder="Chileshe" />
                 <x-input label="Last name" name="last_name" icon="user" wire:model="last_name" autocomplete="family-name" placeholder="Mwansa" />
@@ -46,16 +47,16 @@
             />
 
             <x-input
-                label="Student ID number"
+                label="Student number - exactly as printed on your student ID card"
                 name="student_id"
                 icon="graduation-cap"
                 wire:model="student_id"
                 autocomplete="off"
                 inputmode="numeric"
                 pattern="[0-9]*"
-                maxlength="10"
-                placeholder="2024198273"
-                hint="Numbers only, up to 10 digits."
+                maxlength="7"
+                placeholder="2041987"
+                hint="Exactly 7 digits, numbers only."
             />
 
             <x-input

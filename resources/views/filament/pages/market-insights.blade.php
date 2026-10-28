@@ -5,6 +5,7 @@
         'growth' => ['Growth', 'heroicon-o-arrow-trending-up'],
         'trust' => ['Trust & Safety', 'heroicon-o-shield-check'],
         'listings' => ['Listings', 'heroicon-o-rectangle-stack'],
+        'recommendations' => ['Recommendations', 'heroicon-o-sparkles'],
     ];
 
     $totals = $this->totals();
@@ -17,6 +18,7 @@
     $genderHeatmap = $this->buyersByGenderAndCategory();
     $shape = $this->sellersVsBuyersVsBoth();
     $topListings = $this->topListings();
+    $recommendationCtr = $this->recommendationClickThroughRate();
     $charts = $this->chartsForCurrentSection();
 @endphp
 
@@ -361,7 +363,7 @@
                         <x-chart-js id="fastest-selling" type="bar" :data="$charts['fastest-selling']" aria-label="Fastest selling categories by median days" empty="Not enough completed sales yet." />
                     </x-filament::section>
                 </div>
-            @else
+            @elseif ($section === 'listings')
                 <x-filament::section>
                     <x-slot name="heading">Listing funnel</x-slot>
                     <x-chart-js id="funnel" type="bar" :data="$charts['funnel']" aria-label="Listing funnel" height="h-48" />
@@ -390,6 +392,12 @@
                             @endforelse
                         </div>
                     </div>
+                </x-filament::section>
+            @else
+                <x-filament::section>
+                    <x-slot name="heading">Recommendation click-through rate by section</x-slot>
+                    <x-slot name="description">Real logged impressions and clicks from the marketplace home and listing pages' recommendation carousels - never a fabricated number.</x-slot>
+                    <x-chart-js id="recommendation-ctr" type="bar" :data="$charts['recommendation-ctr']" aria-label="Recommendation click-through rate by section" empty="No recommendation impressions logged yet in this period." />
                 </x-filament::section>
             @endif
         </div>

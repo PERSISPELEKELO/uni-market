@@ -28,7 +28,7 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'student_id' => (string) fake()->unique()->numerify('20##########'),
+            'student_id' => (string) fake()->unique()->numerify('#######'),
             'role' => 'student',
             'is_verified' => true,
             'student_verification_status' => User::STUDENT_VERIFICATION_VERIFIED,

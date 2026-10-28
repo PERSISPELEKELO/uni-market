@@ -5,6 +5,7 @@ namespace App\Livewire\Ratings;
 use App\Models\Rating;
 use App\Models\Transaction;
 use App\Services\RatingService;
+use App\Services\TransactionInboxService;
 use Illuminate\Support\Facades\Auth;
 use InvalidArgumentException;
 use Livewire\Component;
@@ -43,6 +44,8 @@ class RateTransaction extends Component
 
             return;
         }
+
+        TransactionInboxService::forgetCountFor(Auth::id());
 
         $this->dispatch('notify', type: 'success', message: 'Thanks! Your rating has been submitted.');
     }

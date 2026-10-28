@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AuditLog;
 use App\Models\StudentVerificationDocument;
 use App\Models\User;
 use App\Notifications\StudentVerificationRejected;
@@ -55,12 +56,47 @@ it('distinguishes a hard rejection from a request to resubmit', function () {
     Notification::fake();
 
     $rejected = submission();
-    app(StudentVerificationService::class)->reject($rejected, reviewer(), 'Not a valid student ID.');
-    expect($rejected->user->fresh()->student_verification_status)->toBe(User::STUDENT_VERIFICATION_REJECTED);
+    app(StudentVerificationService::class)->reject($rejected, reviewer(), 'not_own_card');
+    expect($rejected->user->fresh()->student_verification_status)->toBe(User::STUDENT_VERIFICATION_REJECTED)
+        ->and($rejected->user->fresh()->student_verification_rejection_reason)->toBe(StudentVerificationDocument::REJECTION_REASONS['not_own_card']);
     Notification::assertSentTo($rejected->user, fn (StudentVerificationRejected $notification) => $notification->toArray($rejected->user)['title'] === 'Your student verification was not approved');
 
     $resubmit = submission();
-    app(StudentVerificationService::class)->requestResubmission($resubmit, reviewer(), 'Please upload a sharper photo.');
+    app(StudentVerificationService::class)->requestResubmission($resubmit, reviewer(), 'blurry_or_unclear');
     expect($resubmit->user->fresh()->student_verification_status)->toBe(User::STUDENT_VERIFICATION_RESUBMISSION_REQUIRED);
     Notification::assertSentTo($resubmit->user, fn (StudentVerificationRejected $notification) => $notification->toArray($resubmit->user)['title'] === 'Please resubmit your student document');
+});
+
+it('lets an admin give a custom reason when none of the standard ones fit', function () {
+    Notification::fake();
+    $document = submission();
+
+    app(StudentVerificationService::class)->reject($document, reviewer(), 'other', 'The photo shows a library card, not a student ID.');
+
+    expect($document->user->fresh()->student_verification_rejection_reason)
+        ->toBe('The photo shows a library card, not a student ID.');
+});
+
+it('logs only the reason code, never the free-text reason, in the audit trail', function () {
+    Notification::fake();
+    $document = submission();
+
+    app(StudentVerificationService::class)->reject($document, reviewer(), 'name_mismatch');
+
+    $log = AuditLog::where('action', 'STUDENT_VERIFICATION_REJECTED')->latest('id')->first();
+
+    expect($log->payload['reason_code'])->toBe('name_mismatch')
+        ->and($log->payload)->not->toHaveKey('reason')
+        ->and(json_encode($log->payload))->not->toContain("doesn't match your registered name");
+});
+
+it('never logs the student\'s full student number when approving', function () {
+    $document = submission();
+    $document->user->update(['student_id' => '2048195']);
+
+    app(StudentVerificationService::class)->approve($document, reviewer());
+
+    $log = AuditLog::where('action', 'STUDENT_VERIFICATION_APPROVED')->latest('id')->first();
+
+    expect(json_encode($log->payload))->not->toContain('2048195');
 });

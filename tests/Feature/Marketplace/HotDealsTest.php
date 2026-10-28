@@ -6,7 +6,10 @@ use App\Models\Listing;
 use App\Models\User;
 use Livewire\Livewire;
 
-beforeEach(fn () => $this->withoutVite());
+beforeEach(function () {
+    $this->withoutVite();
+    $this->actingAs(User::factory()->create());
+});
 
 function editPrice(Listing $listing, string $newPrice)
 {

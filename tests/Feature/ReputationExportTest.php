@@ -114,7 +114,8 @@ describe('the export endpoint', function () {
 
         $document = app(ReputationExporterService::class)->exportUserData($user);
 
-        $this->get(route('profiles.show', $user))
+        $this->actingAs(User::factory()->create())
+            ->get(route('profiles.show', $user))
             ->assertSee(number_format($document['reputation']['average_rating'], 1))
             ->assertSee($document['reputation']['total_ratings'].' ratings')
             ->assertSee($document['reputation']['completed_transactions'].' completed transactions');

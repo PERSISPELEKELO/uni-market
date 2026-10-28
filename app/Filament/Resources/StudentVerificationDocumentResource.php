@@ -6,10 +6,12 @@ use App\Filament\Resources\StudentVerificationDocumentResource\Pages;
 use App\Models\StudentVerificationDocument;
 use App\Services\StudentVerificationService;
 use Filament\Forms;
+use Filament\Forms\Get;
 use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
@@ -30,10 +32,25 @@ class StudentVerificationDocumentResource extends Resource
         return false; // Submissions only ever come from students, through the marketplace.
     }
 
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) static::getModel()::where('status', StudentVerificationDocument::STATUS_PENDING)->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
+
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('submitted_at', 'desc')
+            // Pending submissions always surface first, oldest first, so the
+            // queue reads as a FIFO line - but an admin can still click a
+            // column header to sort some other way.
+            ->defaultSort(fn (Builder $query): Builder => $query
+                ->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [StudentVerificationDocument::STATUS_PENDING])
+                ->orderBy('submitted_at', 'asc'))
             ->columns([
                 Tables\Columns\TextColumn::make('user.name')
                     ->label('Student')
@@ -77,50 +94,77 @@ class StudentVerificationDocumentResource extends Resource
             ])
             ->actions([
                 Tables\Actions\Action::make('view_document')
-                    ->label('View document')
+                    ->label('Review')
                     ->icon('heroicon-o-eye')
-                    ->url(fn (StudentVerificationDocument $record): string => route('verification.documents.show', $record))
-                    ->openUrlInNewTab(),
+                    ->url(fn (StudentVerificationDocument $record): string => static::getUrl('view', ['record' => $record])),
 
                 Tables\Actions\Action::make('approve')
                     ->label('Approve')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn (StudentVerificationDocument $record): bool => $record->isPending())
-                    ->requiresConfirmation()
-                    ->modalDescription(fn (StudentVerificationDocument $record) => "Confirm that the name and student ID on the document match {$record->user->name} (Student ID {$record->user->student_id}) before approving.")
+                    ->visible(fn (StudentVerificationDocument $record): bool => $record->isPending() && Auth::id() !== $record->user_id)
+                    ->form(fn (StudentVerificationDocument $record): array => [
+                        Forms\Components\Placeholder::make('registered_details')
+                            ->label('Confirm against the registration')
+                            ->content("{$record->user->name} - Student ID {$record->user->student_id}"),
+
+                        Forms\Components\Checkbox::make('checklist_front_side')
+                            ->label('This is the front of a ZUT student ID card')
+                            ->rule('accepted'),
+                        Forms\Components\Checkbox::make('checklist_name_matches')
+                            ->label('The name on the card matches the registered name')
+                            ->rule('accepted'),
+                        Forms\Components\Checkbox::make('checklist_number_matches')
+                            ->label('The student number on the card matches the registered number')
+                            ->rule('accepted'),
+                        Forms\Components\Checkbox::make('checklist_photo_clear')
+                            ->label('The photo is clear, unedited, and not a photo of a screen')
+                            ->rule('accepted'),
+                    ])
                     ->action(function (StudentVerificationDocument $record, StudentVerificationService $service) {
-                        static::run($service, fn () => $service->approve($record, Auth::user()), 'Student verified.');
+                        static::run($record, $service, fn () => $service->approve($record, Auth::user()), 'Student verified.');
                     }),
 
                 Tables\Actions\Action::make('reject')
                     ->label('Reject')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (StudentVerificationDocument $record): bool => $record->isPending())
+                    ->visible(fn (StudentVerificationDocument $record): bool => $record->isPending() && Auth::id() !== $record->user_id)
                     ->form([
-                        Forms\Components\Textarea::make('reason')
+                        Forms\Components\Select::make('reason_code')
                             ->label('Reason (shown to the student)')
+                            ->options(StudentVerificationDocument::REJECTION_REASONS)
                             ->required()
+                            ->live(),
+                        Forms\Components\Textarea::make('note')
+                            ->label('Details')
+                            ->visible(fn (Get $get): bool => $get('reason_code') === 'other')
+                            ->requiredIf('reason_code', 'other')
                             ->minLength(10),
                     ])
                     ->action(function (StudentVerificationDocument $record, array $data, StudentVerificationService $service) {
-                        static::run($service, fn () => $service->reject($record, Auth::user(), $data['reason']), 'Decision recorded.');
+                        static::run($record, $service, fn () => $service->reject($record, Auth::user(), $data['reason_code'], $data['note'] ?? null), 'Decision recorded.');
                     }),
 
                 Tables\Actions\Action::make('request_resubmission')
                     ->label('Request resubmission')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
-                    ->visible(fn (StudentVerificationDocument $record): bool => $record->isPending())
+                    ->visible(fn (StudentVerificationDocument $record): bool => $record->isPending() && Auth::id() !== $record->user_id)
                     ->form([
-                        Forms\Components\Textarea::make('reason')
+                        Forms\Components\Select::make('reason_code')
                             ->label('What is unclear or missing? (shown to the student)')
+                            ->options(StudentVerificationDocument::RESUBMISSION_REASONS)
                             ->required()
+                            ->live(),
+                        Forms\Components\Textarea::make('note')
+                            ->label('Details')
+                            ->visible(fn (Get $get): bool => $get('reason_code') === 'other')
+                            ->requiredIf('reason_code', 'other')
                             ->minLength(10),
                     ])
                     ->action(function (StudentVerificationDocument $record, array $data, StudentVerificationService $service) {
-                        static::run($service, fn () => $service->requestResubmission($record, Auth::user(), $data['reason']), 'Resubmission requested.');
+                        static::run($record, $service, fn () => $service->requestResubmission($record, Auth::user(), $data['reason_code'], $data['note'] ?? null), 'Resubmission requested.');
                     }),
             ]);
     }
@@ -128,9 +172,9 @@ class StudentVerificationDocumentResource extends Resource
     /**
      * Run a decision, showing the admin a clear success or failure banner either way.
      */
-    protected static function run(StudentVerificationService $service, \Closure $decision, string $successMessage): void
+    protected static function run(StudentVerificationDocument $record, StudentVerificationService $service, \Closure $decision, string $successMessage): void
     {
-        Gate::authorize('review', StudentVerificationDocument::class);
+        Gate::authorize('review', $record);
 
         try {
             $decision();
@@ -145,6 +189,7 @@ class StudentVerificationDocumentResource extends Resource
     {
         return [
             'index' => Pages\ListStudentVerificationDocuments::route('/'),
+            'view' => Pages\ViewSubmission::route('/{record}'),
         ];
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\StudentVerificationDocument;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class VerificationDocumentController extends Controller
@@ -15,9 +16,13 @@ class VerificationDocumentController extends Controller
      * The file lives on the private disk and has no public URL, so this
      * authenticated, authorized route is the only way to ever reach it.
      */
-    public function show(StudentVerificationDocument $document): StreamedResponse
+    public function show(StudentVerificationDocument $document): StreamedResponse|Response
     {
         Gate::authorize('view', $document);
+
+        if ($document->isFileDeleted()) {
+            abort(410, 'This document has been deleted. Only the decision on it is kept.');
+        }
 
         return Storage::disk(StudentVerificationDocument::DISK)->response(
             $document->file_path,

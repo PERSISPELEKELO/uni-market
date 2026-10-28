@@ -10,7 +10,7 @@ beforeEach(fn () => $this->withoutVite());
 it('shows the login page to guests', function () {
     $this->get(route('login'))
         ->assertOk()
-        ->assertSee('Welcome back')
+        ->assertSee('verified ZUT students')
         ->assertSee('Email address')
         ->assertSee('Password');
 });

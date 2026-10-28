@@ -2,6 +2,7 @@
 
 use App\Models\Category;
 use App\Models\Listing;
+use App\Models\ListingEvent;
 use App\Models\ListingView;
 use App\Models\Message;
 use App\Models\Transaction;
@@ -220,5 +221,63 @@ describe('price check', function () {
 
         expect($result['median'])->toBe(500.0)
             ->and($result['difference_percentage'])->toBe(20.0); // 600 is 20% above the median of 500
+    });
+});
+
+describe('selling hints', function () {
+    it('gives no hint to a listing that is too new to judge', function () {
+        $seller = User::factory()->create();
+        Listing::factory()->create(['user_id' => $seller->id, 'status' => 'active', 'created_at' => now()->subDays(2)]);
+
+        $result = $this->service->sellingHints($seller)->first();
+
+        expect($result['hint'])->toBeNull();
+    });
+
+    it('nudges a listing with zero views once it has had time to be seen', function () {
+        $seller = User::factory()->create();
+        Listing::factory()->create(['user_id' => $seller->id, 'status' => 'active', 'created_at' => now()->subDays(10)]);
+
+        $result = $this->service->sellingHints($seller)->first();
+
+        expect($result['hint'])->toContain('No views yet');
+    });
+
+    it('nudges an overpriced listing once enough comparable sales exist', function () {
+        config(['insights.min_group_size' => 5]);
+        $category = Category::factory()->create();
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id, 'category_id' => $category->id, 'condition' => 'good', 'price' => 600, 'status' => 'active', 'created_at' => now()->subDays(10)]);
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => ListingEvent::TYPE_VIEW, 'created_at' => now()]);
+
+        foreach ([400, 450, 500, 550, 600] as $price) {
+            $soldListing = Listing::factory()->create(['category_id' => $category->id, 'condition' => 'good', 'price' => $price]);
+            Transaction::factory()->create(['listing_id' => $soldListing->id, 'status' => 'COMPLETED', 'amount' => $price]);
+        }
+
+        $result = $this->service->sellingHints($seller)->firstWhere('listing.id', $listing->id);
+
+        expect($result['hint'])->toContain('Priced 20% above');
+    });
+
+    it('nudges a listing with views but no interest at all', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id, 'status' => 'active', 'created_at' => now()->subDays(10)]);
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => ListingEvent::TYPE_VIEW, 'created_at' => now()]);
+
+        $result = $this->service->sellingHints($seller)->first();
+
+        expect($result['hint'])->toContain('no saves or reservations');
+    });
+
+    it('gives no hint to a listing that already has genuine interest', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id, 'status' => 'active', 'created_at' => now()->subDays(10)]);
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => ListingEvent::TYPE_VIEW, 'created_at' => now()]);
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => ListingEvent::TYPE_SAVE, 'created_at' => now()]);
+
+        $result = $this->service->sellingHints($seller)->first();
+
+        expect($result['hint'])->toBeNull();
     });
 });
