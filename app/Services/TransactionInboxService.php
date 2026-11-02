@@ -25,7 +25,7 @@ class TransactionInboxService
      */
     public function grouped(User $user): array
     {
-        $transactions = Transaction::with(['buyer:id,name', 'seller:id,name', 'listing:id,title,images'])
+        $transactions = Transaction::with(['buyer:id,name,is_verified,avatar_path,created_at', 'seller:id,name,is_verified,avatar_path,created_at', 'listing:id,title,images'])
             ->forParticipant($user->id)
             ->get();
 

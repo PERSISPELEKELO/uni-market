@@ -103,6 +103,13 @@
                         </div>
                     </div>
 
+                    <x-counterparty-card
+                        :user="$isBuyer ? $activeTransaction->seller : $activeTransaction->buyer"
+                        :role="$isBuyer ? 'Seller' : 'Buyer'"
+                        :transaction-id="$activeTransaction->id"
+                        :listing-id="$activeTransaction->listing_id"
+                    />
+
                     <ol class="grid gap-1 text-center sm:gap-2" style="grid-template-columns: repeat({{ count($steps) }}, minmax(0, 1fr));" aria-label="Transaction progress">
                         @foreach ($steps as $number => [$label, $hint])
                             @php

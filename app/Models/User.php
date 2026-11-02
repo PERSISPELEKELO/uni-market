@@ -153,6 +153,16 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         return Transaction::forParticipant($this->id)->where('status', 'COMPLETED')->count();
     }
 
+    public function completedSalesCount(): int
+    {
+        return $this->sales()->where('status', 'COMPLETED')->count();
+    }
+
+    public function completedPurchasesCount(): int
+    {
+        return $this->purchases()->where('status', 'COMPLETED')->count();
+    }
+
     public function sales(): HasMany
     {
         return $this->hasMany(Transaction::class, 'seller_id');

@@ -205,6 +205,68 @@ describe('finding someone to message', function () {
     });
 });
 
+describe('messaging from a transaction', function () {
+    it('attaches the transaction_id to a message sent from a transaction link', function () {
+        $buyer = User::factory()->create();
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id]);
+        $transaction = Transaction::factory()->create(['buyer_id' => $buyer->id, 'seller_id' => $seller->id, 'listing_id' => $listing->id, 'status' => 'PENDING_MEETING']);
+
+        Livewire::actingAs($buyer)
+            ->withQueryParams(['transaction' => $transaction->id])
+            ->test(MessageThread::class, ['receiver' => $seller->id, 'listing' => $listing->id])
+            ->set('newMessage', 'When can we meet?')
+            ->call('sendMessage');
+
+        $message = Message::firstOrFail();
+        expect($message->transaction_id)->toBe($transaction->id);
+    });
+
+    it('shows a "View transaction" link and the status badge when the thread is linked to a transaction', function () {
+        $buyer = User::factory()->create();
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id]);
+        $transaction = Transaction::factory()->create(['buyer_id' => $buyer->id, 'seller_id' => $seller->id, 'listing_id' => $listing->id, 'status' => 'PENDING_MEETING']);
+
+        $this->actingAs($buyer)
+            ->get(route('chat.thread', ['receiver' => $seller->id, 'listing' => $listing->id, 'transaction' => $transaction->id]))
+            ->assertSee('View transaction')
+            ->assertSee(route('transactions.tracker', $transaction), false);
+    });
+
+    it('ignores a transaction id that does not belong to the two participants', function () {
+        $buyer = User::factory()->create();
+        $seller = User::factory()->create();
+        $foreignTransaction = Transaction::factory()->create();
+
+        Livewire::actingAs($buyer)
+            ->withQueryParams(['transaction' => $foreignTransaction->id])
+            ->test(MessageThread::class, ['receiver' => $seller->id])
+            ->set('newMessage', 'Hello')
+            ->call('sendMessage');
+
+        $message = Message::firstOrFail();
+        expect($message->transaction_id)->toBeNull();
+    });
+
+    it('prefills a suggested first message about the listing when no conversation about it exists yet', function () {
+        $buyer = User::factory()->create();
+        $listing = Listing::factory()->create(['title' => 'Scientific Calculator']);
+
+        Livewire::actingAs($buyer)->test(MessageThread::class, ['receiver' => $listing->user_id, 'listing' => $listing->id])
+            ->assertSet('newMessage', 'Hi, about the Scientific Calculator — when can we meet for the handover?');
+    });
+
+    it('does not overwrite an existing conversation about the listing with a suggested message', function () {
+        $buyer = User::factory()->create();
+        $listing = Listing::factory()->create();
+        Message::factory()->create(['sender_id' => $buyer->id, 'receiver_id' => $listing->user_id, 'listing_id' => $listing->id]);
+
+        Livewire::actingAs($buyer)->test(MessageThread::class, ['receiver' => $listing->user_id, 'listing' => $listing->id])
+            ->assertSet('newMessage', '');
+    });
+});
+
 describe('rating never appears inside chat', function () {
     it('never shows a rating prompt or star selector, even with a completed transaction between the two participants', function () {
         $buyer = User::factory()->create();

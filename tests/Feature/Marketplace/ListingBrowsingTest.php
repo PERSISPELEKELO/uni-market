@@ -8,6 +8,7 @@ use App\Models\ListingView;
 use App\Models\Reservation;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Livewire;
 
@@ -61,6 +62,28 @@ describe('browsing', function () {
 
                 return ($card->active_reservations_count ?? 0) === 0;
             });
+    });
+
+    it('shows the seller\'s first name and verified mark on a listing card, linking to their profile', function () {
+        $seller = User::factory()->create(['name' => 'Chileshe Mwansa', 'is_verified' => true]);
+        $listing = Listing::factory()->create(['user_id' => $seller->id, 'title' => 'Verified seller item']);
+
+        $this->get(route('listings.index'))
+            ->assertSee('Verified seller item')
+            ->assertSee('Chileshe')
+            ->assertSee(route('profiles.show', $seller), false);
+    });
+
+    it('runs the home page with no N+1 queries across listing cards', function () {
+        Listing::factory()->count(5)->create();
+
+        Model::preventLazyLoading();
+
+        try {
+            $this->get(route('listings.index'))->assertOk();
+        } finally {
+            Model::preventLazyLoading(false);
+        }
     });
 
     it('lists only active listings with their key details', function () {

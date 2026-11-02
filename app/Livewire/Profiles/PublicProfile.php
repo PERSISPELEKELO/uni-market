@@ -31,9 +31,14 @@ class PublicProfile extends Component
 
     public function render()
     {
+        $activeListings = $this->user->listings()->active()->with(['category:id,name', 'seller:id,name,is_verified,avatar_path'])->latest()->limit(12)->get();
+
         return view('livewire.profiles.public-profile', [
-            'activeListingsCount' => $this->user->listings()->active()->count(),
+            'activeListingsCount' => $activeListings->count(),
+            'activeListings' => $activeListings,
             'completedTransactionsCount' => $this->user->completedTransactionsCount(),
+            'completedSalesCount' => $this->user->completedSalesCount(),
+            'completedPurchasesCount' => $this->user->completedPurchasesCount(),
             'averageRating' => $this->user->averageRating(),
             'ratingsCount' => $this->user->ratingsCount(),
             'ratingBreakdown' => $this->user->ratingBreakdown(),

@@ -53,15 +53,20 @@
             <a href="{{ $href }}" class="line-clamp-2 break-words hover:text-brand-800 dark:hover:text-brand-300">{{ $listing->title }}</a>
         </h3>
 
-        <p class="mt-1.5 truncate text-xs text-slate-600">
-            @if (($listing->active_reservations_count ?? 0) > 0)
-                {{ $listing->active_reservations_count }} {{ \Illuminate\Support\Str::plural('reservation', $listing->active_reservations_count) }}
-            @else
-                @if ($listing->seller->is_verified)
-                    <span class="inline-flex items-center gap-0.5 text-accent-700 dark:text-accent-400"><x-app-icon name="check-circle" class="h-3 w-3" /> Verified</span> ·
-                @endif
-                {{ $listing->created_at->diffForHumans(short: true) }}
+        <p class="mt-1.5 flex items-center gap-1 text-xs text-slate-600">
+            <x-avatar :user="$listing->seller" class="h-4 w-4 flex-shrink-0 text-[8px]" />
+            <a href="{{ route('profiles.show', $listing->seller) }}" class="truncate font-medium hover:text-brand-800 dark:hover:text-brand-300">{{ \Illuminate\Support\Str::before($listing->seller->name, ' ') }}</a>
+            @if ($listing->seller->is_verified)
+                <x-app-icon name="check-circle" class="h-3 w-3 flex-shrink-0 text-accent-700 dark:text-accent-400" />
             @endif
+            <span aria-hidden="true">&middot;</span>
+            <span class="truncate">
+                @if (($listing->active_reservations_count ?? 0) > 0)
+                    {{ $listing->active_reservations_count }} {{ \Illuminate\Support\Str::plural('reservation', $listing->active_reservations_count) }}
+                @else
+                    {{ $listing->created_at->diffForHumans(short: true) }}
+                @endif
+            </span>
         </p>
     </div>
 </article>

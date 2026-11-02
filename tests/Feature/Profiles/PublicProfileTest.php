@@ -53,12 +53,15 @@ it('omits optional sections that have not been filled in', function () {
     $this->get(route('profiles.show', $user))->assertOk()->assertDontSee('About');
 });
 
-it('shows a link to the student\'s active listings', function () {
+it('shows the student\'s active listings as cards, excluding sold items', function () {
     $seller = User::factory()->create();
-    Listing::factory()->count(2)->create(['user_id' => $seller->id]);
-    Listing::factory()->sold()->create(['user_id' => $seller->id]);
+    $active = Listing::factory()->count(2)->create(['user_id' => $seller->id, 'title' => 'Active Textbook']);
+    $sold = Listing::factory()->sold()->create(['user_id' => $seller->id, 'title' => 'Sold Calculator']);
 
-    $this->get(route('profiles.show', $seller))->assertSee('2 items');
+    $this->get(route('profiles.show', $seller))
+        ->assertSee('Active listings')
+        ->assertSee('Active Textbook')
+        ->assertDontSee('Sold Calculator');
 });
 
 it('returns 404 for a student who does not exist', function () {
@@ -105,7 +108,7 @@ describe('rating display', function () {
 
     it('never shows which listing or transaction a review came from', function () {
         $seller = User::factory()->create();
-        $listing = Listing::factory()->create(['user_id' => $seller->id, 'title' => 'Secret Listing Title 12345']);
+        $listing = Listing::factory()->sold()->create(['user_id' => $seller->id, 'title' => 'Secret Listing Title 12345']);
         $transaction = Transaction::factory()->create(['listing_id' => $listing->id, 'seller_id' => $seller->id, 'status' => 'COMPLETED']);
         Rating::create(['transaction_id' => $transaction->id, 'rater_id' => $transaction->buyer_id, 'rated_id' => $seller->id, 'stars' => 5]);
 
