@@ -99,3 +99,17 @@ it('exports a csv built from the same already-safe aggregate figures', function 
 
     $response->assertOk();
 });
+
+it('drills down into a top listing\'s full report, then closes it again on a second click', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $listing = Listing::factory()->create(['title' => 'Scientific Calculator']);
+    Transaction::factory()->create(['listing_id' => $listing->id, 'status' => 'COMPLETED', 'completed_at' => now(), 'amount' => 90]);
+
+    Livewire::actingAs($admin)->test(MarketInsights::class)
+        ->assertDontSee('Completed sales')
+        ->call('drillIntoListing', $listing->id)
+        ->assertSee('Completed sales')
+        ->assertSee('Scientific Calculator')
+        ->call('drillIntoListing', $listing->id)
+        ->assertDontSee('Completed sales');
+});

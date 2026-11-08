@@ -35,6 +35,8 @@ class MarketInsights extends Page
 
     public ?string $selectedCategory = null;
 
+    public ?int $drilldownListingId = null;
+
     private const SECTIONS = ['overview', 'marketplace', 'growth', 'trust', 'listings', 'recommendations', 'demographics'];
 
     /**
@@ -55,6 +57,7 @@ class MarketInsights extends Page
         if (in_array($section, self::SECTIONS, true)) {
             $this->section = $section;
             $this->selectedCategory = null;
+            $this->drilldownListingId = null;
         }
     }
 
@@ -64,6 +67,22 @@ class MarketInsights extends Page
             $this->selectedCategory = $value;
             $this->dispatch('charts-updated', charts: $this->chartsForCurrentSection());
         }
+    }
+
+    /**
+     * Clicking a "Top listings" row opens its full performance report inline
+     * - clicking the same row again closes it, like a disclosure toggle.
+     */
+    public function drillIntoListing(int $listingId): void
+    {
+        $this->drilldownListingId = $this->drilldownListingId === $listingId ? null : $listingId;
+    }
+
+    public function listingDrilldown(): ?array
+    {
+        return $this->drilldownListingId
+            ? app(MarketInsightsService::class)->listingDrilldown($this->drilldownListingId)
+            : null;
     }
 
     public function resetChartFilters(): void

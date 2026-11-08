@@ -3,6 +3,7 @@
 use App\Models\Category;
 use App\Models\Dispute;
 use App\Models\Listing;
+use App\Models\ListingEvent;
 use App\Models\RecommendationEvent;
 use App\Models\SearchLog;
 use App\Models\Transaction;
@@ -174,6 +175,25 @@ describe('recommendation click-through rate', function () {
         $rows = $this->service->recommendationClickThroughRate('30d');
 
         expect(collect($rows)->firstWhere('section', 'Trending'))->toBeNull();
+    });
+});
+
+describe('listing drilldown', function () {
+    it('reports a listing\'s real performance figures', function () {
+        $listing = Listing::factory()->create();
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => 'view', 'created_at' => now()]);
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => 'view', 'created_at' => now()]);
+        Transaction::factory()->create(['listing_id' => $listing->id, 'status' => 'COMPLETED', 'amount' => 80]);
+
+        $report = $this->service->listingDrilldown($listing->id);
+
+        expect($report['views'])->toBe(2)
+            ->and($report['completed_sales'])->toBe(1)
+            ->and($report['total_sale_value'])->toBe(80.0);
+    });
+
+    it('returns null for a listing that no longer exists', function () {
+        expect($this->service->listingDrilldown(999999))->toBeNull();
     });
 });
 

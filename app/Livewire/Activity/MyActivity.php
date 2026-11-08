@@ -64,6 +64,8 @@ class MyActivity extends Component
      */
     public ?int $transaction = null;
 
+    public ?int $drilldownListingId = null;
+
     private const SIDEBAR_VIEWS = ['overview', 'selling', 'buying', 'customers'];
 
     public function mount(?int $transaction = null): void
@@ -99,6 +101,7 @@ class MyActivity extends Component
         if (in_array($view, self::SIDEBAR_VIEWS, true)) {
             $this->insightsSidebarView = $view;
             $this->selectedCategory = null;
+            $this->drilldownListingId = null;
         }
     }
 
@@ -112,6 +115,22 @@ class MyActivity extends Component
             $this->insightsMetric = $metric;
             $this->dispatch('charts-updated', charts: $this->chartsForCurrentView());
         }
+    }
+
+    /**
+     * Clicking a "Trending today" or "Per-listing performance" row opens its
+     * full report inline - clicking the same row again closes it.
+     */
+    public function drillIntoListing(int $listingId): void
+    {
+        $this->drilldownListingId = $this->drilldownListingId === $listingId ? null : $listingId;
+    }
+
+    public function listingDrilldown(): ?array
+    {
+        return $this->drilldownListingId
+            ? app(SellerInsightsService::class)->listingDrilldown(Auth::user(), $this->drilldownListingId)
+            : null;
     }
 
     public function sortListingsBy(string $column): void

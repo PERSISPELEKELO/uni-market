@@ -7,6 +7,7 @@ namespace App\Services\Insights;
 use App\Models\Category;
 use App\Models\Dispute;
 use App\Models\Listing;
+use App\Models\ListingEvent;
 use App\Models\ListingView;
 use App\Models\Rating;
 use App\Models\RecommendationEvent;
@@ -174,6 +175,40 @@ class MarketInsightsService
                 ->values()
                 ->all();
         });
+    }
+
+    /**
+     * The full performance report for one listing, for an admin drilling
+     * down from the "Top listings" table - real counts only, nothing
+     * estimated. Null if the listing no longer exists.
+     *
+     * @return array{listing: Listing, views: int, saves: int, shares: int, reservations: int, completed_sales: int, total_sale_value: float, conversion_rate: ?float, days_listed: int}|null
+     */
+    public function listingDrilldown(int $listingId): ?array
+    {
+        $listing = Listing::with(['seller:id,name', 'category:id,name'])->find($listingId);
+
+        if (! $listing) {
+            return null;
+        }
+
+        $views = $listing->events()->where('type', ListingEvent::TYPE_VIEW)->count();
+        $saves = $listing->events()->where('type', ListingEvent::TYPE_SAVE)->count();
+        $shares = $listing->events()->where('type', ListingEvent::TYPE_SHARE)->count();
+        $reservations = $listing->reservations()->count();
+        $completedSales = $listing->transactions()->where('status', 'COMPLETED');
+
+        return [
+            'listing' => $listing,
+            'views' => $views,
+            'saves' => $saves,
+            'shares' => $shares,
+            'reservations' => $reservations,
+            'completed_sales' => (clone $completedSales)->count(),
+            'total_sale_value' => (float) (clone $completedSales)->sum('amount'),
+            'conversion_rate' => $views > 0 ? round(($reservations / $views) * 100, 1) : null,
+            'days_listed' => $listing->created_at->diffInDays(now()),
+        ];
     }
 
     /**

@@ -102,6 +102,7 @@
 
                 <x-filament::section>
                     <x-slot name="heading">Top listings by sale value</x-slot>
+                    <x-slot name="description">Click a row for its full performance report.</x-slot>
 
                     @if (empty($topListings))
                         <p class="text-sm text-gray-500 dark:text-gray-400">No completed sales in this period.</p>
@@ -116,7 +117,14 @@
                                 </thead>
                                 <tbody>
                                     @foreach ($topListings as $row)
-                                        <tr class="border-b border-gray-100 dark:border-gray-800">
+                                        <tr
+                                            wire:click="drillIntoListing({{ $row['listing']->id }})"
+                                            wire:key="top-listing-{{ $row['listing']->id }}"
+                                            @class([
+                                                'cursor-pointer border-b border-gray-100 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800',
+                                                'bg-primary-50 dark:bg-primary-500/10' => $drilldownListingId === $row['listing']->id,
+                                            ])
+                                        >
                                             <td class="py-1.5 pr-4">{{ $row['listing']->title }}</td>
                                             <td class="py-1.5 font-medium">{{ number_format($row['amount'], 2) }}</td>
                                         </tr>
@@ -124,6 +132,39 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @if ($drilldownListingId && ($drilldown = $this->listingDrilldown()))
+                            <div class="mt-4 rounded-lg border border-primary-200 bg-primary-50/50 p-4 dark:border-primary-500/30 dark:bg-primary-500/5">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="font-semibold text-gray-950 dark:text-white">{{ $drilldown['listing']->title }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                            {{ $drilldown['listing']->category?->name ?? 'Uncategorised' }} &middot;
+                                            Seller: {{ $drilldown['listing']->seller?->name ?? 'Unknown' }} &middot;
+                                            Listed {{ $drilldown['days_listed'] }} {{ \Illuminate\Support\Str::plural('day', $drilldown['days_listed']) }} ago
+                                        </p>
+                                    </div>
+                                    <button type="button" wire:click="drillIntoListing({{ $drilldownListingId }})" class="text-xs text-gray-500 hover:text-gray-900 dark:hover:text-white">Close</button>
+                                </div>
+
+                                <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    @foreach ([
+                                        ['label' => 'Views', 'value' => $drilldown['views']],
+                                        ['label' => 'Saves', 'value' => $drilldown['saves']],
+                                        ['label' => 'Shares', 'value' => $drilldown['shares']],
+                                        ['label' => 'Reservations', 'value' => $drilldown['reservations']],
+                                        ['label' => 'Completed sales', 'value' => $drilldown['completed_sales']],
+                                        ['label' => 'Total sale value (K)', 'value' => number_format($drilldown['total_sale_value'], 2)],
+                                        ['label' => 'View-to-reservation rate', 'value' => $drilldown['conversion_rate'] !== null ? $drilldown['conversion_rate'].'%' : '—'],
+                                    ] as $stat)
+                                        <div>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $stat['label'] }}</p>
+                                            <p class="font-semibold text-gray-950 dark:text-white">{{ $stat['value'] }}</p>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     @endif
                 </x-filament::section>
             @elseif ($section === 'marketplace')
