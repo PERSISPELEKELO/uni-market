@@ -226,9 +226,20 @@ class DisputeResource extends Resource
                     ->label('Refund Buyer')
                     ->color('success')
                     ->icon('heroicon-o-receipt-refund')
+                    ->visible(fn (Dispute $record): bool => in_array($record->status, ['open', 'under_review'], true))
                     ->action(function (Dispute $record) {
+                        // Guards against a double-click or two admins acting on the
+                        // same case releasing/refunding the simulated funds twice.
+                        if (! in_array($record->status, ['open', 'under_review'], true)) {
+                            return;
+                        }
+
                         $record->update(['status' => 'resolved_buyer']);
-                        $record->transaction->update(['status' => 'refunded']);
+                        $record->transaction->update([
+                            'status' => 'refunded',
+                            'payment_status' => 'REFUNDED',
+                            'refunded_at' => now(),
+                        ]);
 
                         app(AuditLoggerService::class)->recordAction(
                             Auth::user(),
@@ -242,9 +253,18 @@ class DisputeResource extends Resource
                     ->label('Release to Seller')
                     ->color('primary')
                     ->icon('heroicon-o-check-circle')
+                    ->visible(fn (Dispute $record): bool => in_array($record->status, ['open', 'under_review'], true))
                     ->action(function (Dispute $record) {
+                        if (! in_array($record->status, ['open', 'under_review'], true)) {
+                            return;
+                        }
+
                         $record->update(['status' => 'resolved_seller']);
-                        $record->transaction->update(['status' => 'completed']);
+                        $record->transaction->update([
+                            'status' => 'completed',
+                            'payment_status' => 'RELEASED',
+                            'funds_released_at' => now(),
+                        ]);
                         $record->transaction->listing->update(['status' => 'sold']);
 
                         app(AuditLoggerService::class)->recordAction(

@@ -137,6 +137,11 @@ class ReservationService
                 'seller_id' => $seller->id,
                 'amount' => $listing->price,
                 'status' => 'initiated',
+                // A free, simulated payment - no real gateway - is treated as
+                // instantly successful and held the moment the sale starts,
+                // so the buyer never has a separate payment step to complete.
+                'payment_status' => 'HELD',
+                'funds_held_at' => now(),
                 'transaction_mode' => $transactionMode,
             ]);
 

@@ -51,6 +51,7 @@
 
                         <p class="truncate font-semibold text-ink">{{ $transaction->listing?->title ?? 'Listing no longer available' }}</p>
                         <p class="text-sm text-slate-700">K{{ number_format((float) $transaction->amount, 2) }} &middot; {{ $row['status_label'] }}</p>
+                        <x-payment-status-badge :status="$transaction->payment_status" />
 
                         @if ($row['inspection_ends_at'] && $row['inspection_ends_at']->isFuture())
                             <p class="text-xs font-medium text-accent-700">{{ $row['inspection_ends_at']->diffForHumans(null, true) }} left to inspect</p>

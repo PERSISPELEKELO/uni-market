@@ -100,6 +100,7 @@
                         <div class="sm:text-right">
                             <p class="text-xs text-slate-600">Amount</p>
                             <p class="text-2xl font-bold text-ink">K{{ number_format($activeTransaction->amount, 2) }}</p>
+                            <x-payment-status-badge :status="$activeTransaction->payment_status" class="mt-1" />
                         </div>
                     </div>
 

@@ -110,6 +110,8 @@ class InspectionService
         $transaction->update([
             'status' => 'COMPLETED',
             'completed_at' => $completedAt,
+            'payment_status' => 'RELEASED',
+            'funds_released_at' => $completedAt,
         ]);
 
         if ($transaction->listing) {
@@ -156,6 +158,8 @@ class InspectionService
         $transaction->update([
             'status' => 'COMPLETED',
             'completed_at' => $completedAt,
+            'payment_status' => 'RELEASED',
+            'funds_released_at' => $completedAt,
         ]);
 
         if ($transaction->listing) {

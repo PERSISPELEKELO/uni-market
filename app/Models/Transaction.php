@@ -22,6 +22,10 @@ class Transaction extends Model
         'seller_id',
         'amount',
         'status',
+        'payment_status',
+        'funds_held_at',
+        'funds_released_at',
+        'refunded_at',
         'transaction_mode',
         'handover_code_hash',
         'handover_code_plain',
@@ -47,6 +51,9 @@ class Transaction extends Model
         'inspection_ends_at' => 'datetime',
         'inspection_expires_at' => 'datetime',
         'completed_at' => 'datetime',
+        'funds_held_at' => 'datetime',
+        'funds_released_at' => 'datetime',
+        'refunded_at' => 'datetime',
     ];
 
     /**
@@ -72,6 +79,25 @@ class Transaction extends Model
     public function isInInspection(): bool
     {
         return in_array(strtoupper((string) $this->status), ['ITEM_INSPECTION', 'HANDED_OVER'], true);
+    }
+
+    /**
+     * Free, simulated escrow - no real payment gateway, no real money. See
+     * the migration that added these columns for what each value means.
+     */
+    public function isFundsHeld(): bool
+    {
+        return strtoupper((string) $this->payment_status) === 'HELD';
+    }
+
+    public function isFundsReleased(): bool
+    {
+        return strtoupper((string) $this->payment_status) === 'RELEASED';
+    }
+
+    public function isRefunded(): bool
+    {
+        return strtoupper((string) $this->payment_status) === 'REFUNDED';
     }
 
     /**
