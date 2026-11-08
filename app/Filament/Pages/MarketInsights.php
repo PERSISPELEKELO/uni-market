@@ -35,7 +35,7 @@ class MarketInsights extends Page
 
     public ?string $selectedCategory = null;
 
-    private const SECTIONS = ['overview', 'marketplace', 'growth', 'trust', 'listings', 'recommendations'];
+    private const SECTIONS = ['overview', 'marketplace', 'growth', 'trust', 'listings', 'recommendations', 'demographics'];
 
     /**
      * @return array<string, string>
@@ -99,6 +99,10 @@ class MarketInsights extends Page
             ],
             'recommendations' => [
                 'recommendation-ctr' => $this->recommendationCtrChart($service->recommendationClickThroughRate($this->period)),
+            ],
+            'demographics' => [
+                'students-by-school' => $this->labeledBarChart($service->studentDemographics()['by_school']),
+                'students-by-year' => $this->labeledBarChart($service->studentDemographics()['by_year']),
             ],
             default => [
                 'value-over-time' => $this->lineChart($service->valueOverTime($this->period), 'week', 'value', 'Value (K)'),
@@ -210,6 +214,21 @@ class MarketInsights extends Page
     }
 
     /**
+     * @param  array<string, int>  $labelledCounts
+     */
+    private function labeledBarChart(array $labelledCounts): array
+    {
+        return [
+            'labels' => array_keys($labelledCounts),
+            'datasets' => [[
+                'label' => 'Students',
+                'data' => array_values($labelledCounts),
+                'backgroundColor' => ChartPalette::take(count($labelledCounts)),
+            ]],
+        ];
+    }
+
+    /**
      * @param  array<int, array{section: string, impressions: int, clicks: int, ctr: float}>  $rows
      */
     private function recommendationCtrChart(array $rows): array
@@ -302,6 +321,11 @@ class MarketInsights extends Page
     public function frequentlyBoughtTogether(): array
     {
         return app(FrequentlyBoughtTogetherService::class)->topPairs(10)->all();
+    }
+
+    public function studentDemographics(): array
+    {
+        return app(MarketInsightsService::class)->studentDemographics();
     }
 
     protected function getHeaderActions(): array

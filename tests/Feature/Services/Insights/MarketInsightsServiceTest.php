@@ -176,3 +176,39 @@ describe('recommendation click-through rate', function () {
         expect(collect($rows)->firstWhere('section', 'Trending'))->toBeNull();
     });
 });
+
+describe('student demographics', function () {
+    it('reports real totals for verification and suspension status', function () {
+        User::factory()->create(['student_verification_status' => User::STUDENT_VERIFICATION_VERIFIED]);
+        User::factory()->create(['student_verification_status' => User::STUDENT_VERIFICATION_VERIFIED]);
+        User::factory()->create(['student_verification_status' => User::STUDENT_VERIFICATION_PENDING]);
+        User::factory()->create(['student_verification_status' => User::STUDENT_VERIFICATION_NOT_SUBMITTED, 'suspended_at' => now()]);
+
+        $demographics = $this->service->studentDemographics();
+
+        expect($demographics['verified'])->toBe(2)
+            ->and($demographics['pending'])->toBe(1)
+            ->and($demographics['suspended'])->toBe(1)
+            ->and($demographics['total'])->toBe(User::count());
+    });
+
+    it('hides a school or year-of-study bucket with fewer students than the minimum group size', function () {
+        config(['insights.min_group_size' => 5]);
+        User::factory()->count(3)->create(['school' => 'ict', 'year_of_study' => 1]);
+
+        $demographics = $this->service->studentDemographics();
+
+        expect($demographics['by_school'])->not->toHaveKey(config('zut.schools.ict'))
+            ->and($demographics['by_year'])->not->toHaveKey('Year 1');
+    });
+
+    it('shows a school or year-of-study bucket once it reaches the minimum group size', function () {
+        config(['insights.min_group_size' => 3]);
+        User::factory()->count(3)->create(['school' => 'business', 'year_of_study' => 2]);
+
+        $demographics = $this->service->studentDemographics();
+
+        expect($demographics['by_school'][config('zut.schools.business')])->toBe(3)
+            ->and($demographics['by_year']['Year 2'])->toBe(3);
+    });
+});

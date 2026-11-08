@@ -37,7 +37,11 @@ it('switches sidebar sections and shows the right content in each', function () 
         ->assertSee('Peak activity times')
         ->call('setSection', 'marketplace')
         ->assertSee('Buyers by year of study')
-        ->assertSee('Frequently bought together');
+        ->assertSee('Frequently bought together')
+        ->call('setSection', 'demographics')
+        ->assertSee('Student population')
+        ->assertSee('Students by school')
+        ->assertSee('Students by gender');
 });
 
 it('ignores an invalid section and clears the category filter when switching sections', function () {
