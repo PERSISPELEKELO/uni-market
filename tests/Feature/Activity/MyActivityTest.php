@@ -237,3 +237,21 @@ it('shows a "why isn\'t it selling?" hint on the per-listing performance table',
         ->call('setInsightsSidebarView', 'selling')
         ->assertSee('No views yet');
 });
+
+it('drills down into a listing\'s full report when its row is clicked, and never into another seller\'s listing', function () {
+    $seller = User::factory()->create();
+    $listing = Listing::factory()->create(['user_id' => $seller->id, 'title' => 'My Laptop']);
+    ListingEvent::create(['listing_id' => $listing->id, 'type' => ListingEvent::TYPE_VIEW, 'created_at' => now()]);
+    $foreignListing = Listing::factory()->create();
+
+    $component = Livewire::actingAs($seller)->test(MyActivity::class)
+        ->call('setTab', 'insights')
+        ->call('setInsightsSidebarView', 'selling')
+        ->call('drillIntoListing', $listing->id)
+        ->assertSee('Total sale value');
+
+    expect($component->get('drilldownListingId'))->toBe($listing->id);
+
+    $component->call('drillIntoListing', $foreignListing->id)
+        ->assertDontSee('Total sale value');
+});

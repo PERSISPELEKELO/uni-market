@@ -5,9 +5,11 @@ namespace App\Livewire\Chat;
 use App\Models\Listing;
 use App\Models\ListingEvent;
 use App\Models\Message;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 
@@ -22,6 +24,8 @@ class MessageThread extends Component
     public ?int $activeUserId = null;
 
     public ?int $activeListingId = null;
+
+    public ?int $activeTransactionId = null;
 
     public string $newMessage = '';
 
@@ -41,6 +45,8 @@ class MessageThread extends Component
 
             $this->activeUserId = $receiver;
             $this->activeListingId = $listing && Listing::whereKey($listing)->exists() ? $listing : null;
+            $this->activeTransactionId = $this->resolveTransactionId($currentUserId, $receiver);
+            $this->prefillSuggestedMessage($currentUserId, $receiver);
 
             return null;
         }
@@ -68,9 +74,66 @@ class MessageThread extends Component
 
         $this->activeUserId = $userId;
         $this->activeListingId = $listingId && Listing::whereKey($listingId)->exists() ? $listingId : null;
+        $this->activeTransactionId = null;
         $this->newMessage = '';
         $this->userSearch = '';
         $this->resetValidation();
+    }
+
+    /**
+     * Only honours a ?transaction= link when the signed-in user and the
+     * person they're about to message are genuinely the two participants -
+     * reuses TransactionPolicy so a crafted link can't attach someone else's
+     * transaction to a message.
+     */
+    private function resolveTransactionId(int $currentUserId, int $receiverId): ?int
+    {
+        $transactionId = request()->integer('transaction') ?: null;
+
+        if (! $transactionId) {
+            return null;
+        }
+
+        $transaction = Transaction::find($transactionId);
+
+        if (! $transaction || Gate::denies('view', $transaction)) {
+            return null;
+        }
+
+        $participants = [$transaction->buyer_id, $transaction->seller_id];
+
+        return in_array($currentUserId, $participants, true) && in_array($receiverId, $participants, true)
+            ? $transaction->id
+            : null;
+    }
+
+    /**
+     * A first-message starting point, editable and never sent automatically -
+     * only offered when nobody has messaged about this listing yet.
+     */
+    private function prefillSuggestedMessage(int $currentUserId, int $receiverId): void
+    {
+        if (! $this->activeListingId) {
+            return;
+        }
+
+        $alreadyStarted = Message::query()
+            ->where('listing_id', $this->activeListingId)
+            ->where(function ($query) use ($currentUserId, $receiverId) {
+                $query->where(fn ($inner) => $inner->where('sender_id', $currentUserId)->where('receiver_id', $receiverId))
+                    ->orWhere(fn ($inner) => $inner->where('sender_id', $receiverId)->where('receiver_id', $currentUserId));
+            })
+            ->exists();
+
+        if ($alreadyStarted) {
+            return;
+        }
+
+        $title = Listing::whereKey($this->activeListingId)->value('title');
+
+        if ($title) {
+            $this->newMessage = "Hi, about the {$title} — when can we meet for the handover?";
+        }
     }
 
     /**
@@ -144,6 +207,7 @@ class MessageThread extends Component
             'sender_id' => $currentUserId,
             'receiver_id' => $this->activeUserId,
             'listing_id' => $this->activeListingId,
+            'transaction_id' => $this->activeTransactionId,
             'message' => $this->newMessage,
             'is_read' => false,
         ]);
@@ -169,6 +233,7 @@ class MessageThread extends Component
 
         $activeUser = $this->activeUserId ? User::find($this->activeUserId) : null;
         $activeListing = $this->activeListingId ? Listing::find($this->activeListingId) : null;
+        $activeTransaction = $this->activeTransactionId ? Transaction::find($this->activeTransactionId) : null;
 
         $activeMessages = $activeUser
             ? Message::query()
@@ -188,6 +253,7 @@ class MessageThread extends Component
             'activeMessages' => $activeMessages,
             'activeUser' => $activeUser,
             'activeListing' => $activeListing,
+            'activeTransaction' => $activeTransaction,
             'searchResults' => $this->searchResults($currentUserId),
         ])->layout('layouts.app', ['title' => 'Messages - UniMarket']);
     }

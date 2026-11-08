@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\Auth;
  * handover/escrow flow (see HandoverVerificationService, InspectionService).
  * `amount` is the price the buyer and seller agreed to hand over in person -
  * this system does not process real payments, so nothing here should imply
- * a payment gateway is involved.
+ * a payment gateway is involved. `payment_status` is a free, simulated
+ * escrow layer on top of that (see the migration that added it) - held,
+ * released or refunded is always simulated, never real money.
  */
 class TransactionResource extends Resource
 {
@@ -79,6 +81,23 @@ class TransactionResource extends Resource
                     })
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('payment_status')
+                    ->label('Simulated payment')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => match (strtoupper($state)) {
+                        'HELD' => 'Held in escrow',
+                        'RELEASED' => 'Released',
+                        'REFUNDED' => 'Refunded',
+                        'FAILED' => 'Failed',
+                        default => 'Pending',
+                    })
+                    ->color(fn (string $state): string => match (strtoupper($state)) {
+                        'RELEASED' => 'success',
+                        'REFUNDED' => 'warning',
+                        'FAILED' => 'danger',
+                        default => 'gray',
+                    }),
+
                 Tables\Columns\IconColumn::make('dispute')
                     ->label('Dispute')
                     ->state(fn (Transaction $record): bool => $record->dispute !== null)
@@ -99,6 +118,13 @@ class TransactionResource extends Resource
                         'ITEM_INSPECTION' => 'Inspection window',
                         'COMPLETED' => 'Completed',
                         'DISPUTED' => 'Disputed',
+                        'REFUNDED' => 'Refunded',
+                    ]),
+                Tables\Filters\SelectFilter::make('payment_status')
+                    ->label('Simulated payment')
+                    ->options([
+                        'HELD' => 'Held in escrow',
+                        'RELEASED' => 'Released',
                         'REFUNDED' => 'Refunded',
                     ]),
             ])

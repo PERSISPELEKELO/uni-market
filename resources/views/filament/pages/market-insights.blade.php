@@ -6,9 +6,11 @@
         'trust' => ['Trust & Safety', 'heroicon-o-shield-check'],
         'listings' => ['Listings', 'heroicon-o-rectangle-stack'],
         'recommendations' => ['Recommendations', 'heroicon-o-sparkles'],
+        'demographics' => ['Student Demographics', 'heroicon-o-academic-cap'],
     ];
 
     $totals = $this->totals();
+    $demographics = $this->studentDemographics();
     $trust = $this->trust();
     $funnel = $this->listingFunnel();
     $fastest = $this->fastestSelling();
@@ -100,6 +102,7 @@
 
                 <x-filament::section>
                     <x-slot name="heading">Top listings by sale value</x-slot>
+                    <x-slot name="description">Click a row for its full performance report.</x-slot>
 
                     @if (empty($topListings))
                         <p class="text-sm text-gray-500 dark:text-gray-400">No completed sales in this period.</p>
@@ -114,7 +117,14 @@
                                 </thead>
                                 <tbody>
                                     @foreach ($topListings as $row)
-                                        <tr class="border-b border-gray-100 dark:border-gray-800">
+                                        <tr
+                                            wire:click="drillIntoListing({{ $row['listing']->id }})"
+                                            wire:key="top-listing-{{ $row['listing']->id }}"
+                                            @class([
+                                                'cursor-pointer border-b border-gray-100 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800',
+                                                'bg-primary-50 dark:bg-primary-500/10' => $drilldownListingId === $row['listing']->id,
+                                            ])
+                                        >
                                             <td class="py-1.5 pr-4">{{ $row['listing']->title }}</td>
                                             <td class="py-1.5 font-medium">{{ number_format($row['amount'], 2) }}</td>
                                         </tr>
@@ -122,6 +132,39 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @if ($drilldownListingId && ($drilldown = $this->listingDrilldown()))
+                            <div class="mt-4 rounded-lg border border-primary-200 bg-primary-50/50 p-4 dark:border-primary-500/30 dark:bg-primary-500/5">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="font-semibold text-gray-950 dark:text-white">{{ $drilldown['listing']->title }}</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                            {{ $drilldown['listing']->category?->name ?? 'Uncategorised' }} &middot;
+                                            Seller: {{ $drilldown['listing']->seller?->name ?? 'Unknown' }} &middot;
+                                            Listed {{ $drilldown['days_listed'] }} {{ \Illuminate\Support\Str::plural('day', $drilldown['days_listed']) }} ago
+                                        </p>
+                                    </div>
+                                    <button type="button" wire:click="drillIntoListing({{ $drilldownListingId }})" class="text-xs text-gray-500 hover:text-gray-900 dark:hover:text-white">Close</button>
+                                </div>
+
+                                <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    @foreach ([
+                                        ['label' => 'Views', 'value' => $drilldown['views']],
+                                        ['label' => 'Saves', 'value' => $drilldown['saves']],
+                                        ['label' => 'Shares', 'value' => $drilldown['shares']],
+                                        ['label' => 'Reservations', 'value' => $drilldown['reservations']],
+                                        ['label' => 'Completed sales', 'value' => $drilldown['completed_sales']],
+                                        ['label' => 'Total sale value (K)', 'value' => number_format($drilldown['total_sale_value'], 2)],
+                                        ['label' => 'View-to-reservation rate', 'value' => $drilldown['conversion_rate'] !== null ? $drilldown['conversion_rate'].'%' : '—'],
+                                    ] as $stat)
+                                        <div>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $stat['label'] }}</p>
+                                            <p class="font-semibold text-gray-950 dark:text-white">{{ $stat['value'] }}</p>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     @endif
                 </x-filament::section>
             @elseif ($section === 'marketplace')
@@ -393,11 +436,61 @@
                         </div>
                     </div>
                 </x-filament::section>
-            @else
+            @elseif ($section === 'recommendations')
                 <x-filament::section>
                     <x-slot name="heading">Recommendation click-through rate by section</x-slot>
                     <x-slot name="description">Real logged impressions and clicks from the marketplace home and listing pages' recommendation carousels - never a fabricated number.</x-slot>
                     <x-chart-js id="recommendation-ctr" type="bar" :data="$charts['recommendation-ctr']" aria-label="Recommendation click-through rate by section" empty="No recommendation impressions logged yet in this period." />
+                </x-filament::section>
+            @else
+                <x-filament::section>
+                    <x-slot name="heading">Student population</x-slot>
+                    <x-slot name="description">Every figure here is a real count from registered accounts - nothing estimated.</x-slot>
+
+                    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                        @foreach ([
+                            ['label' => 'Total students', 'value' => $demographics['total']],
+                            ['label' => 'Verified', 'value' => $demographics['verified']],
+                            ['label' => 'Pending verification', 'value' => $demographics['pending']],
+                            ['label' => 'Not submitted', 'value' => $demographics['not_submitted']],
+                            ['label' => 'Active accounts', 'value' => $demographics['active']],
+                            ['label' => 'Suspended', 'value' => $demographics['suspended']],
+                        ] as $stat)
+                            <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                                <p class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $stat['label'] }}</p>
+                                <p class="mt-1 text-2xl font-bold text-gray-950 dark:text-white">{{ number_format($stat['value']) }}</p>
+                            </div>
+                        @endforeach
+                    </div>
+                </x-filament::section>
+
+                <x-filament::section>
+                    <x-slot name="heading">Students by school</x-slot>
+                    <x-slot name="description">Schools with fewer than {{ config('insights.min_group_size') }} students are hidden, so no small group can be singled out.</x-slot>
+                    <x-chart-js id="students-by-school" type="bar" :data="$charts['students-by-school']" aria-label="Students by school" empty="Not enough students with a school on record yet." />
+                </x-filament::section>
+
+                <x-filament::section>
+                    <x-slot name="heading">Students by year of study</x-slot>
+                    <x-chart-js id="students-by-year" type="bar" :data="$charts['students-by-year']" aria-label="Students by year of study" empty="Not enough students with a year of study on record yet." />
+                </x-filament::section>
+
+                <x-filament::section>
+                    <x-slot name="heading">Students by gender (self-reported)</x-slot>
+                    <x-slot name="description">Optional and self-reported; "unspecified" covers anyone who preferred not to say.</x-slot>
+
+                    @if (empty($demographics['by_gender']))
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Not enough students with gender on record yet.</p>
+                    @else
+                        <div class="divide-y divide-gray-100 dark:divide-gray-800">
+                            @foreach ($demographics['by_gender'] as $label => $count)
+                                <div class="flex items-center justify-between py-1.5 text-sm">
+                                    <span>{{ $label }}</span>
+                                    <span class="font-medium">{{ number_format($count) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
                 </x-filament::section>
             @endif
         </div>

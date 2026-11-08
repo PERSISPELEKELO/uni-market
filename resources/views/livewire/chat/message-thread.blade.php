@@ -106,13 +106,23 @@
                 </a>
 
                 @if ($activeListing)
-                    <a href="{{ route('listings.show', $activeListing) }}" class="flex w-full min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2 hover:bg-slate-100 sm:w-auto sm:max-w-xs">
-                        <x-listing-image :src="$activeListing->cover_thumbnail_url" :alt="$activeListing->title" :label="false" class="h-10 w-10 flex-shrink-0 rounded" />
-                        <span class="min-w-0">
-                            <span class="block truncate text-sm font-medium text-ink">{{ $activeListing->title }}</span>
-                            <span class="block text-sm font-bold text-ink">K{{ number_format($activeListing->price, 2) }}</span>
-                        </span>
-                    </a>
+                    <div class="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto sm:max-w-xs">
+                        <a href="{{ route('listings.show', $activeListing) }}" class="flex min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2 hover:bg-slate-100">
+                            <x-listing-image :src="$activeListing->cover_thumbnail_url" :alt="$activeListing->title" :label="false" class="h-10 w-10 flex-shrink-0 rounded" />
+                            <span class="min-w-0">
+                                <span class="block truncate text-sm font-medium text-ink">{{ $activeListing->title }}</span>
+                                <span class="flex items-center gap-1.5 text-sm font-bold text-ink">
+                                    K{{ number_format($activeListing->price, 2) }}
+                                    @if ($activeTransaction)
+                                        <x-status-badge :status="$activeTransaction->status" class="text-[10px]" />
+                                    @endif
+                                </span>
+                            </span>
+                        </a>
+                        @if ($activeTransaction)
+                            <a href="{{ route('transactions.tracker', $activeTransaction) }}" class="text-xs font-medium text-brand-800 underline underline-offset-2 dark:text-brand-300">View transaction</a>
+                        @endif
+                    </div>
                 @endif
             </div>
 

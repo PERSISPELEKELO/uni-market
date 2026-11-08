@@ -34,39 +34,47 @@
     <div class="space-y-4">
         @forelse ($grouped[$activeTab] as $row)
             @php $transaction = $row['transaction']; @endphp
-            <div class="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5" wire:key="transaction-{{ $transaction->id }}">
-                <x-listing-image :src="$transaction->listing?->cover_thumbnail_url" :alt="$transaction->listing?->title ?? 'Listing'" class="h-20 w-20 flex-shrink-0 rounded-lg sm:h-16 sm:w-16" fit="cover" />
+            @php
+                $counterparty = $row['role'] === 'buying' ? $transaction->seller : $transaction->buyer;
+                $counterpartyRole = $row['role'] === 'buying' ? 'Seller' : 'Buyer';
+            @endphp
+            <div class="card flex flex-col gap-4 p-4 sm:p-5" wire:key="transaction-{{ $transaction->id }}">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <x-listing-image :src="$transaction->listing?->cover_thumbnail_url" :alt="$transaction->listing?->title ?? 'Listing'" class="h-20 w-20 flex-shrink-0 rounded-lg sm:h-16 sm:w-16" fit="cover" />
 
-                <div class="min-w-0 flex-1 space-y-1.5">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="badge {{ $row['role'] === 'buying' ? 'badge-info' : 'badge-neutral' }}">
-                            {{ $row['role'] === 'buying' ? 'You are buying' : 'You are selling' }}
-                        </span>
-                        <span class="text-xs text-slate-500">
-                            {{ $row['role'] === 'buying' ? 'Seller' : 'Buyer' }}: {{ $row['role'] === 'buying' ? $transaction->seller?->name : $transaction->buyer?->name }}
-                        </span>
+                    <div class="min-w-0 flex-1 space-y-1.5">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="badge {{ $row['role'] === 'buying' ? 'badge-info' : 'badge-neutral' }}">
+                                {{ $row['role'] === 'buying' ? 'You are buying' : 'You are selling' }}
+                            </span>
+                        </div>
+
+                        <p class="truncate font-semibold text-ink">{{ $transaction->listing?->title ?? 'Listing no longer available' }}</p>
+                        <p class="text-sm text-slate-700">K{{ number_format((float) $transaction->amount, 2) }} &middot; {{ $row['status_label'] }}</p>
+                        <x-payment-status-badge :status="$transaction->payment_status" />
+
+                        @if ($row['inspection_ends_at'] && $row['inspection_ends_at']->isFuture())
+                            <p class="text-xs font-medium text-accent-700">{{ $row['inspection_ends_at']->diffForHumans(null, true) }} left to inspect</p>
+                        @endif
+
+                        <div class="flex items-center gap-1" aria-label="Progress: {{ $stepLabels[$row['step'] - 1] }}">
+                            @foreach ($stepLabels as $index => $label)
+                                <span @class(['h-1.5 w-6 rounded-full', 'bg-brand-700' => $index < $row['step'], 'bg-slate-200 dark:bg-slate-300' => $index >= $row['step']])></span>
+                            @endforeach
+                            <span class="ml-1.5 text-[11px] text-slate-500">{{ $stepLabels[$row['step'] - 1] }}</span>
+                        </div>
+
+                        <p class="text-xs text-slate-500">Started {{ $transaction->created_at->format('M j, Y') }}</p>
                     </div>
 
-                    <p class="truncate font-semibold text-ink">{{ $transaction->listing?->title ?? 'Listing no longer available' }}</p>
-                    <p class="text-sm text-slate-700">K{{ number_format((float) $transaction->amount, 2) }} &middot; {{ $row['status_label'] }}</p>
-
-                    @if ($row['inspection_ends_at'] && $row['inspection_ends_at']->isFuture())
-                        <p class="text-xs font-medium text-accent-700">{{ $row['inspection_ends_at']->diffForHumans(null, true) }} left to inspect</p>
-                    @endif
-
-                    <div class="flex items-center gap-1" aria-label="Progress: {{ $stepLabels[$row['step'] - 1] }}">
-                        @foreach ($stepLabels as $index => $label)
-                            <span @class(['h-1.5 w-6 rounded-full', 'bg-brand-700' => $index < $row['step'], 'bg-slate-200 dark:bg-slate-300' => $index >= $row['step']])></span>
-                        @endforeach
-                        <span class="ml-1.5 text-[11px] text-slate-500">{{ $stepLabels[$row['step'] - 1] }}</span>
-                    </div>
-
-                    <p class="text-xs text-slate-500">Started {{ $transaction->created_at->format('M j, Y') }}</p>
+                    <a href="{{ route('transactions.tracker', $transaction) }}" class="btn btn-primary flex-shrink-0 sm:btn-sm">
+                        {{ $row['action_label'] ?? 'View' }}
+                    </a>
                 </div>
 
-                <a href="{{ route('transactions.tracker', $transaction) }}" class="btn btn-primary flex-shrink-0 sm:btn-sm">
-                    {{ $row['action_label'] ?? 'View' }}
-                </a>
+                @if ($counterparty)
+                    <x-counterparty-card :user="$counterparty" :role="$counterpartyRole" :transaction-id="$transaction->id" :listing-id="$transaction->listing_id" />
+                @endif
             </div>
         @empty
             <div class="card p-8 text-center">

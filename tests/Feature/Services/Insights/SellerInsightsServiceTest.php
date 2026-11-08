@@ -281,3 +281,29 @@ describe('selling hints', function () {
         expect($result['hint'])->toBeNull();
     });
 });
+
+describe('listing drilldown', function () {
+    it('reports real counts for one of the seller\'s own listings', function () {
+        $seller = User::factory()->create();
+        $listing = Listing::factory()->create(['user_id' => $seller->id]);
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => ListingEvent::TYPE_VIEW, 'created_at' => now()]);
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => ListingEvent::TYPE_VIEW, 'created_at' => now()]);
+        ListingEvent::create(['listing_id' => $listing->id, 'type' => ListingEvent::TYPE_SAVE, 'created_at' => now()]);
+        Transaction::factory()->create(['listing_id' => $listing->id, 'seller_id' => $seller->id, 'status' => 'COMPLETED', 'amount' => 150]);
+
+        $report = $this->service->listingDrilldown($seller, $listing->id);
+
+        expect($report['clicks'])->toBe(2)
+            ->and($report['saves'])->toBe(1)
+            ->and($report['completed_sales'])->toBe(1)
+            ->and($report['total_sale_value'])->toBe(150.0)
+            ->and($report['conversion_rate'])->not->toBeNull();
+    });
+
+    it('never returns another seller\'s listing', function () {
+        $seller = User::factory()->create();
+        $other = Listing::factory()->create();
+
+        expect($this->service->listingDrilldown($seller, $other->id))->toBeNull();
+    });
+});

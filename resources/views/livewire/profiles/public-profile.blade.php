@@ -29,6 +29,12 @@
                             <span class="text-sm text-slate-600">No ratings yet</span>
                         @endif
                     </div>
+                    @if ($completedSalesCount > 0)
+                        <span class="text-sm text-slate-600">{{ $completedSalesCount }} completed {{ \Illuminate\Support\Str::plural('sale', $completedSalesCount) }}</span>
+                    @endif
+                    @if ($completedPurchasesCount > 0)
+                        <span class="text-sm text-slate-600">{{ $completedPurchasesCount }} completed {{ \Illuminate\Support\Str::plural('purchase', $completedPurchasesCount) }}</span>
+                    @endif
                     @if ($completedTransactionsCount > 0)
                         <span class="text-sm text-slate-600">{{ $completedTransactionsCount }} completed {{ \Illuminate\Support\Str::plural('transaction', $completedTransactionsCount) }}</span>
                     @endif
@@ -131,12 +137,15 @@
     @endif
 
     @if ($activeListingsCount > 0)
-        <div class="card p-5 text-center sm:p-6">
-            <p class="text-sm text-slate-700">
-                <span class="font-semibold text-ink">{{ $user->name }}</span> has
-                <a href="{{ route('listings.index') }}" class="font-semibold text-brand-800 dark:text-brand-300 underline underline-offset-2">{{ $activeListingsCount }} {{ \Illuminate\Support\Str::plural('item', $activeListingsCount) }}</a>
-                for sale right now.
-            </p>
+        <div class="card space-y-4 p-5 sm:p-6" aria-labelledby="active-listings-heading">
+            <h2 id="active-listings-heading" class="text-sm font-semibold text-ink">
+                Active listings <span class="font-normal text-slate-500">({{ $activeListingsCount }})</span>
+            </h2>
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                @foreach ($activeListings as $listing)
+                    <x-listing-card :listing="$listing" wire:key="profile-listing-{{ $listing->id }}" />
+                @endforeach
+            </div>
         </div>
     @endif
 </div>

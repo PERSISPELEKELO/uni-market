@@ -7,6 +7,7 @@ namespace App\Services\Insights;
 use App\Models\Category;
 use App\Models\Dispute;
 use App\Models\Listing;
+use App\Models\ListingEvent;
 use App\Models\ListingView;
 use App\Models\Rating;
 use App\Models\RecommendationEvent;
@@ -174,6 +175,40 @@ class MarketInsightsService
                 ->values()
                 ->all();
         });
+    }
+
+    /**
+     * The full performance report for one listing, for an admin drilling
+     * down from the "Top listings" table - real counts only, nothing
+     * estimated. Null if the listing no longer exists.
+     *
+     * @return array{listing: Listing, views: int, saves: int, shares: int, reservations: int, completed_sales: int, total_sale_value: float, conversion_rate: ?float, days_listed: int}|null
+     */
+    public function listingDrilldown(int $listingId): ?array
+    {
+        $listing = Listing::with(['seller:id,name', 'category:id,name'])->find($listingId);
+
+        if (! $listing) {
+            return null;
+        }
+
+        $views = $listing->events()->where('type', ListingEvent::TYPE_VIEW)->count();
+        $saves = $listing->events()->where('type', ListingEvent::TYPE_SAVE)->count();
+        $shares = $listing->events()->where('type', ListingEvent::TYPE_SHARE)->count();
+        $reservations = $listing->reservations()->count();
+        $completedSales = $listing->transactions()->where('status', 'COMPLETED');
+
+        return [
+            'listing' => $listing,
+            'views' => $views,
+            'saves' => $saves,
+            'shares' => $shares,
+            'reservations' => $reservations,
+            'completed_sales' => (clone $completedSales)->count(),
+            'total_sale_value' => (float) (clone $completedSales)->sum('amount'),
+            'conversion_rate' => $views > 0 ? round(($reservations / $views) * 100, 1) : null,
+            'days_listed' => $listing->created_at->diffInDays(now()),
+        ];
     }
 
     /**
@@ -419,6 +454,58 @@ class MarketInsightsService
     /**
      * @return array{dispute_rate: float, dispute_rate_by_category: array<int, array{category: string, rate: float}>, average_resolution_days: ?float, verification_approval_rate: ?float, average_seller_rating: ?float, ai_agreement_rate: ?float}
      */
+    /**
+     * A plain population snapshot (not tied to buying behaviour, unlike the
+     * heatmaps above) - total registered students, verification/suspension
+     * counts, and breakdowns by school/year/gender. Breakdown buckets below
+     * min_group_size are hidden, same suppression rule as every other
+     * group-naming figure on this page; the plain totals are not a
+     * small-group breakdown so are not suppressed.
+     *
+     * @return array{total: int, verified: int, pending: int, not_submitted: int, active: int, suspended: int, by_school: array<string, int>, by_year: array<string, int>, by_gender: array<string, int>}
+     */
+    public function studentDemographics(): array
+    {
+        return InsightsCache::remember('market:student-demographics', function () {
+            $minGroupSize = (int) config('insights.min_group_size');
+
+            $bySchool = User::query()
+                ->whereNotNull('school')
+                ->selectRaw('school, count(*) as total')
+                ->groupBy('school')
+                ->pluck('total', 'school')
+                ->filter(fn ($total) => $total >= $minGroupSize)
+                ->mapWithKeys(fn ($total, $key) => [config('zut.schools.'.$key, (string) $key) => (int) $total]);
+
+            $byYear = User::query()
+                ->whereNotNull('year_of_study')
+                ->selectRaw('year_of_study, count(*) as total')
+                ->groupBy('year_of_study')
+                ->pluck('total', 'year_of_study')
+                ->filter(fn ($total) => $total >= $minGroupSize)
+                ->mapWithKeys(fn ($total, $year) => ["Year {$year}" => (int) $total]);
+
+            $byGender = User::query()
+                ->selectRaw("COALESCE(NULLIF(gender, ''), 'unspecified') as gender_value, count(*) as total")
+                ->groupBy('gender_value')
+                ->pluck('total', 'gender_value')
+                ->filter(fn ($total) => $total >= $minGroupSize)
+                ->mapWithKeys(fn ($total, $gender) => [ucfirst((string) $gender) => (int) $total]);
+
+            return [
+                'total' => User::count(),
+                'verified' => User::where('student_verification_status', User::STUDENT_VERIFICATION_VERIFIED)->count(),
+                'pending' => User::where('student_verification_status', User::STUDENT_VERIFICATION_PENDING)->count(),
+                'not_submitted' => User::where('student_verification_status', User::STUDENT_VERIFICATION_NOT_SUBMITTED)->count(),
+                'active' => User::whereNull('suspended_at')->count(),
+                'suspended' => User::suspended()->count(),
+                'by_school' => $bySchool->all(),
+                'by_year' => $byYear->all(),
+                'by_gender' => $byGender->all(),
+            ];
+        });
+    }
+
     public function trust(string $period = '30d'): array
     {
         return InsightsCache::remember("market:trust:{$period}", function () use ($period) {

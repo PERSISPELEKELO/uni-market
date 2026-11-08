@@ -168,12 +168,16 @@
                         </x-section>
 
                         @if ($trendingToday->isNotEmpty())
-                            <x-section title="Trending today" description="Ranked by clicks in the last 24 hours." class="card p-5">
+                            <x-section title="Trending today" description="Ranked by clicks in the last 24 hours. Click a row for its full report." class="card p-5">
                                 <ul class="divide-y divide-slate-100">
                                     @foreach ($trendingToday->take(5) as $row)
                                         @php $delta = $row['clicks_today'] - $row['clicks_yesterday']; @endphp
-                                        <li class="flex items-center justify-between gap-3 py-2.5">
-                                            <a href="{{ route('listings.show', $row['listing']) }}" class="min-w-0 truncate text-sm font-medium text-ink hover:text-brand-800 dark:hover:text-brand-300">{{ $row['listing']->title }}</a>
+                                        <li
+                                            wire:click="drillIntoListing({{ $row['listing']->id }})"
+                                            wire:key="trending-{{ $row['listing']->id }}"
+                                            @class(['flex cursor-pointer items-center justify-between gap-3 rounded-lg py-2.5 px-2 -mx-2 transition-colors hover:bg-slate-50', 'bg-brand-50' => $drilldownListingId === $row['listing']->id])
+                                        >
+                                            <span class="min-w-0 truncate text-sm font-medium text-ink">{{ $row['listing']->title }}</span>
                                             <span class="flex flex-shrink-0 items-center gap-2 text-sm">
                                                 <span class="font-semibold text-ink">{{ $row['clicks_today'] }}</span>
                                                 @if ($delta > 0)
@@ -223,7 +227,11 @@
                                     </thead>
                                     <tbody>
                                         @foreach ($listingPerformance as $row)
-                                            <tr class="border-b border-slate-100" wire:key="performance-{{ $row['listing']->id }}">
+                                            <tr
+                                                wire:click="drillIntoListing({{ $row['listing']->id }})"
+                                                wire:key="performance-{{ $row['listing']->id }}"
+                                                @class(['cursor-pointer border-b border-slate-100 transition-colors hover:bg-slate-50', 'bg-brand-50' => $drilldownListingId === $row['listing']->id])
+                                            >
                                                 <td class="max-w-[12rem] truncate py-1.5 pr-3 text-slate-700">{{ $row['listing']->title }}</td>
                                                 <td class="py-1.5 text-right text-ink">{{ $row['clicks'] }}</td>
                                                 <td class="py-1.5 text-right text-ink">{{ $row['saves'] }}</td>
@@ -238,6 +246,38 @@
                                 </table>
                             @endif
                         </x-section>
+
+                        @if ($drilldownListingId && ($drilldown = $this->listingDrilldown()))
+                            <div class="card space-y-3 border-brand-200 bg-brand-50/50 p-5">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="font-semibold text-ink">{{ $drilldown['listing']->title }}</p>
+                                        <p class="text-xs text-slate-600">
+                                            {{ $drilldown['listing']->category?->name ?? 'Uncategorised' }} &middot;
+                                            Listed {{ $drilldown['days_listed'] }} {{ \Illuminate\Support\Str::plural('day', $drilldown['days_listed']) }} ago
+                                        </p>
+                                    </div>
+                                    <button type="button" wire:click="drillIntoListing({{ $drilldownListingId }})" class="text-xs text-slate-500 hover:text-ink">Close</button>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                    @foreach ([
+                                        ['label' => 'Clicks', 'value' => $drilldown['clicks']],
+                                        ['label' => 'Saves', 'value' => $drilldown['saves']],
+                                        ['label' => 'Shares', 'value' => $drilldown['shares']],
+                                        ['label' => 'Reservations', 'value' => $drilldown['reservations']],
+                                        ['label' => 'Completed sales', 'value' => $drilldown['completed_sales']],
+                                        ['label' => 'Total sale value (K)', 'value' => number_format($drilldown['total_sale_value'], 2)],
+                                        ['label' => 'View-to-reservation rate', 'value' => $drilldown['conversion_rate'] !== null ? $drilldown['conversion_rate'].'%' : '—'],
+                                    ] as $stat)
+                                        <div>
+                                            <p class="text-xs text-slate-600">{{ $stat['label'] }}</p>
+                                            <p class="font-semibold text-ink">{{ $stat['value'] }}</p>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
 
                         <x-section title="From view to sale" description="How your listings' visits turn into enquiries and sales." class="card p-5">
                             <x-chart-js id="funnel" type="bar" :data="$charts['funnel']" aria-label="View to sale funnel" empty="Once students start viewing your listings, your funnel will appear here." height="h-48" />

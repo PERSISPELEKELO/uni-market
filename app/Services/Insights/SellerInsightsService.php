@@ -232,6 +232,38 @@ class SellerInsightsService
      *
      * @return array<string, array{count: int, change_percentage: ?float}>
      */
+    /**
+     * The full performance report for one of this seller's own listings -
+     * null if it doesn't exist or belongs to someone else, so a seller can
+     * never drill into another seller's figures.
+     *
+     * @return array{listing: Listing, clicks: int, saves: int, shares: int, reservations: int, completed_sales: int, total_sale_value: float, conversion_rate: ?float, days_listed: int}|null
+     */
+    public function listingDrilldown(User $seller, int $listingId): ?array
+    {
+        $listing = $seller->listings()->with('category')->find($listingId);
+
+        if (! $listing) {
+            return null;
+        }
+
+        $clicks = $listing->events()->where('type', ListingEvent::TYPE_VIEW)->count();
+        $reservations = $listing->reservations()->count();
+        $completedSales = $listing->transactions()->where('status', 'COMPLETED');
+
+        return [
+            'listing' => $listing,
+            'clicks' => $clicks,
+            'saves' => $listing->events()->where('type', ListingEvent::TYPE_SAVE)->count(),
+            'shares' => $listing->events()->where('type', ListingEvent::TYPE_SHARE)->count(),
+            'reservations' => $reservations,
+            'completed_sales' => (clone $completedSales)->count(),
+            'total_sale_value' => (float) (clone $completedSales)->sum('amount'),
+            'conversion_rate' => $clicks > 0 ? round(($reservations / $clicks) * 100, 1) : null,
+            'days_listed' => $listing->created_at->diffInDays(now()),
+        ];
+    }
+
     public function engagementTotals(User $seller, string $period = 'all'): array
     {
         return InsightsCache::remember("seller:{$seller->id}:engagement:{$period}", function () use ($seller, $period) {
